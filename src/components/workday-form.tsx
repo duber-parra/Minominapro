@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { format, parse, addHours, isValid, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale'; // Import Spanish locale
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,16 +30,18 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { calculateWorkday } from '@/actions/calculate-workday'; // Assuming server action exists
 import type { CalculationResults, CalculationError } from '@/types'; // Assuming types are defined
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
+
 
 const formSchema = z.object({
   startDate: z.date({
-    required_error: 'Start date is required.',
+    required_error: 'La fecha de inicio es requerida.',
   }),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'Invalid time format (HH:mm).',
+    message: 'Formato de hora inválido (HH:mm).',
   }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'Invalid time format (HH:mm).',
+    message: 'Formato de hora inválido (HH:mm).',
   }),
   endsNextDay: z.boolean().default(false),
   includeBreak: z.boolean().default(false),
@@ -80,10 +83,15 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       const startDt = parse(startDateTimeStr, 'yyyy-MM-dd HH:mm', new Date());
 
       if (isValid(startDt)) {
-        const defaultEndDt = addHours(startDt, 10);
+        const defaultEndDt = addHours(startDt, 10); // Default 10 hours shift
         setValue('endTime', format(defaultEndDt, 'HH:mm'));
         setValue('endsNextDay', !isSameDay(startDt, defaultEndDt));
       }
+    }
+     // Reset end time if start time becomes invalid or empty
+    else if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) {
+        // setValue('endTime', '');
+        // setValue('endsNextDay', false); // Optionally reset this too
     }
   }, [startDate, startTime, setValue]);
 
@@ -92,12 +100,19 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     try {
         const result = await calculateWorkday(values);
         onCalculationComplete(result);
+        if ('error' in result) {
+           toast({
+               title: 'Error en el Cálculo',
+               description: result.error,
+               variant: 'destructive',
+           });
+        }
     } catch (error) {
         console.error("Calculation error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
         onCalculationComplete({ error: errorMessage });
          toast({
-           title: 'Calculation Failed',
+           title: 'Cálculo Fallido',
            description: errorMessage,
            variant: 'destructive',
          });
@@ -108,8 +123,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   return (
     <Card className="bg-card shadow-lg rounded-lg">
       <CardHeader>
-        <CardTitle className="text-primary">Enter Work Period</CardTitle>
-        <CardDescription>Provide the start and end times for calculation.</CardDescription>
+        <CardTitle className="text-primary">Ingresar Periodo Laboral</CardTitle>
+        <CardDescription>Proporciona las horas de inicio y fin para el cálculo.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -119,7 +134,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               name="startDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Start Date</FormLabel>
+                  <FormLabel>Fecha de Inicio</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -131,9 +146,9 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           )}
                         >
                           {field.value ? (
-                            format(field.value, 'PPP')
+                            format(field.value, 'PPP', { locale: es }) // Use Spanish locale
                           ) : (
-                            <span>Pick a date</span>
+                            <span>Selecciona una fecha</span>
                           )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -148,6 +163,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           date < new Date('1900-01-01')
                         }
                         initialFocus
+                        locale={es} // Use Spanish locale for calendar
                       />
                     </PopoverContent>
                   </Popover>
@@ -162,7 +178,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel>Hora de Inicio</FormLabel>
                     <FormControl>
                       <Input type="time" {...field} className="text-base"/>
                     </FormControl>
@@ -175,7 +191,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                 name="endTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Time</FormLabel>
+                    <FormLabel>Hora de Fin</FormLabel>
                     <FormControl>
                       <Input type="time" {...field} className="text-base"/>
                     </FormControl>
@@ -199,7 +215,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel htmlFor="endsNextDay" className="cursor-pointer">
-                      Ends on the next day
+                      Termina al día siguiente
                     </FormLabel>
                   </div>
                 </FormItem>
@@ -220,7 +236,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel htmlFor="includeBreak" className="cursor-pointer">
-                       Deduct standard break time (3 PM - 6 PM)
+                       Deducir tiempo de descanso estándar (3 PM - 6 PM)
                     </FormLabel>
                   </div>
                 </FormItem>
@@ -231,10 +247,10 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Calculating...
+                  Calculando...
                 </>
               ) : (
-                'Calculate Pay'
+                'Calcular Pago'
               )}
             </Button>
           </form>
@@ -243,7 +259,3 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     </Card>
   );
 };
-
-
-// Need Card components for the layout
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

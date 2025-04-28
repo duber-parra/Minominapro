@@ -31,7 +31,8 @@ const formatCurrency = (value: number): string => {
 }
 
 const formatHours = (hours: number): string => {
-    return hours.toFixed(2);
+    // Format to use comma as decimal separator for Spanish locale
+    return hours.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -45,15 +46,16 @@ const iconMap: { [key: string]: React.ElementType } = {
   HEND_F: Moon, // Extra Dom/Fes Nocturnal - Combine Moon + CalendarDays
 };
 
+// --- Spanish Labels ---
 const labelMap: { [key: string]: string } = {
-    Ordinaria_Diurna_Base: "Regular Day Hours",
-    Recargo_Noct_Base: "Regular Night Hours",
-    Recargo_Dom_Diurno_Base: "Sunday/Holiday Day Hours",
-    Recargo_Dom_Noct_Base: "Sunday/Holiday Night Hours",
-    HED: "Weekday Overtime Day Hours",
-    HEN: "Weekday Overtime Night Hours",
-    HEDD_F: "Sunday/Holiday Overtime Day Hours",
-    HEND_F: "Sunday/Holiday Overtime Night Hours",
+    Ordinaria_Diurna_Base: "Horas Ordinarias Diurnas",
+    Recargo_Noct_Base: "Horas Ordinarias Nocturnas (Recargo)",
+    Recargo_Dom_Diurno_Base: "Horas Dominicales/Festivas Diurnas (Recargo)",
+    Recargo_Dom_Noct_Base: "Horas Dominicales/Festivas Nocturnas (Recargo)",
+    HED: "Horas Extras Diurnas (L-S)",
+    HEN: "Horas Extras Nocturnas (L-S)",
+    HEDD_F: "Horas Extras Dominicales/Festivas Diurnas",
+    HEND_F: "Horas Extras Dominicales/Festivas Nocturnas",
 };
 
 
@@ -62,9 +64,9 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
     <Card className="bg-card shadow-lg rounded-lg h-fit">
       <CardHeader>
         <CardTitle className="text-primary flex items-center gap-2">
-           <Hourglass className="w-5 h-5"/> Calculation Results
+           <Hourglass className="w-5 h-5"/> Resultados del Cálculo
         </CardTitle>
-        <CardDescription>Detailed breakdown of worked hours and pay.</CardDescription>
+        <CardDescription>Desglose detallado de horas trabajadas y pago.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -82,14 +84,14 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
           </Alert>
         ) : results ? (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Hours Breakdown</h3>
+            <h3 className="text-lg font-semibold text-primary">Desglose de Horas</h3>
              <Table>
                 <TableHeader>
                     <TableRow>
                     <TableHead className="w-[50px]"></TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Pay</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead className="text-right">Horas</TableHead>
+                    <TableHead className="text-right">Pago</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -111,16 +113,24 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
                 </TableBody>
              </Table>
 
-            <div className="mt-6 pt-4 border-t border-border">
+            <div className="mt-4 pt-4 border-t border-border">
+               <p className="text-sm text-muted-foreground text-right">
+                 Horas Totales Trabajadas: {formatHours(results.duracionTotalTrabajadaHoras)}
+               </p>
+            </div>
+            <div className="mt-2 pt-4 border-t border-border">
                <h3 className="text-xl font-bold text-primary text-right">
-                  Total Pay: {formatCurrency(results.pagoTotal)}
+                  Pago Total: {formatCurrency(results.pagoTotal)}
                </h3>
+               <p className="text-xs text-muted-foreground text-right mt-1">
+                   (Incluye recargos y pago de horas extras sobre el valor base por hora)
+               </p>
             </div>
 
           </div>
         ) : (
           <p className="text-muted-foreground text-center py-8">
-            Enter details and click Calculate to see the results.
+            Ingresa los detalles y haz clic en Calcular para ver los resultados.
           </p>
         )}
       </CardContent>
