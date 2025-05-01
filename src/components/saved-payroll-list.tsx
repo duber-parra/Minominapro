@@ -47,7 +47,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
         {payrolls.length > 0 ? (
           <ul className="space-y-4 max-h-[70vh] lg:max-h-[calc(100vh-250px)] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
             {payrolls.map((payroll) => (
-              <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"> {/* Adjusted gap */}
+              <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start gap-3"> {/* Use items-start for better alignment when buttons stack */}
                 <div className="flex-grow min-w-0"> {/* Added min-w-0 to allow shrinking/wrapping */}
                   <p className="font-semibold text-lg text-primary truncate">{payroll.employeeId}</p> {/* Added truncate */}
                   <p className="text-sm text-muted-foreground">
@@ -65,15 +65,15 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                     Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })} {/* Display creation/save time */}
                   </p>
                 </div>
-                {/* Button container: allow wrapping on small screens if needed */}
-                <div className="flex flex-wrap sm:flex-nowrap gap-2 flex-shrink-0 mt-2 sm:mt-0 self-start sm:self-center"> {/* Adjusted alignment */}
-                  <Button variant="outline" size="sm" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina">
+                {/* Button container: Stack buttons vertically */}
+                <div className="flex flex-col space-y-2 flex-shrink-0 self-start sm:self-center"> {/* Changed to flex-col and space-y-2 */}
+                  <Button variant="outline" size="sm" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="w-full justify-start"> {/* Ensure buttons take full width of container */}
                     <FileSearch className="mr-2 h-4 w-4" /> Cargar
                   </Button>
                   {/* Wrap the Trigger and Button within AlertDialog */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada">
+                        <Button variant="destructive" size="sm" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="w-full justify-start"> {/* Ensure buttons take full width of container */}
                             <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </Button>
                     </AlertDialogTrigger>
