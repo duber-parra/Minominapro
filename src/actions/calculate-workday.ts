@@ -213,5 +213,3 @@ export async function calculateWorkday(
         duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Incluir duración real trabajada
     };
 }
-
-    
