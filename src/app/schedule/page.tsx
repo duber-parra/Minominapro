@@ -108,6 +108,23 @@ export default function SchedulePage() {
 
     const currentDaySchedule = scheduleData[currentDayKey] || { date: targetDate, assignments: {} };
 
+    // Derived state for available employees
+    const assignedEmployeeIds = useMemo(() => {
+        const ids = new Set<string>();
+        const dateKey = format(targetDate, 'yyyy-MM-dd');
+        const daySchedule = scheduleData[dateKey];
+        if (daySchedule) {
+            Object.values(daySchedule.assignments).forEach(deptAssignments => {
+                deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
+            });
+        }
+        return ids;
+    }, [scheduleData, targetDate]);
+
+    const filteredEmployees = useMemo(() => employees.filter(emp => emp.primaryLocationId === selectedLocationId), [employees, selectedLocationId]);
+    const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
+    const availableEmployees = useMemo(() => filteredEmployees.filter(emp => !assignedEmployeeIds.has(emp.id)), [filteredEmployees, assignedEmployeeIds]);
+
     useEffect(() => {
         // Ensure department locationId defaults to current selected location
         setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
@@ -117,25 +134,6 @@ export default function SchedulePage() {
     const handleLocationChange = (locationId: string) => {
         setSelectedLocationId(locationId);
     };
-
-    // Filter employees and departments based on selected location
-    const filteredEmployees = employees.filter(emp => emp.primaryLocationId === selectedLocationId);
-    const filteredDepartments = departments.filter(dep => dep.locationId === selectedLocationId);
-
-    // Filter employees available for assignment (not already assigned in the current view)
-     const getAssignedEmployeeIds = useCallback(() => {
-         const assignedIds = new Set<string>();
-         const dateKey = format(targetDate, 'yyyy-MM-dd');
-         const daySchedule = scheduleData[dateKey];
-         if (daySchedule) {
-             Object.values(daySchedule.assignments).forEach(deptAssignments => {
-                 deptAssignments.forEach(assignment => assignedIds.add(assignment.employee.id));
-             });
-         }
-         return assignedIds;
-     }, [scheduleData, targetDate]);
-
-    const availableEmployees = filteredEmployees.filter(emp => !getAssignedEmployeeIds().has(emp.id));
 
 
     const handleOpenShiftModal = (employee: Employee, departmentId: string, date: Date) => {
@@ -156,8 +154,8 @@ export default function SchedulePage() {
             startTime: details.startTime,
             endTime: details.endTime,
             includeBreak: details.includeBreak || false,
-            breakStartTime: details.breakStartTime || undefined,
-            breakEndTime: details.breakEndTime || undefined,
+            breakStartTime: details.includeBreak ? details.breakStartTime : undefined,
+            breakEndTime: details.includeBreak ? details.breakEndTime : undefined,
         };
 
         setScheduleData(prevData => {
@@ -175,8 +173,8 @@ export default function SchedulePage() {
             };
         });
         setIsShiftModalOpen(false);
-        // Re-calculate available employees after adding a shift
-        // This can be optimized, but force re-render might be simplest for now
+        setSelectedEmployee(null); // Clear selection after assigning
+        setSelectedDepartmentId(null);
     };
 
     const handleRemoveShift = (dateKey: string, departmentId: string, assignmentId: string) => {
@@ -362,7 +360,6 @@ export default function SchedulePage() {
                      <div className="space-y-1">
                         {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
                          <LocationSelector
-                            id="location-select"
                             locations={locations}
                             selectedLocationId={selectedLocationId}
                             onLocationChange={handleLocationChange}
@@ -375,8 +372,8 @@ export default function SchedulePage() {
              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                     {/* --- Configuration & Available Employees (Combined and smaller) --- */}
-                     <div className={`lg:col-span-3 xl:col-span-2 space-y-6 ${viewMode === 'week' ? 'hidden' : ''}`}> {/* Hide on week view */}
+                     {/* --- Configuration & Available Employees (Takes 3/12 width on large screens) --- */}
+                     <div className={`lg:col-span-3 space-y-6 ${viewMode === 'week' ? 'hidden lg:block' : ''}`}> {/* Always show on large screens */}
                          {/* Configuration Card */}
                          <Card className="shadow-md bg-card">
                               <CardHeader className="pb-3 pt-4 px-4">
@@ -399,7 +396,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                          <AlertDialogTrigger> {/* Removed asChild */}
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                           {/* Content defined later */}
@@ -424,7 +421,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                         <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                         <AlertDialogTrigger> {/* Removed asChild */}
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                           {/* Content defined later */}
@@ -449,7 +446,7 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-3 w-3" /></Button>
                                                        <AlertDialog>
-                                                          <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                          <AlertDialogTrigger> {/* Removed asChild */}
                                                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                            {/* Content defined later */}
@@ -467,15 +464,16 @@ export default function SchedulePage() {
 
                      </div>
 
-                     {/* --- Schedule View (Takes remaining space) --- */}
-                     <div className={`lg:col-span-9 xl:col-span-10 ${viewMode === 'week' ? 'lg:col-span-12 xl:col-span-12' : ''}`}> {/* Expand on week view */}
+                     {/* --- Schedule View (Takes remaining space - 9/12 width) --- */}
+                     <div className={`lg:col-span-9`}> {/* Adjust column span */}
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
                             onRemoveShift={handleRemoveShift}
                             viewMode={viewMode}
                             weekDates={weekDates} // Pass week dates
-                            currentDate={currentDate} // Pass current date for single day view
+                            currentDate={targetDate} // Pass target date for single day view or start of week
+                            onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
                         />
                      </div>
                  </div>
