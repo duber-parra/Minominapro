@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon } from 'lucide-react'; // Added CalendarIcon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle } from 'lucide-react'; // Added icons
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,12 +54,12 @@ const initialLocations: Location[] = [
 ];
 
 const initialDepartments: Department[] = [
-  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: Plus },
-  { id: 'dep-2', name: 'Salón', locationId: 'loc-1', icon: Trash2 },
+  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: Building }, // Use Building or similar
+  { id: 'dep-2', name: 'Salón', locationId: 'loc-1', icon: Users },
   { id: 'dep-3', name: 'Caja & Barra', locationId: 'loc-2', icon: Edit },
-  { id: 'dep-4', name: 'Bodega', locationId: 'loc-2', icon: Plus },
-  { id: 'dep-5', name: 'Cocina', locationId: 'loc-3', icon: Trash2 },
-  { id: 'dep-6', name: 'Salón', locationId: 'loc-3', icon: Edit },
+  { id: 'dep-4', name: 'Bodega', locationId: 'loc-2', icon: Building2 },
+  { id: 'dep-5', name: 'Cocina', locationId: 'loc-3', icon: Building },
+  { id: 'dep-6', name: 'Salón', locationId: 'loc-3', icon: Users },
 ];
 
 const initialEmployees: Employee[] = [
@@ -175,6 +175,8 @@ export default function SchedulePage() {
             };
         });
         setIsShiftModalOpen(false);
+        // Re-calculate available employees after adding a shift
+        // This can be optimized, but force re-render might be simplest for now
     };
 
     const handleRemoveShift = (dateKey: string, departmentId: string, assignmentId: string) => {
@@ -286,6 +288,13 @@ export default function SchedulePage() {
         setIsEmployeeModalOpen(false);
     };
 
+     // Confirm before deleting
+     const confirmDeleteItem = (type: 'location' | 'department' | 'employee', id: string, name: string) => {
+        setItemToDelete({ type, id, name });
+        // The AlertDialog will open via its trigger
+     };
+
+
     const handleDeleteItem = () => {
         if (!itemToDelete) return;
 
@@ -331,14 +340,14 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
-             <div className="flex justify-between items-center mb-6">
-                 <h1 className="text-2xl font-bold text-foreground">Planificador de Horarios</h1>
+             <div className="flex justify-between items-center mb-6 gap-4">
+                 <h1 className="text-2xl font-bold text-foreground flex-shrink-0">Planificador de Horarios</h1>
                   <WeekNavigator
                       currentDate={currentDate}
                       onPreviousWeek={handlePreviousWeek}
                       onNextWeek={handleNextWeek}
                   />
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 flex-shrink-0">
                       {/* Day/Week View Toggle */}
                      <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
                          <SelectTrigger className="w-[120px]">
@@ -350,11 +359,15 @@ export default function SchedulePage() {
                          </SelectContent>
                      </Select>
                      {/* Location Selector */}
-                     <LocationSelector
-                        locations={locations}
-                        selectedLocationId={selectedLocationId}
-                        onLocationChange={handleLocationChange}
-                     />
+                     <div className="space-y-1">
+                        {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
+                         <LocationSelector
+                            id="location-select"
+                            locations={locations}
+                            selectedLocationId={selectedLocationId}
+                            onLocationChange={handleLocationChange}
+                         />
+                     </div>
                  </div>
              </div>
 
@@ -363,43 +376,34 @@ export default function SchedulePage() {
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                      {/* --- Configuration & Available Employees (Combined and smaller) --- */}
-                     <div className={`lg:col-span-3 xl:col-span-2 space-y-6 ${viewMode === 'week' ? 'lg:hidden' : ''}`}> {/* Hide on week view on large screens */}
+                     <div className={`lg:col-span-3 xl:col-span-2 space-y-6 ${viewMode === 'week' ? 'hidden' : ''}`}> {/* Hide on week view */}
                          {/* Configuration Card */}
                          <Card className="shadow-md bg-card">
-                             <CardHeader className="pb-3 pt-4 px-4">
+                              <CardHeader className="pb-3 pt-4 px-4">
                                  <CardTitle className="text-lg">Configuración</CardTitle>
-                                 {/* <CardDescription>Sedes, Deptos, Empleados.</CardDescription> */}
+                                 <CardDescription>Sedes, Deptos, Colaboradores</CardDescription>
                              </CardHeader>
                              <CardContent className="px-4 pb-4 space-y-4 text-sm">
                                  {/* Locations */}
                                  <div className="space-y-1">
                                      <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold">Sedes ({locations.length})</h4>
+                                         <h4 className="font-semibold flex items-center gap-1"><Building className="h-3 w-3"/>Sedes ({locations.length})</h4>
                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                      </div>
-                                     <ul className="space-y-1 max-h-20 overflow-y-auto text-xs">
+                                     <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                          {locations.map((loc) => (
-                                             <li key={loc.id} className="flex items-center justify-between group">
+                                             <li key={loc.id} className="flex items-center justify-between group py-0.5">
                                                  <span className={`truncate ${loc.id === selectedLocationId ? 'font-bold text-primary' : ''}`}>{loc.name}</span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-3 w-3" /></Button>
-                                                     <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
-                                                         </AlertDialogTrigger>
-                                                         <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Eliminar Sede "{loc.name}"?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminarán los departamentos asociados.</AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'location', id: loc.id, name: loc.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
-                                                     </AlertDialog>
+                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-3 w-3" /></Button>
+                                                      <AlertDialog>
+                                                          <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-3 w-3" /></Button>
+                                                          </AlertDialogTrigger>
+                                                          {/* Content defined later */}
+                                                      </AlertDialog>
                                                  </div>
                                              </li>
                                          ))}
@@ -408,31 +412,22 @@ export default function SchedulePage() {
                                  {/* Departments */}
                                  <div className="space-y-1">
                                       <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold">Departamentos ({filteredDepartments.length})</h4>
+                                         <h4 className="font-semibold flex items-center gap-1"><Building2 className="h-3 w-3"/>Departamentos ({filteredDepartments.length})</h4>
                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Depto. a esta Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                       </div>
-                                     <ul className="space-y-1 max-h-20 overflow-y-auto text-xs">
+                                     <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                          {filteredDepartments.map((dep) => (
-                                             <li key={dep.id} className="flex items-center justify-between group">
+                                             <li key={dep.id} className="flex items-center justify-between group py-0.5">
                                                  <span className="truncate">{dep.name}</span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-3 w-3" /></Button>
+                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
+                                                         <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
-                                                          <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Eliminar Depto. "{dep.name}"?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'department', id: dep.id, name: dep.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
+                                                          {/* Content defined later */}
                                                       </AlertDialog>
                                                  </div>
                                              </li>
@@ -442,31 +437,22 @@ export default function SchedulePage() {
                                   {/* Employees */}
                                  <div className="space-y-1">
                                      <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold">Colaboradores ({filteredEmployees.length})</h4>
+                                         <h4 className="font-semibold flex items-center gap-1"><Users className="h-3 w-3"/>Colaboradores ({filteredEmployees.length})</h4>
                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador a esta Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                      </div>
-                                      <ul className="space-y-1 max-h-20 overflow-y-auto text-xs">
+                                      <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                           {filteredEmployees.map((emp) => (
-                                              <li key={emp.id} className="flex items-center justify-between group">
+                                              <li key={emp.id} className="flex items-center justify-between group py-0.5">
                                                   <span className="truncate">{emp.name}</span>
-                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
-                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button>
+                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-3 w-3" /></Button>
                                                        <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
+                                                          <AlertDialogTrigger asChild={false}> {/* Ensure not asChild */}
+                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
-                                                           <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>¿Eliminar Colab. "{emp.name}"?</AlertDialogTitle>
-                                                                  <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
-                                                              </AlertDialogHeader>
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'employee', id: emp.id, name: emp.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                          </AlertDialogContent>
+                                                           {/* Content defined later */}
                                                        </AlertDialog>
                                                   </div>
                                               </li>
@@ -509,7 +495,9 @@ export default function SchedulePage() {
                           <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} />
                       </div>
                       <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
+                         <DialogClose asChild>
+                           <Button variant="outline">Cancelar</Button>
+                         </DialogClose>
                           <Button onClick={handleSaveLocation}>Guardar</Button>
                       </DialogFooter>
                   </DialogContent>
@@ -541,7 +529,9 @@ export default function SchedulePage() {
                          </div>
                      </div>
                      <DialogFooter>
-                         <Button variant="outline" onClick={() => setIsDepartmentModalOpen(false)}>Cancelar</Button>
+                          <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                          </DialogClose>
                          <Button onClick={handleSaveDepartment}>Guardar</Button>
                      </DialogFooter>
                  </DialogContent>
@@ -574,7 +564,9 @@ export default function SchedulePage() {
                          </div>
                      </div>
                     <DialogFooter>
-                         <Button variant="outline" onClick={() => setIsEmployeeModalOpen(false)}>Cancelar</Button>
+                         <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                         </DialogClose>
                         <Button onClick={handleSaveEmployee}>Guardar</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -596,7 +588,11 @@ export default function SchedulePage() {
                      <AlertDialogHeader>
                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                          <AlertDialogDescription>
-                            ¿Eliminar {itemToDelete?.type} "{itemToDelete?.name}"? Esta acción no se puede deshacer.
+                             ¿Eliminar {itemToDelete?.type === 'location' ? 'Sede' : itemToDelete?.type === 'department' ? 'Departamento' : 'Colaborador'} "{itemToDelete?.name}"?
+                             {itemToDelete?.type === 'location' && " Se eliminarán los departamentos y turnos asociados."}
+                             {itemToDelete?.type === 'department' && " Se eliminarán los turnos asociados."}
+                             {itemToDelete?.type === 'employee' && " Se eliminarán los turnos asociados."}
+                             <br/>Esta acción no se puede deshacer.
                          </AlertDialogDescription>
                      </AlertDialogHeader>
                      <AlertDialogFooter>
