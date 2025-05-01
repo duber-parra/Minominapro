@@ -13,8 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown } from 'lucide-react'; // Added Save, X, PencilLine, User, FolderSync, Eraser, FileDown
-import { format, parseISO, startOfMonth, endOfMonth, setDate } from 'date-fns';
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library } from 'lucide-react'; // Added Library for bulk export
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +34,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { VALORES } from '@/config/payroll-values'; // Import VALORES from new location
-import { exportPayrollToPDF } from '@/lib/pdf-exporter'; // Import the PDF export function
+import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
+import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
@@ -67,6 +68,9 @@ const parseStoredData = (jsonData: string | null): CalculationResults[] => {
         return []; // Return empty array on error
     }
 };
+
+// --- Regex to parse storage key ---
+const storageKeyRegex = /^payroll_([a-zA-Z0-9_-]+)_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
 
 
 export default function Home() {
@@ -102,7 +106,7 @@ export default function Home() {
         if (typeof window !== 'undefined') { // Ensure running on client
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
             if (storageKey) {
-                console.log(`Attempting to load data for key: ${storageKey}`);
+                console.log(`Intentando cargar datos para la clave: ${storageKey}`);
                 const storedData = localStorage.getItem(storageKey);
                 const parsedData = parseStoredData(storedData);
                 setCalculatedDays(parsedData);
@@ -126,10 +130,10 @@ export default function Home() {
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
             if (storageKey && calculatedDays.length >= 0) { // Allow saving empty array to clear storage
                 try {
-                     console.log(`Attempting to save ${calculatedDays.length} days to key: ${storageKey}`);
+                     console.log(`Intentando guardar ${calculatedDays.length} días en la clave: ${storageKey}`);
                     localStorage.setItem(storageKey, JSON.stringify(calculatedDays));
                 } catch (error) {
-                    console.error("Error saving data to localStorage:", error);
+                    console.error("Error guardando datos en localStorage:", error);
                     toast({
                         title: 'Error al Guardar',
                         description: 'No se pudieron guardar los cambios localmente.',
@@ -190,7 +194,11 @@ export default function Home() {
     const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
         setIsLoadingDay(false);
         if (isCalculationError(data)) {
-            const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
+            // const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
+            // Updated error message handling to show more specific errors if available
+            const errorMessage = data.error?.startsWith("ID")
+                ? data.error // Show specific ID error
+                : `Error inesperado: ${data.error || 'Detalle no disponible.'}`;
             setErrorDay(errorMessage);
             toast({
                 title: 'Error en el Cálculo',
@@ -364,44 +372,11 @@ export default function Home() {
    };
 
 
-  // Memoized calculation for the quincenal summary
-  const quincenalSummary = useMemo((): QuincenalCalculationSummary | null => {
-    if (calculatedDays.length === 0) {
-      return null;
-    }
-
-    const initialSummary: QuincenalCalculationSummary = {
-      totalHorasDetalladas: {
-        Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0,
-        Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0,
-      },
-      totalPagoDetallado: {
-        Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0,
-        Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0,
-      },
-      totalPagoRecargosExtrasQuincena: 0,
-      salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
-      pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO, // Start with base salary
-      totalDuracionTrabajadaHorasQuincena: 0,
-      diasCalculados: calculatedDays.length,
-    };
-
-    return calculatedDays.reduce((summary, currentDay) => {
-      // Use Object.keys on the summary's structure to ensure all categories are processed
-      Object.keys(summary.totalHorasDetalladas).forEach(key => {
-          const category = key as keyof CalculationResults['horasDetalladas'];
-          // Accumulate hours and payments safely, defaulting to 0 if a category is somehow missing in currentDay (though unlikely with current types)
-          summary.totalHorasDetalladas[category] += currentDay.horasDetalladas[category] ?? 0;
-          summary.totalPagoDetallado[category] += currentDay.pagoDetallado[category] ?? 0;
-      });
-      summary.totalPagoRecargosExtrasQuincena += currentDay.pagoTotalRecargosExtras;
-      summary.totalDuracionTrabajadaHorasQuincena += currentDay.duracionTotalTrabajadaHoras;
-      summary.pagoTotalConSalarioQuincena += currentDay.pagoTotalRecargosExtras; // Add only the extras/surcharges
-      return summary;
-    }, initialSummary);
-
-
+  // Memoized calculation for the quincenal summary using the utility function
+  const quincenalSummary = useMemo(() => {
+      return calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
   }, [calculatedDays]);
+
 
   // Find the data for the day being edited (for WorkdayForm)
   const editingDayData = useMemo(() => {
@@ -444,7 +419,7 @@ export default function Home() {
             description: `Comprobante de nómina para ${employeeId} generado.`,
         });
      } catch (error) {
-        console.error("Error exporting PDF:", error);
+        console.error("Error exportando PDF:", error);
          toast({
              title: 'Error al Exportar PDF',
              description: 'No se pudo generar el archivo PDF.',
@@ -452,6 +427,87 @@ export default function Home() {
          });
      }
   };
+
+  // --- Bulk PDF Export Handler ---
+  const handleBulkExportPDF = () => {
+    if (typeof window === 'undefined') return; // Client-side only
+
+    const allPayrollData = [];
+    let errorsFound = false;
+
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('payroll_')) {
+                const match = key.match(storageKeyRegex);
+                if (match) {
+                    const empId = match[1];
+                    const startStr = match[2];
+                    const endStr = match[3];
+
+                    // Basic validation of parsed dates
+                    const startDate = parseDateFns(startStr, 'yyyy-MM-dd', new Date());
+                    const endDate = parseDateFns(endStr, 'yyyy-MM-dd', new Date());
+
+                    if (!empId || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                        console.warn(`Clave de almacenamiento inválida encontrada, omitiendo: ${key}`);
+                        continue; // Skip invalid keys
+                    }
+
+
+                    const storedData = localStorage.getItem(key);
+                    const parsedDays = parseStoredData(storedData);
+
+                    if (parsedDays.length > 0) {
+                        // Recalculate summary based on stored days
+                        // You might want to fetch the employee's specific salary here if it varies
+                        const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
+
+                        if (summary) {
+                            allPayrollData.push({
+                                employeeId: empId,
+                                periodStart: startDate,
+                                periodEnd: endDate,
+                                summary: summary,
+                            });
+                        } else {
+                             console.warn(`No se pudo generar el resumen para la clave: ${key}, datos:`, parsedDays);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (allPayrollData.length > 0) {
+            exportAllPayrollsToPDF(allPayrollData);
+            toast({
+                title: 'Exportación Masiva Completa',
+                description: `Se generó un PDF con ${allPayrollData.length} comprobantes de nómina.`,
+            });
+        } else {
+            toast({
+                title: 'No Hay Datos para Exportar',
+                description: 'No se encontraron nóminas calculadas guardadas en el almacenamiento local.',
+                variant: 'default',
+            });
+        }
+
+    } catch (error) {
+        console.error("Error durante la exportación masiva de PDF:", error);
+        toast({
+            title: 'Error en Exportación Masiva',
+            description: 'Ocurrió un error al intentar generar el PDF combinado.',
+            variant: 'destructive',
+        });
+        errorsFound = true;
+    }
+
+     // Optional: Notify about skipped entries if any
+     // if (skippedEntries > 0) {
+     //     toast({ title: 'Aviso', description: `${skippedEntries} entradas fueron omitidas debido a datos inválidos.` });
+     // }
+  };
+
 
 
   return (
@@ -538,13 +594,13 @@ export default function Home() {
               </div>
 
                 {/* Action Buttons for Load/Clear */}
-                <div className="md:col-span-3 flex flex-col sm:flex-row gap-2 mt-4">
-                   <Button onClick={handleLoadData} className="flex-1" disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
+                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
+                   <Button onClick={handleLoadData} className="w-full" disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
                        <FolderSync className="mr-2 h-4 w-4" /> Cargar/Actualizar Turnos
                    </Button>
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="flex-1" disabled={isFormDisabled || calculatedDays.length === 0}>
+                             <Button variant="destructive" className="w-full" disabled={isFormDisabled || calculatedDays.length === 0}>
                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Período Actual
                             </Button>
                         </AlertDialogTrigger>
@@ -565,6 +621,10 @@ export default function Home() {
                          </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
+                   {/* Bulk Export Button */}
+                    <Button onClick={handleBulkExportPDF} variant="outline" className="w-full lg:col-span-1">
+                        <Library className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
+                    </Button>
 
                </div>
           </CardContent>
@@ -785,4 +845,3 @@ export default function Home() {
     </main>
   );
 }
-
