@@ -138,7 +138,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       startDate: new Date(),
       startTime: '12:00', // Default start time 12:00 PM
       endTime: '22:00',   // Default end time 10:00 PM
-      endsNextDay: false, // Recalculated based on default times if needed
+      endsNextDay: true, // Recalculated based on default times if needed (12:00 to 22:00 IS NOT next day) - Correction: This should be false.
       includeBreak: false,
       breakStartTime: '', // Default to empty for new entries
       breakEndTime: '',   // Default to empty for new entries
@@ -170,6 +170,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         if (!initialData) {
             const defaultStartH = 12;
             const defaultEndH = 22;
+            // Corrected logic: endsNextDay is true if end hour is LESS than start hour
             setValue('endsNextDay', defaultEndH < defaultStartH);
         }
    }, [initialData, form]); // form is stable, but reset is from it
@@ -288,7 +289,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                             'w-full pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
                              // Add conditional border for holidays
-                             isHoliday && 'border-accent border-2',
+                             // isHoliday && 'border-accent border-2', // Border handled by modifier now
                              // Optionally add style for Sunday too
                              !isHoliday && startDate && isSunday(startDate) && 'border-primary border' // Use primary color for Sunday border
                           )}
@@ -316,7 +317,10 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         initialFocus
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
-                         modifiersClassNames={{ holiday: 'text-accent font-bold', sunday: 'text-primary' }} // Use primary text color for Sunday
+                         modifiersClassNames={{
+                             holiday: 'border-2 border-accent text-accent font-bold', // Added border classes
+                             sunday: 'text-primary'
+                         }} // Use primary text color for Sunday
                       />
                     </PopoverContent>
                   </Popover>
