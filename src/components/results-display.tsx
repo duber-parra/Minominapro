@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -386,7 +387,13 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 <div className="mb-4">
                    <div className="flex justify-between items-center mb-2">
                        <h4 className="font-semibold text-foreground">Otras Deducciones / Descuentos</h4>
-                       <Button variant="outline" size="sm" onClick={onAddDeduccion} disabled={!onAddDeduccion}>
+                       <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={onAddDeduccion}
+                           disabled={!onAddDeduccion}
+                           className="hover:bg-[#EF4444] hover:text-white" // Added hover styles
+                       >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
                     </div>
