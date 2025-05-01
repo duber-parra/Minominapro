@@ -326,7 +326,8 @@ export default function Home() {
                      <div className="text-right flex-shrink-0 ml-4">
                          <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
                          <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
-                            <DollarSign className="h-4 w-4" /> {formatCurrency(day.pagoTotalRecargosExtras)}
+                            {/* Remove the explicit DollarSign icon here */}
+                            {/* <DollarSign className="h-4 w-4" /> */} {formatCurrency(day.pagoTotalRecargosExtras)}
                          </div>
                         <div className="flex items-center justify-end gap-1 mt-2">
                            {/* Button to edit INPUTS (date/time) */}
