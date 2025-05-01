@@ -158,12 +158,20 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
             />
              <DialogFooter className="mt-4">
                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
+                     {/* Cancel button: red background */}
+                    <Button type="button" className="bg-red-600 hover:bg-red-700 text-white border-transparent">
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
-                 {/* Apply destructive variant conditionally */}
-                <Button type="submit" variant={type === 'deduccion' ? 'destructive' : 'default'}>
+                 {/* Save button: green for income, red for deduction */}
+                <Button
+                    type="submit"
+                    className={cn(
+                        type === 'deduccion'
+                            ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                            : 'bg-green-600 hover:bg-green-700 text-white' // Green for income
+                    )}
+                 >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
                 </Button>
             </DialogFooter>
