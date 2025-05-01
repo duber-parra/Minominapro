@@ -7,7 +7,7 @@ import type { WorkdayFormValues } from '@/components/workday-form';
 
  export interface CalculationResults {
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
-   inputData: Omit<WorkdayFormValues, 'startDate'> & { startDate: Date | string }; // Allow string temporarily for storage/parsing
+   inputData: Omit<WorkdayFormValues, 'startDate'> & { startDate: Date }; // Use Date object consistently
    horasDetalladas: {
      Ordinaria_Diurna_Base: number;      // Horas dentro de jornada (7.66h), diurnas, sin recargo base adicional
      Recargo_Noct_Base: number;            // Horas dentro de jornada (7.66h), nocturnas (solo valor del recargo)
@@ -43,6 +43,16 @@ import type { WorkdayFormValues } from '@/components/workday-form';
 
  // Type guard to check if an object is a CalculationError
  export function isCalculationError(obj: any): obj is CalculationError {
-    return obj && typeof obj.error === 'string';
+    // Check if obj exists and has an 'error' property that is a string
+    return obj && typeof obj === 'object' && typeof obj.error === 'string';
  }
 
+ // Represents the data structure for a saved payroll entry in localStorage
+ export interface SavedPayrollData {
+    key: string; // The localStorage key for this entry (e.g., payroll_123_2023-10-01_2023-10-15)
+    employeeId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    summary: QuincenalCalculationSummary;
+    createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
+ }

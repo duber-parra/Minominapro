@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library } from 'lucide-react'; // Added Library for bulk export
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch } from 'lucide-react'; // Added Library for bulk export and FileSearch
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -36,6 +36,8 @@ import { cn } from '@/lib/utils';
 import { VALORES } from '@/config/payroll-values'; // Import VALORES from new location
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
+import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
+import type { SavedPayrollData } from '@/types'; // Import the new type
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
@@ -43,12 +45,20 @@ const SALARIO_BASE_QUINCENAL_FIJO = 711750;
 // --- LocalStorage Key Generation ---
 const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
     if (!employeeId || !periodStart || !periodEnd) return null;
-    const startStr = format(periodStart, 'yyyy-MM-dd');
-    const endStr = format(periodEnd, 'yyyy-MM-dd');
-    // Sanitize employeeId to be safe for keys (basic example)
-    const safeEmployeeId = employeeId.replace(/[^a-zA-Z0-9_-]/g, '');
-    return `payroll_${safeEmployeeId}_${startStr}_${endStr}`;
+    // Ensure dates are valid before formatting
+    if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) return null;
+    try {
+        const startStr = format(periodStart, 'yyyy-MM-dd');
+        const endStr = format(periodEnd, 'yyyy-MM-dd');
+        // Sanitize employeeId to be safe for keys (basic example)
+        const safeEmployeeId = employeeId.replace(/[^a-zA-Z0-9_-]/g, '');
+        return `payroll_${safeEmployeeId}_${startStr}_${endStr}`;
+    } catch (e) {
+        console.error("Error generando la clave de almacenamiento:", e);
+        return null;
+    }
 };
+
 
 // --- Helper to parse stored data (revives dates) ---
 const parseStoredData = (jsonData: string | null): CalculationResults[] => {
@@ -60,17 +70,76 @@ const parseStoredData = (jsonData: string | null): CalculationResults[] => {
             ...day,
             inputData: {
                 ...day.inputData,
-                startDate: day.inputData.startDate ? parseISO(day.inputData.startDate as unknown as string) : new Date(),
+                // Ensure startDate exists and is a string before parsing
+                startDate: day.inputData.startDate && typeof day.inputData.startDate === 'string'
+                            ? parseISO(day.inputData.startDate)
+                            : (day.inputData.startDate instanceof Date ? day.inputData.startDate : new Date()), // Fallback
             }
         }));
     } catch (error) {
-        console.error("Error parsing data from localStorage:", error);
+        console.error("Error parseando datos de localStorage:", error);
         return []; // Return empty array on error
     }
 };
 
 // --- Regex to parse storage key ---
 const storageKeyRegex = /^payroll_([a-zA-Z0-9_-]+)_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
+
+// --- Helper to load all saved payrolls ---
+const loadAllSavedPayrolls = (): SavedPayrollData[] => {
+    if (typeof window === 'undefined') return []; // Client-side only
+
+    const savedPayrolls: SavedPayrollData[] = [];
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('payroll_')) {
+                const match = key.match(storageKeyRegex);
+                if (match) {
+                    const employeeId = match[1];
+                    const startStr = match[2];
+                    const endStr = match[3];
+                    const startDate = parseDateFns(startStr, 'yyyy-MM-dd', new Date());
+                    const endDate = parseDateFns(endStr, 'yyyy-MM-dd', new Date());
+
+                    // Validate parsed data
+                    if (!employeeId || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                        console.warn(`Omitiendo clave de almacenamiento inválida: ${key}`);
+                        continue;
+                    }
+
+                    const storedData = localStorage.getItem(key);
+                    const parsedDays = parseStoredData(storedData);
+
+                    if (parsedDays.length > 0) {
+                        // Calculate summary for the loaded days
+                        const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
+                        if (summary) {
+                            savedPayrolls.push({
+                                key: key, // Store the key for deletion/loading
+                                employeeId: employeeId,
+                                periodStart: startDate,
+                                periodEnd: endDate,
+                                summary: summary,
+                                // Add a creation date approximation if needed, maybe from the first day?
+                                createdAt: parsedDays[0]?.inputData?.startDate ? new Date(parsedDays[0].inputData.startDate) : new Date()
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error cargando nóminas guardadas de localStorage:", error);
+        // Optionally show a toast message here
+    }
+    // Sort by period start date descending, then employee ID
+    return savedPayrolls.sort((a, b) => {
+       const dateDiff = b.periodStart.getTime() - a.periodStart.getTime();
+       if (dateDiff !== 0) return dateDiff;
+       return a.employeeId.localeCompare(b.employeeId);
+    });
+};
 
 
 export default function Home() {
@@ -95,13 +164,20 @@ export default function Home() {
     const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
     const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false);
     const [errorDay, setErrorDay] = useState<string | null>(null);
-    const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load
+    const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load for current employee/period
+    const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]); // State for the list of all saved payrolls
+    const [payrollToDeleteKey, setPayrollToDeleteKey] = useState<string | null>(null); // Key of the saved payroll to delete
 
     const { toast } = useToast();
 
     // --- Effects for Loading and Saving ---
 
-    // Load data from localStorage when employee/period changes
+    // Load ALL saved payrolls on initial mount
+    useEffect(() => {
+        setSavedPayrolls(loadAllSavedPayrolls());
+    }, []);
+
+    // Load current employee/period data from localStorage when employee/period changes
     useEffect(() => {
         if (typeof window !== 'undefined') { // Ensure running on client
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
@@ -111,20 +187,29 @@ export default function Home() {
                 const parsedData = parseStoredData(storedData);
                 setCalculatedDays(parsedData);
                 setIsDataLoaded(true); // Mark data as loaded (or attempted)
-                 toast({
-                     title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
-                     description: storedData ? `Se cargaron ${parsedData.length} turnos para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
-                     variant: storedData ? 'default' : 'default', // 'default' for info style
-                 });
+                 // Only toast if user explicitly selected employee/period
+                 if (employeeId && payPeriodStart && payPeriodEnd) {
+                     toast({
+                         title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
+                         description: storedData ? `Se cargaron ${parsedData.length} turnos para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
+                         variant: 'default',
+                     });
+                 }
             } else {
                 // Clear days if key is invalid (e.g., missing employee ID or dates)
                 setCalculatedDays([]);
                 setIsDataLoaded(true); // Still considered 'loaded' (with empty data)
+                 if (employeeId || payPeriodStart || payPeriodEnd) { // Only show 'not found' if some info was provided
+                    // Optionally clear toast if selection becomes incomplete
+                 }
             }
+            // Reset editing states when period/employee changes
+             setEditingDayId(null);
+             setEditingResultsId(null);
         }
     }, [employeeId, payPeriodStart, payPeriodEnd, toast]); // Add toast to dependency array
 
-    // Save data to localStorage whenever calculatedDays changes (after initial load)
+    // Save current employee/period data to localStorage whenever calculatedDays changes (after initial load)
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) { // Ensure running on client and after initial load
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
@@ -132,6 +217,8 @@ export default function Home() {
                 try {
                      console.log(`Intentando guardar ${calculatedDays.length} días en la clave: ${storageKey}`);
                     localStorage.setItem(storageKey, JSON.stringify(calculatedDays));
+                     // After saving, refresh the list of saved payrolls
+                     setSavedPayrolls(loadAllSavedPayrolls());
                 } catch (error) {
                     console.error("Error guardando datos en localStorage:", error);
                     toast({
@@ -166,10 +253,10 @@ export default function Home() {
              title: 'Recargando Datos...',
              description: `Buscando turnos para ${employeeId}.`,
          });
-          // Force re-trigger loading effect
+          // Force re-trigger loading effect by creating new Date objects
          setEmployeeId(e => e);
-         setPayPeriodStart(d => d ? new Date(d) : undefined);
-         setPayPeriodEnd(d => d ? new Date(d) : undefined);
+         setPayPeriodStart(d => d ? new Date(d.getTime()) : undefined);
+         setPayPeriodEnd(d => d ? new Date(d.getTime()) : undefined);
 
     }, [employeeId, payPeriodStart, payPeriodEnd, toast]);
 
@@ -182,6 +269,7 @@ export default function Home() {
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
+         setSavedPayrolls(loadAllSavedPayrolls()); // Refresh saved list
          toast({
             title: 'Datos del Período Eliminados',
             description: `Se han borrado los turnos guardados localmente para ${employeeId} en este período.`,
@@ -194,15 +282,14 @@ export default function Home() {
     const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
         setIsLoadingDay(false);
         if (isCalculationError(data)) {
-            // const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
             // Updated error message handling to show more specific errors if available
-            const errorMessage = data.error?.startsWith("ID")
+            const errorMessage = data.error?.includes(":") // Check if it likely contains an ID prefix
                 ? data.error // Show specific ID error
                 : `Error inesperado: ${data.error || 'Detalle no disponible.'}`;
             setErrorDay(errorMessage);
             toast({
-                title: 'Error en el Cálculo',
-                description: errorMessage,
+                title: 'Error en el Cálculo', // Updated title
+                description: errorMessage === "Hubo un error en el servidor al calcular." ? "Hubo un error en el servidor al calcular." : errorMessage, // Keep user-provided generic message or show specific one
                 variant: 'destructive',
             });
         } else {
@@ -430,68 +517,23 @@ export default function Home() {
 
   // --- Bulk PDF Export Handler ---
   const handleBulkExportPDF = () => {
-    if (typeof window === 'undefined') return; // Client-side only
+    const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls();
 
-    const allPayrollData = [];
-    let errorsFound = false;
+    if (allPayrollDataToExport.length === 0) {
+        toast({
+            title: 'No Hay Datos para Exportar',
+            description: 'No se encontraron nóminas calculadas guardadas en el almacenamiento local.',
+            variant: 'default',
+        });
+        return;
+    }
 
     try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('payroll_')) {
-                const match = key.match(storageKeyRegex);
-                if (match) {
-                    const empId = match[1];
-                    const startStr = match[2];
-                    const endStr = match[3];
-
-                    // Basic validation of parsed dates
-                    const startDate = parseDateFns(startStr, 'yyyy-MM-dd', new Date());
-                    const endDate = parseDateFns(endStr, 'yyyy-MM-dd', new Date());
-
-                    if (!empId || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                        console.warn(`Clave de almacenamiento inválida encontrada, omitiendo: ${key}`);
-                        continue; // Skip invalid keys
-                    }
-
-
-                    const storedData = localStorage.getItem(key);
-                    const parsedDays = parseStoredData(storedData);
-
-                    if (parsedDays.length > 0) {
-                        // Recalculate summary based on stored days
-                        // You might want to fetch the employee's specific salary here if it varies
-                        const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
-
-                        if (summary) {
-                            allPayrollData.push({
-                                employeeId: empId,
-                                periodStart: startDate,
-                                periodEnd: endDate,
-                                summary: summary,
-                            });
-                        } else {
-                             console.warn(`No se pudo generar el resumen para la clave: ${key}, datos:`, parsedDays);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (allPayrollData.length > 0) {
-            exportAllPayrollsToPDF(allPayrollData);
-            toast({
-                title: 'Exportación Masiva Completa',
-                description: `Se generó un PDF con ${allPayrollData.length} comprobantes de nómina.`,
-            });
-        } else {
-            toast({
-                title: 'No Hay Datos para Exportar',
-                description: 'No se encontraron nóminas calculadas guardadas en el almacenamiento local.',
-                variant: 'default',
-            });
-        }
-
+        exportAllPayrollsToPDF(allPayrollDataToExport);
+        toast({
+            title: 'Exportación Masiva Completa',
+            description: `Se generó un PDF con ${allPayrollDataToExport.length} comprobantes de nómina.`,
+        });
     } catch (error) {
         console.error("Error durante la exportación masiva de PDF:", error);
         toast({
@@ -499,14 +541,63 @@ export default function Home() {
             description: 'Ocurrió un error al intentar generar el PDF combinado.',
             variant: 'destructive',
         });
-        errorsFound = true;
     }
-
-     // Optional: Notify about skipped entries if any
-     // if (skippedEntries > 0) {
-     //     toast({ title: 'Aviso', description: `${skippedEntries} entradas fueron omitidas debido a datos inválidos.` });
-     // }
   };
+
+   // --- Load Saved Payroll Handler ---
+   const handleLoadSavedPayroll = (payrollKey: string) => {
+     const payrollToLoad = savedPayrolls.find(p => p.key === payrollKey);
+     if (!payrollToLoad || typeof window === 'undefined') return;
+
+     // Set the employee ID and period from the loaded payroll
+     setEmployeeId(payrollToLoad.employeeId);
+     setPayPeriodStart(payrollToLoad.periodStart);
+     setPayPeriodEnd(payrollToLoad.periodEnd);
+
+     // The useEffect for loading data will automatically trigger and load the days
+     setIsDataLoaded(false); // Ensure the effect runs
+
+     toast({
+        title: 'Nómina Cargada',
+        description: `Se cargaron los datos de ${payrollToLoad.employeeId} para el período ${format(payrollToLoad.periodStart, 'dd/MM/yy')} - ${format(payrollToLoad.periodEnd, 'dd/MM/yy')}.`,
+     });
+   };
+
+   // --- Delete Saved Payroll Handler ---
+   const handleDeleteSavedPayroll = () => {
+     if (!payrollToDeleteKey || typeof window === 'undefined') return;
+
+     try {
+        const payrollInfo = savedPayrolls.find(p => p.key === payrollToDeleteKey);
+        localStorage.removeItem(payrollToDeleteKey);
+        setSavedPayrolls(loadAllSavedPayrolls()); // Refresh the list
+        setPayrollToDeleteKey(null); // Close dialog
+        toast({
+            title: 'Nómina Guardada Eliminada',
+            description: payrollInfo
+                         ? `La nómina de ${payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.`
+                         : 'La nómina seleccionada fue eliminada.',
+            variant: 'destructive',
+        });
+        // If the deleted payroll was the one currently loaded, clear the form/results
+        const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+        if (currentKey === payrollToDeleteKey) {
+            setCalculatedDays([]);
+            setEmployeeId(''); // Optionally clear selection
+            setPayPeriodStart(undefined);
+            setPayPeriodEnd(undefined);
+        }
+
+     } catch (error) {
+         console.error("Error deleting saved payroll from localStorage:", error);
+         toast({
+             title: 'Error al Eliminar',
+             description: 'No se pudo eliminar la nómina guardada.',
+             variant: 'destructive',
+         });
+         setPayrollToDeleteKey(null); // Still close dialog
+     }
+   };
 
 
 
@@ -622,13 +713,51 @@ export default function Home() {
                        </AlertDialogContent>
                    </AlertDialog>
                    {/* Bulk Export Button */}
-                    <Button onClick={handleBulkExportPDF} variant="outline" className="w-full lg:col-span-1">
+                    <Button onClick={handleBulkExportPDF} variant="outline" className="w-full lg:col-span-1" disabled={savedPayrolls.length === 0}>
                         <Library className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
                     </Button>
 
                </div>
           </CardContent>
       </Card>
+
+
+       {/* Section to Display Saved Payrolls */}
+       <SavedPayrollList
+           payrolls={savedPayrolls}
+           onLoad={handleLoadSavedPayroll}
+           onDelete={(key) => setPayrollToDeleteKey(key)} // Trigger confirmation dialog
+           onBulkExport={handleBulkExportPDF}
+       />
+
+
+        {/* AlertDialog for Deleting Saved Payroll */}
+        <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
+           <AlertDialogContent>
+             <AlertDialogHeader>
+               <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle>
+               <AlertDialogDescription>
+                  Esta acción eliminará permanentemente la nómina guardada para{' '}
+                  <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> del período{' '}
+                  <strong>
+                    {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart
+                        ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy', { locale: es })
+                        : '?'}
+                  </strong> al <strong>
+                    {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd
+                        ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy', { locale: es })
+                        : '?'}
+                  </strong>. No se puede deshacer.
+               </AlertDialogDescription>
+             </AlertDialogHeader>
+             <AlertDialogFooter>
+               <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel>
+               <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90">
+                  Eliminar Nómina
+               </AlertDialogAction>
+             </AlertDialogFooter>
+           </AlertDialogContent>
+       </AlertDialog>
 
 
       {/* Section for Adding/Editing a Single Day's Inputs */}
@@ -831,7 +960,7 @@ export default function Home() {
          </Card>
       )}
        {/* Placeholder if form is disabled */}
-       {isFormDisabled && (
+       {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
          <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
             <CardHeader>
                 <CardTitle>Selección Pendiente</CardTitle>
