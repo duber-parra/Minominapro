@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { format, parse, addHours, isValid, isSameDay, getYear, isSunday } from 'date-fns'; // Added getYear, isSunday
+import { format, parse, addHours, isValid, isSameDay, getYear, isSunday, addDays } from 'date-fns'; // Added addDays
 import { es } from 'date-fns/locale'; // Import Spanish locale
 
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,7 @@ interface WorkdayFormProps {
   isLoading: boolean;
   initialData?: WorkdayFormValues; // Optional data for editing
   existingId?: string | null; // Optional ID for editing
+  isDateCalculated?: (date: Date) => boolean; // Function to check if date is already calculated
 }
 
 // Cache for holidays
@@ -123,6 +124,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   isLoading,
   initialData,
   existingId,
+  isDateCalculated, // Receive the check function
 }) => {
   const { toast } = useToast();
   const form = useForm<WorkdayFormValues>({
@@ -138,7 +140,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       startDate: new Date(),
       startTime: '12:00', // Default start time 12:00 PM
       endTime: '22:00',   // Default end time 10:00 PM
-      endsNextDay: true, // Recalculated based on default times if needed (12:00 to 22:00 IS NOT next day) - Correction: This should be false.
+      endsNextDay: false, // Recalculated based on default times if needed
       includeBreak: false,
       breakStartTime: '', // Default to empty for new entries
       breakEndTime: '',   // Default to empty for new entries
@@ -151,7 +153,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
 
   // Reset form when initialData changes (i.e., when switching between add/edit or editing different days)
    useEffect(() => {
-       form.reset(initialData ? {
+       const resetValues = initialData ? {
            ...initialData,
            startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate),
            // Ensure optional break times are handled correctly on reset
@@ -163,20 +165,23 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            endTime: '22:00',   // Reset to default end time
            endsNextDay: false, // Calculate based on defaults
            includeBreak: false,
-           breakStartTime: '', // Reset to empty
-           breakEndTime: '',   // Reset to empty
-       });
-        // Explicitly calculate endsNextDay for default times when resetting to 'new'
-        if (!initialData) {
-            const defaultStartH = 12;
-            const defaultEndH = 22;
-            // Corrected logic: endsNextDay is true if end hour is LESS than start hour
-            setValue('endsNextDay', defaultEndH < defaultStartH);
-        }
+           breakStartTime: '15:00', // Default break start if enabled
+           breakEndTime: '18:00',   // Default break end if enabled
+       };
+
+       // Calculate endsNextDay based on reset values
+       if (timeRegex.test(resetValues.startTime) && timeRegex.test(resetValues.endTime)) {
+           const [startH] = resetValues.startTime.split(':').map(Number);
+           const [endH] = resetValues.endTime.split(':').map(Number);
+           resetValues.endsNextDay = endH < startH;
+       }
+
+       form.reset(resetValues);
+
    }, [initialData, form]); // form is stable, but reset is from it
 
 
-  const { control, setValue, trigger, watch } = form;
+  const { control, setValue, trigger, watch, getValues } = form;
   // Watch fields using the hook for effects
   const startDate = watch('startDate');
   const startTime = watch('startTime');
@@ -208,12 +213,13 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
 
   // Effect to update endsNextDay when times change
   useEffect(() => {
-      if (startTime && timeRegex.test(startTime) && form.getValues('endTime') && timeRegex.test(form.getValues('endTime'))) {
+      const currentEndTime = getValues('endTime');
+      if (startTime && timeRegex.test(startTime) && currentEndTime && timeRegex.test(currentEndTime)) {
           const [startH] = startTime.split(':').map(Number);
-          const [endH] = form.getValues('endTime').split(':').map(Number);
+          const [endH] = currentEndTime.split(':').map(Number);
           setValue('endsNextDay', endH < startH);
       }
-  }, [startTime, watch('endTime'), setValue, form]); // Rerun when startTime or endTime changes
+  }, [startTime, watch('endTime'), setValue, getValues]); // Rerun when startTime or endTime changes
 
 
    // Ref to track the previous state of includeBreak
@@ -222,21 +228,13 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
    // Effect to trigger validation and set defaults for break times
    useEffect(() => {
        if (includeBreak) {
-           // If the switch was just turned ON
+           // If the switch was just turned ON, set defaults
            if (!prevIncludeBreak.current) {
                setValue('breakStartTime', '15:00', { shouldValidate: true });
                setValue('breakEndTime', '18:00', { shouldValidate: true });
            } else {
                // If the switch was already on, just trigger validation when times change
                trigger(["breakStartTime", "breakEndTime"]);
-           }
-       } else {
-           // If the switch was just turned OFF
-           if (prevIncludeBreak.current) {
-               // Optionally reset fields when turned off
-               // setValue('breakStartTime', '', { shouldValidate: false });
-               // setValue('breakEndTime', '', { shouldValidate: false });
-               // form.clearErrors(["breakStartTime", "breakEndTime"]);
            }
        }
        // Update the previous state ref *after* the logic runs
@@ -245,6 +243,20 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
 
 
   async function onSubmit(values: WorkdayFormValues) {
+     // Check if the date is already calculated, only if NOT editing
+     if (!existingId && isDateCalculated && isDateCalculated(values.startDate)) {
+         toast({
+             title: 'Fecha Ya Calculada',
+             description: `Ya existe un cálculo para el ${format(values.startDate, 'PPP', { locale: es })}. Si deseas modificarlo, usa la opción de editar en la lista de turnos.`,
+             variant: 'destructive',
+             duration: 7000,
+         });
+         // Automatically advance to the next day in the form
+         const nextDay = addDays(values.startDate, 1);
+         setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
+         return; // Stop the submission process
+     }
+
     onCalculationStart();
     // Generate a new ID if adding, use existing ID if editing
     const calculationId = existingId || `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -252,26 +264,34 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         // Use the modified action that accepts values and ID
         const result = await calculateSingleWorkday(values, calculationId);
         onCalculationComplete(result); // Pass the full result back to the page
-        // Toast notifications are now handled in the parent page component
+
+        // If adding was successful (no error), automatically set date to the next day
+        if (!existingId && !('error' in result)) {
+             const nextDay = addDays(values.startDate, 1);
+             setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
+             // Optionally reset times or keep them? Resetting might be safer.
+             // setValue('startTime', '12:00');
+             // setValue('endTime', '22:00');
+             // setValue('endsNextDay', false);
+             // setValue('includeBreak', false);
+             // setValue('breakStartTime', '15:00');
+             // setValue('breakEndTime', '18:00');
+             toast({
+                 title: 'Día Agregado, Fecha Avanzada',
+                 description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
+                 variant: 'default'
+             })
+        }
     } catch (error) {
         console.error("Calculation error:", error);
-        // Use the user's generic message for unexpected server errors
         const genericServerError = "Hubo un error en el servidor al calcular.";
-        // Prefer specific error messages if thrown by the action or underlying logic
         const errorMessage = error instanceof Error && error.message ? error.message : genericServerError;
-        // Pass only the core error message back to the parent
         onCalculationComplete({ error: errorMessage });
-        // Toast handled in parent
     }
   }
 
 
   return (
-    // Removed the outer Card component, assuming the parent page provides it
-    // <Card className="bg-card shadow-lg rounded-lg">
-    //   <CardHeader> ... </CardHeader>
-    //   <CardContent> ... </CardContent>
-    // </Card>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -288,10 +308,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           className={cn(
                             'w-full pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
-                             // Add conditional border for holidays
-                             // isHoliday && 'border-accent border-2', // Border handled by modifier now
-                             // Optionally add style for Sunday too
-                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border' // Use primary color for Sunday border
+                             // Conditional border for Sunday (if not holiday)
+                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border'
                           )}
                           disabled={isCheckingHoliday} // Disable while checking
                         >
@@ -310,7 +328,11 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                       <Calendar
                         mode="single"
                         selected={field.value instanceof Date ? field.value : new Date(field.value)} // Ensure Date object
-                        onSelect={(date) => field.onChange(date || new Date())} // Handle null case
+                        onSelect={(date) => {
+                           if (date) {
+                              field.onChange(date)
+                           }
+                        }} // Handle null case
                         disabled={(date) =>
                           date < new Date('1900-01-01')
                         }
@@ -318,9 +340,9 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
                          modifiersClassNames={{
-                             holiday: 'border-2 border-accent text-accent font-bold', // Added border classes
+                             holiday: 'ring-2 ring-offset-1 ring-accent text-accent font-bold', // Use ring utility
                              sunday: 'text-primary'
-                         }} // Use primary text color for Sunday
+                         }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -463,3 +485,5 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         </Form>
   );
 };
+
+    
