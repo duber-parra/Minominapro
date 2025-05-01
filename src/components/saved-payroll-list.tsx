@@ -51,10 +51,10 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                   </p>
                    {/* Displaying key summary figures */}
                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <span>Devengado:</span><span className="font-medium text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena - payroll.summary.salarioBaseQuincenal)}</span>
-                      {/* Simplified Deductions display */}
-                      <span>Deduc. Ley:</span><span className="font-medium text-destructive text-right">-{formatCurrency(payroll.summary.totalPagoDetallado.Ordinaria_Diurna_Base)}</span> {/* Placeholder - needs correct deduction calculation */}
-                      <span>Neto a Pagar:</span><span className="font-semibold text-accent text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena)}</span>
+                      <span>Devengado:</span><span className="font-medium text-right">{formatCurrency(payroll.summary.totalPagoRecargosExtrasQuincena)}</span> {/* Show only extras/surcharges */}
+                      {/* Simplified Deductions display - Placeholder */}
+                      {/* <span>Deduc. Ley:</span><span className="font-medium text-destructive text-right">-{formatCurrency(payroll.summary.totalPagoDetallado.Ordinaria_Diurna_Base)}</span>  */}
+                      <span>Neto Estimado:</span><span className="font-semibold text-accent text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena)}</span>
                    </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })} {/* Display creation/save time */}
@@ -64,12 +64,16 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                   <Button variant="outline" size="sm" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina">
                     <FileSearch className="mr-2 h-4 w-4" /> Cargar
                   </Button>
-                  {/* Use AlertDialogTrigger to initiate deletion */}
-                  <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada">
-                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                      </Button>
-                  </AlertDialogTrigger>
+                  {/* Wrap the Trigger and Button within AlertDialog */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada">
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                        </Button>
+                    </AlertDialogTrigger>
+                    {/* The AlertDialogContent is managed in the parent component (page.tsx)
+                        This structure assumes onDelete prop triggers the dialog visibility in the parent */}
+                  </AlertDialog>
                 </div>
               </li>
             ))}
