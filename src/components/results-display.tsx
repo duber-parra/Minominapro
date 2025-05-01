@@ -177,7 +177,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
       return (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Error en el Cálculo</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       );
@@ -265,7 +265,8 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
-                    {isSummary ? (labelMap[key] || key) : (abbreviatedLabelMap[key] || key)} {/* Use abbreviated for single day */}
+                    {/* Use fullLabelMap for summary, abbreviated for single day */}
+                    {isSummary ? (labelMap[key] || key) : (abbreviatedLabelMap[key] || key)}
                   </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
                   <TableCell className="text-right">
@@ -472,3 +473,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
 
   );
 }
+
+
+    

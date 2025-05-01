@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'react';
 import { WorkdayForm } from '@/components/workday-form';
-import { ResultsDisplay, labelMap as fullLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
+import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -172,17 +172,7 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
 };
 
 
-// --- Abbreviated Label Map for Compact Display ---
-const abbreviatedLabelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'H.Base Diu.',
-    Recargo_Noct_Base: 'Rec.Noct.',
-    Recargo_Dom_Diurno_Base: 'Rec.Dom.Diu.',
-    Recargo_Dom_Noct_Base: 'Rec.Dom.Noct.',
-    HED: 'HED',
-    HEN: 'HEN',
-    HEDD_F: 'HEDD/F',
-    HEND_F: 'HEND/F',
-};
+// Removed duplicate abbreviatedLabelMap definition
 
 
 export default function Home() {
@@ -841,7 +831,7 @@ export default function Home() {
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               {/* Employee ID Input */}
               <div className="space-y-2">
-                  <Label htmlFor="employeeId">ID Colaborador</Label>
+                  <Label htmlFor="employeeId" className="text-foreground">ID Colaborador</Label>
                   <Input
                       id="employeeId"
                       value={employeeId}
@@ -852,7 +842,7 @@ export default function Home() {
 
               {/* Pay Period Start Date */}
               <div className="space-y-2">
-                  <Label>Inicio Período</Label>
+                  <Label className="text-foreground">Inicio Período</Label>
                   <Popover>
                       <PopoverTrigger asChild>
                           <Button
@@ -880,7 +870,7 @@ export default function Home() {
 
               {/* Pay Period End Date */}
               <div className="space-y-2">
-                  <Label>Fin Período</Label>
+                  <Label className="text-foreground">Fin Período</Label>
                    <Popover>
                       <PopoverTrigger asChild>
                           <Button
@@ -982,6 +972,7 @@ export default function Home() {
                         isLoading={isLoadingDay}
                         initialData={editingDayData} // Pass initial data if editing inputs
                         existingId={editingDayId} // Pass the ID if editing inputs
+                        isDateCalculated={(date) => calculatedDays.some(day => isSameDay(day.inputData.startDate, date))} // Pass check function
                       />
                    )}
                   {errorDay && (
@@ -1007,7 +998,7 @@ export default function Home() {
                     <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
                       {calculatedDays // Already sorted by the update/add handler
                         .map((day, index) => (
-                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-secondary/30'}`}>
+                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-card'}`}> {/* Use bg-card */}
                            <div className="flex items-start justify-between mb-3">
                              <div>
                                <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
@@ -1098,13 +1089,14 @@ export default function Home() {
                                </div>
                            ) : (
                                // DISPLAY MODE for Results
-                               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1 text-sm"> {/* Responsive grid */}
+                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm"> {/* Changed to 1 or 2 cols */}
                                    {displayOrder.map(key => {
                                        const hours = day.horasDetalladas[key];
                                        if (hours > 0) {
                                            return (
                                                <div key={key} className="flex justify-between items-center space-x-1">
-                                                   <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> {/* Use abbreviated label */}
+                                                   {/* Use abbreviatedLabelMap here for consistency */}
+                                                   <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span>
                                                    <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span>
                                                </div>
                                            );
