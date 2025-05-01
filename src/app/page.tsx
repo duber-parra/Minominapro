@@ -48,13 +48,14 @@ export default function Home() {
   const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
     setIsLoadingDay(false);
     if (isCalculationError(data)) {
+      // Use the full error message received from the action
       const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
       setErrorDay(errorMessage);
       toast({
         // Use the user-requested title and description for errors
         title: 'Error en el Cálculo',
         // Use the specific error from the action or a generic fallback
-        description: errorMessage,
+        description: errorMessage, // Display the full error message from the action
         variant: 'destructive',
       });
     } else {

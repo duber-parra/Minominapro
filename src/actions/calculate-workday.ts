@@ -42,21 +42,57 @@ async function getFestivosSet(year: number): Promise<Set<string>> {
     }
     try {
         const holidays = await getColombianHolidays(year);
-        const festivosSet = new Set(holidays.map(h => format(new Date(h.year, h.month - 1, h.day), 'yyyy-MM-dd')));
-        festivosCache[year] = festivosSet;
-        return festivosSet;
+        // Ensure holidays is an array before mapping
+        if (!Array.isArray(holidays)) {
+             console.error(`Error: getColombianHolidays(${year}) did not return an array.`);
+             throw new Error(`Formato de respuesta inválido para festivos de ${year}.`);
+        }
+        const festivosSet = new Set(holidays.map(h => {
+             // Add validation for holiday object structure if needed
+             if (!h || typeof h.year !== 'number' || typeof h.month !== 'number' || typeof h.day !== 'number') {
+                 console.error(`Error: Invalid holiday object structure for year ${year}:`, h);
+                 // Depending on strictness, you might throw or just skip this entry
+                 // throw new Error(`Estructura de festivo inválida.`);
+                 return ''; // Skip invalid entry if Set creation handles empty strings ok
+             }
+             try {
+                // Validate date components before formatting
+                const dateToFormat = new Date(h.year, h.month - 1, h.day);
+                if (!isValid(dateToFormat) || getYear(dateToFormat) !== h.year) {
+                    console.error(`Error: Invalid date components for holiday in year ${year}:`, h);
+                    return ''; // Skip invalid date
+                }
+                return format(dateToFormat, 'yyyy-MM-dd');
+             } catch (formatError) {
+                 console.error(`Error formatting holiday date for year ${year}:`, h, formatError);
+                 return ''; // Skip on formatting error
+             }
+        }));
+        // Filter out any empty strings added due to errors
+        const validFestivosSet = new Set(Array.from(festivosSet).filter(dateStr => dateStr !== ''));
+        festivosCache[year] = validFestivosSet;
+        return validFestivosSet;
     } catch (error) {
-        console.error("Error al obtener festivos:", error);
+        console.error(`Error al obtener o procesar festivos para ${year}:`, error);
         // Re-lanzar el error para que sea capturado por el try-catch principal
-        throw new Error(`Error al obtener festivos para ${year}: ${error instanceof Error ? error.message : String(error)}`);
+        // Provide a more user-friendly message if possible, or keep technical detail for logs
+        const userMessage = `Error consultando/procesando festivos para ${year}. Verifique la fuente de datos.`;
+        throw new Error(userMessage + ` Detalle: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
+
 async function esFestivo(fecha: Date): Promise<boolean> {
     const year = getYear(fecha);
-    const festivos = await getFestivosSet(year); // Puede lanzar error si getFestivosSet falla
-    const fechaStr = format(fecha, 'yyyy-MM-dd');
-    return festivos.has(fechaStr);
+    try {
+        const festivos = await getFestivosSet(year); // Can throw if getFestivosSet fails
+        const fechaStr = format(fecha, 'yyyy-MM-dd');
+        return festivos.has(fechaStr);
+    } catch (error) {
+        // Log the specific error and re-throw to be caught by the main handler
+        console.error(`Error checking if date ${format(fecha, 'yyyy-MM-dd')} is a holiday:`, error);
+        throw error; // Re-throw the original error (which should include details from getFestivosSet)
+    }
 }
 
 function esDominical(fecha: Date): boolean {
@@ -130,7 +166,7 @@ export async function calculateSingleWorkday(
 
 
         // --- Obtener Festivos para los años involucrados ---
-        // La llamada a getFestivosSet está dentro del try-catch, si falla, será capturado.
+        // This will throw if getFestivosSet fails internally
         await getFestivosSet(getYear(inicioDt));
         if (!isSameDay(inicioDt, finDt)) {
             await getFestivosSet(getYear(finDt));
@@ -182,7 +218,7 @@ export async function calculateSingleWorkday(
                 segundosTrabajadosAcumulados += 60; // Sumar un minuto efectivamente trabajado
                 const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
                 const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
-                // La llamada a esFestivo está dentro del try-catch, si falla, será capturado.
+                // The call to esFestivo is within the try-catch; if it fails, it will be caught.
                 const esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
                 const esNocturna = horaEval >= HORA_NOCTURNA_INICIO || horaEval < HORA_NOCTURNA_FIN;
 
@@ -257,9 +293,11 @@ export async function calculateSingleWorkday(
 
     } catch (error) { // <--- Catch block for the main try
         console.error(`ID ${id}: Error inesperado durante el cálculo:`, error);
-        // Retorna un objeto CalculationError con un mensaje específico o genérico
+        // Return a CalculationError object with a specific or generic message
+        // Include the ID in the error message for better tracking
+        const errorMessage = `ID ${id}: Error inesperado durante el cálculo. ${error instanceof Error ? error.message : String(error)}`;
         return {
-            error: `ID ${id}: Error inesperado - ${error instanceof Error ? error.message : String(error)}`
+            error: errorMessage // Return the detailed error message
         };
     }
 }
