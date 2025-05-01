@@ -1,9 +1,6 @@
-
-
 // src/types/index.ts
 
 import type { WorkdayFormValues } from '@/components/workday-form';
-
 
  export interface CalculationResults {
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
@@ -30,13 +27,14 @@ import type { WorkdayFormValues } from '@/components/workday-form';
    error: string; // Mensaje de error
  }
 
- // Represents the aggregated results for the entire pay period (quincena)
+ // Represents the aggregated results for the entire pay period (quincena) BEFORE manual adjustments
  export interface QuincenalCalculationSummary {
     totalHorasDetalladas: CalculationResults['horasDetalladas'];
     totalPagoDetallado: CalculationResults['pagoDetallado'];
     totalPagoRecargosExtrasQuincena: number;
     salarioBaseQuincenal: number; // Assuming this is fixed for the period
-    pagoTotalConSalarioQuincena: number;
+    pagoTotalConSalarioQuincena: number; // Represents Devengado Bruto (Base + Extras/Recargos) - Does NOT include deductions or other income/deductions yet. This name might be confusing, consider renaming to `totalDevengadoBrutoEstimado`? For now, it's Base + Extras.
+    // Note: Legal deductions (Salud, Pension) and final Net Pay will be calculated based on this and adjustments.
     totalDuracionTrabajadaHorasQuincena: number;
     diasCalculados: number; // Number of days included in this summary
  }
@@ -47,12 +45,22 @@ import type { WorkdayFormValues } from '@/components/workday-form';
     return obj && typeof obj === 'object' && typeof obj.error === 'string';
  }
 
+ // Interface for individual adjustment items (Income or Deduction)
+ export interface AdjustmentItem {
+     id: string; // Unique ID for the item (e.g., timestamp + random)
+     monto: number; // Amount (always positive)
+     descripcion: string; // Optional description
+ }
+
+
  // Represents the data structure for a saved payroll entry in localStorage
  export interface SavedPayrollData {
     key: string; // The localStorage key for this entry (e.g., payroll_123_2023-10-01_2023-10-15)
     employeeId: string;
     periodStart: Date;
     periodEnd: Date;
-    summary: QuincenalCalculationSummary;
+    summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments
+    otrosIngresosLista: AdjustmentItem[]; // List of other income items
+    otrasDeduccionesLista: AdjustmentItem[]; // List of other deduction items
     createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
  }

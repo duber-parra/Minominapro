@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'react';
 import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary } from '@/types';
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch } from 'lucide-react'; // Added Library for bulk export and FileSearch
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle } from 'lucide-react'; // Added Library for bulk export, FileSearch, MinusCircle
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -37,7 +36,8 @@ import { VALORES } from '@/config/payroll-values'; // Import VALORES from new lo
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
-import type { SavedPayrollData } from '@/types'; // Import the new type
+// Removed duplicate SavedPayrollData import
+import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
@@ -61,24 +61,32 @@ const getStorageKey = (employeeId: string, periodStart: Date | undefined, period
 
 
 // --- Helper to parse stored data (revives dates) ---
-const parseStoredData = (jsonData: string | null): CalculationResults[] => {
-    if (!jsonData) return [];
+const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[] } => {
+    if (!jsonData) return { days: [], income: [], deductions: [] };
     try {
-        const data = JSON.parse(jsonData) as CalculationResults[];
-        // Revive date objects
-        return data.map(day => ({
+        // Assuming stored data now includes adjustments
+        const storedObject = JSON.parse(jsonData) as { calculatedDays: CalculationResults[], otrosIngresosLista?: AdjustmentItem[], otrasDeduccionesLista?: AdjustmentItem[] };
+
+        // Revive date objects in calculatedDays
+        const revivedDays = (storedObject.calculatedDays || []).map(day => ({
             ...day,
             inputData: {
                 ...day.inputData,
-                // Ensure startDate exists and is a string before parsing
                 startDate: day.inputData.startDate && typeof day.inputData.startDate === 'string'
                             ? parseISO(day.inputData.startDate)
                             : (day.inputData.startDate instanceof Date ? day.inputData.startDate : new Date()), // Fallback
             }
         }));
+
+        // Ensure adjustment lists are arrays, even if missing in old data
+        const incomeList = Array.isArray(storedObject.otrosIngresosLista) ? storedObject.otrosIngresosLista : [];
+        const deductionList = Array.isArray(storedObject.otrasDeduccionesLista) ? storedObject.otrasDeduccionesLista : [];
+
+        return { days: revivedDays, income: incomeList, deductions: deductionList };
+
     } catch (error) {
         console.error("Error parseando datos de localStorage:", error);
-        return []; // Return empty array on error
+        return { days: [], income: [], deductions: [] }; // Return empty object on error
     }
 };
 
@@ -109,21 +117,30 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                     }
 
                     const storedData = localStorage.getItem(key);
-                    const parsedDays = parseStoredData(storedData);
+                    const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions } = parseStoredData(storedData); // Get adjustments too
 
                     if (parsedDays.length > 0) {
                         // Calculate summary for the loaded days
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                         if (summary) {
-                            savedPayrolls.push({
-                                key: key, // Store the key for deletion/loading
+                             const savedPayrollItem: SavedPayrollData = {
+                                key: key,
                                 employeeId: employeeId,
                                 periodStart: startDate,
                                 periodEnd: endDate,
-                                summary: summary,
-                                // Add a creation date approximation if needed, maybe from the first day?
+                                summary: summary, // Summary before adjustments
+                                otrosIngresosLista: parsedIncome, // Store loaded income adjustments
+                                otrasDeduccionesLista: parsedDeductions, // Store loaded deduction adjustments
                                 createdAt: parsedDays[0]?.inputData?.startDate ? new Date(parsedDays[0].inputData.startDate) : new Date()
-                            });
+                            };
+                             // Add calculated final pay to the item for display in the list (optional)
+                             // const totalOtrosIngresos = parsedIncome.reduce((sum, item) => sum + item.monto, 0);
+                             // const totalOtrasDeducciones = parsedDeductions.reduce((sum, item) => sum + item.monto, 0);
+                             // TODO: Recalculate legal deductions properly if needed for list display
+                             // const netoAPagar = summary.pagoTotalConSalarioQuincena - totalDeduccionesLegales + totalOtrosIngresos - totalOtrasDeducciones;
+                             // savedPayrollItem.netoAPagarFinal = netoAPagar; // Add if needed
+
+                            savedPayrolls.push(savedPayrollItem);
                         }
                     }
                 }
@@ -168,6 +185,15 @@ export default function Home() {
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]); // State for the list of all saved payrolls
     const [payrollToDeleteKey, setPayrollToDeleteKey] = useState<string | null>(null); // Key of the saved payroll to delete
 
+    // State for Adjustments
+    const [otrosIngresos, setOtrosIngresos] = useState<AdjustmentItem[]>([]);
+    const [otrasDeducciones, setOtrasDeducciones] = useState<AdjustmentItem[]>([]);
+    const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+    const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
+    // State for editing an adjustment (optional)
+    // const [editingAdjustment, setEditingAdjustment] = useState<{ type: 'ingreso' | 'deduccion', item: AdjustmentItem } | null>(null);
+
+
     const { toast } = useToast();
 
     // --- Effects for Loading and Saving ---
@@ -184,20 +210,24 @@ export default function Home() {
             if (storageKey) {
                 console.log(`Intentando cargar datos para la clave: ${storageKey}`);
                 const storedData = localStorage.getItem(storageKey);
-                const parsedData = parseStoredData(storedData);
-                setCalculatedDays(parsedData);
+                const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions } = parseStoredData(storedData);
+                setCalculatedDays(parsedDays);
+                setOtrosIngresos(parsedIncome); // Load income adjustments
+                setOtrasDeducciones(parsedDeductions); // Load deduction adjustments
                 setIsDataLoaded(true); // Mark data as loaded (or attempted)
                  // Only toast if user explicitly selected employee/period
                  if (employeeId && payPeriodStart && payPeriodEnd) {
                      toast({
                          title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
-                         description: storedData ? `Se cargaron ${parsedData.length} turnos para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
+                         description: storedData ? `Se cargaron ${parsedDays.length} turnos y ajustes para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
                          variant: 'default',
                      });
                  }
             } else {
-                // Clear days if key is invalid (e.g., missing employee ID or dates)
+                // Clear days and adjustments if key is invalid
                 setCalculatedDays([]);
+                setOtrosIngresos([]);
+                setOtrasDeducciones([]);
                 setIsDataLoaded(true); // Still considered 'loaded' (with empty data)
                  if (employeeId || payPeriodStart || payPeriodEnd) { // Only show 'not found' if some info was provided
                     // Optionally clear toast if selection becomes incomplete
@@ -206,17 +236,25 @@ export default function Home() {
             // Reset editing states when period/employee changes
              setEditingDayId(null);
              setEditingResultsId(null);
+             // Close adjustment modals if open
+             setIsIncomeModalOpen(false);
+             setIsDeductionModalOpen(false);
         }
     }, [employeeId, payPeriodStart, payPeriodEnd, toast]); // Add toast to dependency array
 
-    // Save current employee/period data to localStorage whenever calculatedDays changes (after initial load)
+    // Save current employee/period data to localStorage whenever calculatedDays, otrosIngresos, or otrasDeducciones changes (after initial load)
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) { // Ensure running on client and after initial load
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
-            if (storageKey && calculatedDays.length >= 0) { // Allow saving empty array to clear storage
+            if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0)) { // Only save if there's something to save
                 try {
-                     console.log(`Intentando guardar ${calculatedDays.length} días en la clave: ${storageKey}`);
-                    localStorage.setItem(storageKey, JSON.stringify(calculatedDays));
+                     console.log(`Intentando guardar ${calculatedDays.length} días y ajustes en la clave: ${storageKey}`);
+                     const dataToSave = {
+                         calculatedDays: calculatedDays,
+                         otrosIngresosLista: otrosIngresos,
+                         otrasDeduccionesLista: otrasDeducciones,
+                     };
+                    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
                      // After saving, refresh the list of saved payrolls
                      setSavedPayrolls(loadAllSavedPayrolls());
                 } catch (error) {
@@ -227,9 +265,15 @@ export default function Home() {
                         variant: 'destructive',
                     });
                 }
+            } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0) {
+                // If all data is cleared, remove the item from localStorage
+                localStorage.removeItem(storageKey);
+                console.log(`Clave ${storageKey} eliminada porque no hay datos.`);
+                // Refresh saved list after deletion
+                setSavedPayrolls(loadAllSavedPayrolls());
             }
         }
-    }, [calculatedDays, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add dependencies
+    }, [calculatedDays, otrosIngresos, otrasDeducciones, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add adjustment states to dependencies
 
 
   // --- Event Handlers ---
@@ -251,7 +295,7 @@ export default function Home() {
         // The useEffect listening to employeeId, payPeriodStart, payPeriodEnd will run
          toast({
              title: 'Recargando Datos...',
-             description: `Buscando turnos para ${employeeId}.`,
+             description: `Buscando turnos y ajustes para ${employeeId}.`,
          });
           // Force re-trigger loading effect by creating new Date objects
          setEmployeeId(e => e);
@@ -266,13 +310,15 @@ export default function Home() {
             localStorage.removeItem(storageKey);
          }
          setCalculatedDays([]); // Clear state immediately
+         setOtrosIngresos([]); // Clear adjustments
+         setOtrasDeducciones([]);
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
          setSavedPayrolls(loadAllSavedPayrolls()); // Refresh saved list
          toast({
             title: 'Datos del Período Eliminados',
-            description: `Se han borrado los turnos guardados localmente para ${employeeId} en este período.`,
+            description: `Se han borrado los turnos y ajustes guardados localmente para ${employeeId} en este período.`,
             variant: 'destructive',
          });
     };
@@ -461,9 +507,40 @@ export default function Home() {
      }
    };
 
+   // --- Adjustment Handlers ---
+   const handleAddIngreso = (data: Omit<AdjustmentItem, 'id'>) => {
+        const newItem: AdjustmentItem = {
+            ...data,
+            id: `ingreso_${Date.now()}`, // Simple unique ID
+        };
+        setOtrosIngresos(prev => [...prev, newItem]);
+        toast({ title: 'Ingreso Agregado', description: `${data.descripcion || 'Ingreso'}: ${formatCurrency(data.monto)}` });
+   };
+
+   const handleAddDeduccion = (data: Omit<AdjustmentItem, 'id'>) => {
+         const newItem: AdjustmentItem = {
+             ...data,
+             id: `deduccion_${Date.now()}`, // Simple unique ID
+         };
+         setOtrasDeducciones(prev => [...prev, newItem]);
+         toast({ title: 'Deducción Agregada', description: `${data.descripcion || 'Deducción'}: ${formatCurrency(data.monto)}`, variant: 'default' }); // Use default variant
+   };
+
+   const handleDeleteIngreso = (id: string) => {
+        setOtrosIngresos(prev => prev.filter(item => item.id !== id));
+        toast({ title: 'Ingreso Eliminado', variant: 'destructive' });
+   };
+
+   const handleDeleteDeduccion = (id: string) => {
+        setOtrasDeducciones(prev => prev.filter(item => item.id !== id));
+        toast({ title: 'Deducción Eliminada', variant: 'destructive' });
+   };
+
 
   // Memoized calculation for the quincenal summary using the utility function
   const quincenalSummary = useMemo(() => {
+      // Only calculate if there are days to summarize
+       if (calculatedDays.length === 0) return null;
       return calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
   }, [calculatedDays]);
 
@@ -497,13 +574,21 @@ export default function Home() {
      if (!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
          toast({
              title: 'Datos Incompletos para Exportar',
-             description: 'Asegúrate de tener un colaborador, período y cálculo quincenal completado.',
+             description: 'Asegúrate de tener un colaborador, período, cálculo quincenal y ajustes completados.',
              variant: 'destructive',
          });
          return;
      }
      try {
-        exportPayrollToPDF(quincenalSummary, employeeId, payPeriodStart, payPeriodEnd);
+         // Pass adjustments to the export function
+        exportPayrollToPDF(
+            quincenalSummary,
+            employeeId,
+            payPeriodStart,
+            payPeriodEnd,
+            otrosIngresos, // Pass income list
+            otrasDeducciones // Pass deduction list
+        );
         toast({
             title: 'PDF Exportado',
             description: `Comprobante de nómina para ${employeeId} generado.`,
@@ -532,6 +617,7 @@ export default function Home() {
     }
 
     try {
+        // Pass the full SavedPayrollData array which now includes adjustments
         exportAllPayrollsToPDF(allPayrollDataToExport);
         toast({
             title: 'Exportación Masiva Completa',
@@ -556,8 +642,9 @@ export default function Home() {
      setEmployeeId(payrollToLoad.employeeId);
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
+     // Adjustment lists will be loaded by the useEffect hook triggered by the above state changes
 
-     // The useEffect for loading data will automatically trigger and load the days
+     // The useEffect for loading data will automatically trigger and load the days AND adjustments
      setIsDataLoaded(false); // Ensure the effect runs
 
      toast({
@@ -586,6 +673,8 @@ export default function Home() {
         const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
         if (currentKey === payrollToDeleteKey) {
             setCalculatedDays([]);
+            setOtrosIngresos([]); // Clear adjustments too
+            setOtrasDeducciones([]);
             setEmployeeId(''); // Optionally clear selection
             setPayPeriodStart(undefined);
             setPayPeriodEnd(undefined);
@@ -694,7 +783,7 @@ export default function Home() {
                    </Button>
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="w-full" disabled={isFormDisabled || calculatedDays.length === 0}>
+                             <Button variant="destructive" className="w-full" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0) }> {/* Disable if nothing to clear */}
                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Período Actual
                             </Button>
                         </AlertDialogTrigger>
@@ -702,7 +791,7 @@ export default function Home() {
                          <AlertDialogHeader>
                            <AlertDialogTitle>¿Limpiar Datos del Período?</AlertDialogTitle>
                            <AlertDialogDescription>
-                              Esta acción eliminará todos los turnos guardados localmente para <strong>{employeeId || 'el colaborador seleccionado'}</strong> en el período del{' '}
+                              Esta acción eliminará todos los turnos y ajustes guardados localmente para <strong>{employeeId || 'el colaborador seleccionado'}</strong> en el período del{' '}
                               <strong>{payPeriodStart ? format(payPeriodStart, 'dd/MM/yy', {locale: es}) : '?'}</strong> al{' '}
                               <strong>{payPeriodEnd ? format(payPeriodEnd, 'dd/MM/yy', {locale: es}) : '?'}</strong>. Esta acción no se puede deshacer.
                            </AlertDialogDescription>
@@ -843,7 +932,7 @@ export default function Home() {
                            {editingResultsId === day.id && editedHours ? (
                                // EDITING MODE for Results
                                <div className="space-y-3">
-                                   <p className="text-sm font-medium">Editando horas calculadas:</p>
+                                   <p className="text-sm font-medium text-foreground">Editando horas calculadas:</p>
                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
                                        {displayOrder.map(key => (
                                            <div key={key} className="space-y-1">
@@ -881,7 +970,7 @@ export default function Home() {
                                            return (
                                                <div key={key} className="flex justify-between items-center">
                                                    <span className="text-muted-foreground truncate mr-2">{labelMap[key]?.replace(/ \(.+\)/, '') || key}:</span>
-                                                   <span className="font-medium text-right">{formatHours(hours)}h</span>
+                                                   <span className="font-medium text-right text-foreground">{formatHours(hours)}h</span>
                                                </div>
                                            );
                                        }
@@ -889,7 +978,7 @@ export default function Home() {
                                    })}
                                    <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed">
                                        <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span>
-                                       <span className="font-semibold text-right">{formatHours(day.duracionTotalTrabajadaHoras)}h</span>
+                                       <span className="font-semibold text-right text-foreground">{formatHours(day.duracionTotalTrabajadaHoras)}h</span>
                                    </div>
                                </div>
                            )}
@@ -978,17 +1067,43 @@ export default function Home() {
                 </Button>
             </CardHeader>
             <CardContent>
-               <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
+               <ResultsDisplay
+                   results={quincenalSummary}
+                   error={null}
+                   isLoading={false}
+                   isSummary={true}
+                   // Pass adjustment data and handlers
+                   otrosIngresos={otrosIngresos}
+                   otrasDeducciones={otrasDeducciones}
+                   onAddIngreso={() => setIsIncomeModalOpen(true)}
+                   onAddDeduccion={() => setIsDeductionModalOpen(true)}
+                   onDeleteIngreso={handleDeleteIngreso}
+                   onDeleteDeduccion={handleDeleteDeduccion}
+                />
             </CardContent>
          </Card>
        )}
+
+      {/* Adjustment Modals */}
+      <AdjustmentModal
+          type="ingreso"
+          isOpen={isIncomeModalOpen}
+          onClose={() => setIsIncomeModalOpen(false)}
+          onSave={handleAddIngreso}
+          // Pass initialData if editing an income item
+          // initialData={editingAdjustment?.type === 'ingreso' ? editingAdjustment.item : undefined}
+      />
+       <AdjustmentModal
+          type="deduccion"
+          isOpen={isDeductionModalOpen}
+          onClose={() => setIsDeductionModalOpen(false)}
+          onSave={handleAddDeduccion}
+          // Pass initialData if editing a deduction item
+          // initialData={editingAdjustment?.type === 'deduccion' ? editingAdjustment.item : undefined}
+       />
 
 
       <Toaster />
     </main>
   );
 }
-
-    
-
-      

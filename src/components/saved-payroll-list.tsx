@@ -20,6 +20,22 @@ interface SavedPayrollListProps {
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, onDelete, onBulkExport }) => {
 
+    // Helper function to calculate final net pay for display
+    const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
+        const devengadoBruto = payroll.summary.pagoTotalConSalarioQuincena;
+        // Estimate legal deductions (same logic as in ResultsDisplay - NEEDS REFINEMENT)
+        const ibcEstimadoQuincenal = devengadoBruto;
+        const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
+        const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
+        const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
+        // Calculate adjustment totals
+        const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+        const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+        // Calculate final net pay
+        return devengadoBruto - totalDeduccionesLegales + totalOtrosIngresos - totalOtrasDeducciones;
+    };
+
+
   return (
     <Card className="shadow-lg bg-card">
       <CardHeader className="relative flex flex-row items-start justify-between pb-4"> {/* Use relative for positioning button */}
@@ -42,35 +58,40 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
       <CardContent>
         {payrolls.length > 0 ? (
           <ul className="space-y-4 max-h-[70vh] lg:max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-            {payrolls.map((payroll) => (
-              <li key={payroll.key} className="relative p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col justify-between gap-3">
-                <div className="flex-grow min-w-0 pr-16"> {/* Add right padding here too */}
-                  <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeId}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
-                  </p>
-                   <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <span>Devengado:</span><span className="font-medium text-right">{formatCurrency(payroll.summary.totalPagoRecargosExtrasQuincena)}</span>
-                      <span>Neto Estimado:</span><span className="font-semibold text-accent text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena)}</span>
-                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
-                  </p>
-                </div>
-                <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0"> {/* Changed to flex-row */}
-                  <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
-                    <FileSearch className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
-                            <Trash2 className="h-4 w-4" />
+            {payrolls.map((payroll) => {
+                 const netoFinal = calculateNetoAPagar(payroll); // Calculate final net pay
+                 return (
+                    <li key={payroll.key} className="relative p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col justify-between gap-3">
+                      <div className="flex-grow min-w-0 pr-16"> {/* Add right padding here too */}
+                        <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeId}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
+                        </p>
+                         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena)}</span>
+                            <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-accent text-right">{formatCurrency(netoFinal)}</span>
+                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
+                        </p>
+                      </div>
+                      <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0"> {/* Changed to flex-row */}
+                        <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
+                          <FileSearch className="h-4 w-4" />
                         </Button>
-                    </AlertDialogTrigger>
-                  </AlertDialog>
-                </div>
-              </li>
-            ))}
+                        <AlertDialog>
+                           {/* Ensure AlertDialogTrigger is inside AlertDialog */}
+                          <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" /* onClick={() => onDelete(payroll.key)} */ title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                          </AlertDialogTrigger>
+                           {/* Content is defined elsewhere in page.tsx */}
+                        </AlertDialog>
+                      </div>
+                    </li>
+                 )
+              })}
           </ul>
         ) : (
           <p className="text-center text-muted-foreground italic py-4">No hay nóminas guardadas.</p>
