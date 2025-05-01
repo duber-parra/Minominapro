@@ -353,25 +353,26 @@ export default function SchedulePage() {
                     Selecciona la Sede y la fecha/semana para planificar los turnos.
                 </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        {/* Location Selector */}
-                        <div className="space-y-2">
-                            <label htmlFor="location-select" className="text-sm font-medium">Sede</label>
-                            <LocationSelector
-                                locations={MOCK_LOCATIONS}
-                                selectedLocationId={selectedLocationId}
-                                onLocationChange={handleLocationChange}
-                            />
-                        </div>
+                 <CardContent className="space-y-6"> {/* Increased space-y */}
+                     {/* Row 1: Location and Week Navigation */}
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"> {/* Changed to items-start */}
+                         {/* Location Selector */}
+                         <div className="space-y-2">
+                             <label htmlFor="location-select" className="text-sm font-medium text-foreground">Sede</label>
+                             <LocationSelector
+                                 locations={MOCK_LOCATIONS}
+                                 selectedLocationId={selectedLocationId}
+                                 onLocationChange={handleLocationChange}
+                             />
+                         </div>
 
                          {/* Week Display and Navigation */}
-                        <div className="md:col-span-2"> {/* Removed space-y-2 */}
-                             <label className="text-sm font-medium">Semana</label>
-                             <div className="flex items-center justify-between p-2 border rounded-md bg-background mt-2"> {/* Added mt-2 */}
+                         <div className="md:col-span-2 space-y-2"> {/* Added space-y-2 */}
+                             <label className="text-sm font-medium text-foreground">Semana</label>
+                             <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/30"> {/* Changed background */}
                                 <div className="flex items-center gap-2">
                                     <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                                    <span className="font-medium">
+                                    <span className="font-medium text-foreground">
                                         Semana del {format(currentWeekStart, 'dd MMM', { locale: es })}
                                     </span>
                                 </div>
@@ -381,9 +382,15 @@ export default function SchedulePage() {
                                     </Button>
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant={'outline'} size="sm" className="h-8 px-3">
-                                                {/* Display selected day if in current week, else week start */}
-                                                {format(selectedDate, 'EEE dd', { locale: es })}
+                                             <Button
+                                                 variant={'outline'}
+                                                 size="sm"
+                                                 className={cn(
+                                                     'h-8 px-3 w-[100px] justify-center', // Fixed width and centered text
+                                                     !selectedDate && 'text-muted-foreground'
+                                                 )}
+                                             >
+                                                 {selectedDate ? format(selectedDate, 'EEE dd', { locale: es }) : <span>Sel.</span>}
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0">
@@ -409,7 +416,12 @@ export default function SchedulePage() {
                                         key={day.toISOString()}
                                         variant={isSameDay(day, selectedDate) ? 'default' : 'outline'}
                                         size="sm"
-                                        className={`h-auto flex flex-col items-center px-2 py-1 ${isSameDay(day, selectedDate) ? 'text-primary-foreground bg-primary hover:bg-primary/90' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}`} // Adjusted styling
+                                         className={cn(
+                                             'h-auto flex flex-col items-center px-2 py-1 leading-tight flex-1 min-w-[40px]', // Adjusted for better wrapping
+                                             isSameDay(day, selectedDate)
+                                                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                         )}
                                         onClick={() => handleDateChange(day)}
                                     >
                                         <span className="text-xs uppercase">{format(day, 'EEE', { locale: es })}</span>
@@ -418,12 +430,10 @@ export default function SchedulePage() {
                                 ))}
                             </div>
                         </div>
-
                     </div>
 
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-2 pt-4 border-t">
+                    {/* Row 2: Action Buttons */}
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-border"> {/* Added border */}
                         <Button onClick={handleSaveDay} variant="default" disabled={!selectedLocationId}>
                             <Save className="mr-2 h-4 w-4" /> Guardar Día
                         </Button>
@@ -492,3 +502,4 @@ export default function SchedulePage() {
   );
 }
 
+    
