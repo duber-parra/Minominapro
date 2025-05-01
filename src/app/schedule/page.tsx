@@ -1,9 +1,6 @@
-'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-
 import {
   Card,
   CardContent,
@@ -27,6 +24,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger as DialogPrimitive, DialogClose } from "@/components/ui/dialog";
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
@@ -216,7 +215,6 @@ export default function SchedulePage() {
                                  ))}
                                  <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)}>Agregar Sede</Button>
                              </div>
-
                              <div className="flex flex-col space-y-2">
                                  <h4 className="text-sm font-semibold">Departamentos</h4>
                                  {filteredDepartments.map((dep) => (
@@ -228,6 +226,7 @@ export default function SchedulePage() {
                                                  <AlertDialogTrigger asChild>
                                                      <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
                                                  </AlertDialogTrigger>
+                                                  {/* Delete Confirmation Dialog */}
                                                  <AlertDialogContent>
                                                      <AlertDialogHeader>
                                                          <AlertDialogTitle>¿Eliminar Departamento?</AlertDialogTitle>
@@ -244,18 +243,18 @@ export default function SchedulePage() {
                                  ))}
                                  <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)}>Agregar Departamento</Button>
                              </div>
-
                              <div className="flex flex-col space-y-2">
                                  <h4 className="text-sm font-semibold">Colaboradores</h4>
-                                 {filteredEmployees.map((emp) => (
-                                     <div key={emp.id} className="flex items-center justify-between">
-                                         {emp.name}
+                                 {filteredEmployees.map((employee) => (
+                                     <div key={employee.id} className="flex items-center justify-between">
+                                         {employee.name}
                                          <div className="space-x-1">
-                                             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
+                                             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(employee)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
                                              <AlertDialog>
                                                  <AlertDialogTrigger asChild>
                                                      <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
                                                  </AlertDialogTrigger>
+                                                  {/* Delete Confirmation Dialog */}
                                                  <AlertDialogContent>
                                                      <AlertDialogHeader>
                                                          <AlertDialogTitle>¿Eliminar Colaborador?</AlertDialogTitle>
@@ -272,106 +271,132 @@ export default function SchedulePage() {
                                  ))}
                                  <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)}>Agregar Colaborador</Button>
                              </div>
-
                          </CardContent>
                      </Card>
                  </div>
 
-                 {/* Column 2: Weekly Schedule View */}
-                 <div className="lg:col-span-4">
-                     <Card>
-                         <CardHeader className="flex flex-row items-center justify-between">
-                             <CardTitle>Horario Semanal - {selectedLocationId}</CardTitle>
-                             <Button variant="outline" size="sm">
-                                 Hoy
-                             </Button>
-                         </CardHeader>
-                         <CardContent>
-                             <DndContext id="DndDescribedBy-0" onDragEnd={handleDragEnd} >
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]"> {/* Added a fixed height for the main grid container */}
-                                     <div className="md:col-span-2 lg:col-span-1">
-                                         <EmployeeList employees={filteredEmployees} />
-                                     </div>
-                                     <div className="md:col-span-1">
-                                         <ScheduleView
-                                             departments={filteredDepartments}
-                                             scheduleData={scheduleData}
-                                             onRemoveShift={handleRemoveShift}
-                                         />
-                                     </div>
-                                 </div>
-                             </DndContext>
-                         </CardContent>
-                     </Card>
-                 </div>
-             </div>
+        {/* Column 2: Employee List */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Colaboradores</CardTitle>
+              <CardDescription>Arrastra colaboradores a los departamentos para asignar turnos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EmployeeList employees={filteredEmployees} />
+            </CardContent>
+          </Card>
+        </div>
 
-             {/* Modals */}
-             <ShiftDetailModal
-                 isOpen={isShiftModalOpen}
-                 onClose={() => setIsShiftModalOpen(false)}
-                 onSave={handleAddShift}
-                 employeeName={selectedEmployee?.name || 'N/A'}
-                 departmentName={departments.find(dep => dep.id === selectedDepartmentId)?.name || 'N/A'}
-                 initialDetails={editingShiftDetails?.details} // Pass initial values if editing
-             />
+        {/* Column 3: Schedule View */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Vista de Horario</CardTitle>
+              <CardDescription>Arrastra colaboradores a los departamentos para asignar turnos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <ScheduleView
+                  departments={filteredDepartments}
+                  scheduleData={scheduleData}
+                  onRemoveShift={handleRemoveShift}
+                />
+              </DndContext>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-             {/* Location Modal */}
-             <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
-                 <DialogContent>
-                     <DialogHeader>
-                         <DialogTitle>{selectedLocation ? 'Editar Sede' : 'Agregar Sede'}</DialogTitle>
-                     </DialogHeader>
-                     <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="location-name" className="text-right">Nombre</Label>
-                             <Input type="text" id="location-name" defaultValue={selectedLocation?.name} className="col-span-3" />
-                         </div>
-                     </div>
-                     <DialogFooter>
-                         <Button type="button" variant="secondary" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
-                         <Button type="submit">Guardar</Button>
-                     </DialogFooter>
-                 </DialogContent>
-             </Dialog>
-              {/* Department Modal */}
-             <Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
-                 <DialogContent>
-                     <DialogHeader>
-                         <DialogTitle>{selectedDepartment ? 'Editar Departamento' : 'Agregar Departamento'}</DialogTitle>
-                     </DialogHeader>
-                     <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="department-name" className="text-right">Nombre</Label>
-                             <Input type="text" id="department-name" defaultValue={selectedDepartment?.name} className="col-span-3" />
-                         </div>
-                     </div>
-                     <DialogFooter>
-                         <Button type="button" variant="secondary" onClick={() => setIsDepartmentModalOpen(false)}>Cancelar</Button>
-                         <Button type="submit">Guardar</Button>
-                     </DialogFooter>
-                 </DialogContent>
-             </Dialog>
-              {/* Employee Modal */}
-             <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
-                 <DialogContent>
-                     <DialogHeader>
-                         <DialogTitle>{selectedEmployeeItem ? 'Editar Colaborador' : 'Agregar Colaborador'}</DialogTitle>
-                     </DialogHeader>
-                     <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="employee-name" className="text-right">Nombre</Label>
-                             <Input type="text" id="employee-name" defaultValue={selectedEmployeeItem?.name} className="col-span-3" />
-                         </div>
-                     </div>
-                     <DialogFooter>
-                         <Button type="button" variant="secondary" onClick={() => setIsEmployeeModalOpen(false)}>Cancelar</Button>
-                         <Button type="submit">Guardar</Button>
-                     </DialogFooter>
-                 </DialogContent>
-             </Dialog>
-         </main>
-     );
- }
- 
+      {/* Shift Detail Modal */}
+      <ShiftDetailModal
+        isOpen={isShiftModalOpen}
+        onClose={() => setIsShiftModalOpen(false)}
+        onSave={handleAddShift}
+        employee={selectedEmployee}
+        departmentId={selectedDepartmentId}
+        editingShiftDetails={editingShiftDetails}
+      />
 
+            {/* Location Modal */}
+            <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+                <DialogPrimitive.DialogTrigger asChild>
+                   {/* Intentionally left blank */}
+                </DialogPrimitive.DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>{selectedLocation ? 'Editar Sede' : 'Agregar Sede'}</DialogTitle>
+                        <DialogDescription>
+                            {selectedLocation ? 'Editar los detalles de la sede.' : 'Agregar una nueva sede.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">
+                                Nombre
+                            </Label>
+                            <Input id="name" value={selectedLocation?.name || ''} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit">Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Department Modal */}
+            <Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
+                <DialogPrimitive.DialogTrigger asChild>
+                  {/* Intentionally left blank */}
+                </DialogPrimitive.DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>{selectedDepartment ? 'Editar Departamento' : 'Agregar Departamento'}</DialogTitle>
+                        <DialogDescription>
+                            {selectedDepartment ? 'Editar los detalles del departamento.' : 'Agregar un nuevo departamento.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">
+                                Nombre
+                            </Label>
+                            <Input id="name" value={selectedDepartment?.name || ''} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit">Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Employee Modal */}
+            <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
+                <DialogPrimitive.DialogTrigger asChild>
+                    {/* Intentionally left blank */}
+                </DialogPrimitive.DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>{selectedEmployeeItem ? 'Editar Colaborador' : 'Agregar Colaborador'}</DialogTitle>
+                        <DialogDescription>
+                            {selectedEmployeeItem ? 'Editar los detalles del colaborador.' : 'Agregar un nuevo colaborador.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">
+                                Nombre
+                            </Label>
+                            <Input id="name" value={selectedEmployeeItem?.name || ''} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit">Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+    </main>
+  );
+}
+
+    
