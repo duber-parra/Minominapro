@@ -10,7 +10,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Edit, PlusCircle, Calculator } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign } from 'lucide-react'; // Added DollarSign
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -31,6 +31,17 @@ import {
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
+
+// Helper function to format currency (can be moved to utils later)
+const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+};
+
 
 export default function Home() {
   // State for individual day calculations
@@ -202,15 +213,19 @@ export default function Home() {
                 .sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime()) // Sort by date
                 .map((day) => (
                 <li key={day.id} className="flex items-center justify-between p-3 border rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                  <div>
+                  <div className="flex-1 mr-4"> {/* Added flex-1 and margin */}
                     <p className="font-medium">{format(day.inputData.startDate, 'PPPP', { locale: es })}</p>
                     <p className="text-sm text-muted-foreground">
                       {day.inputData.startTime} - {day.inputData.endTime}
                       {day.inputData.endsNextDay ? ' (+1d)' : ''}
                       {` | ${day.duracionTotalTrabajadaHoras.toFixed(2)} hrs`}
                     </p>
+                     {/* Added section to display the calculated payment */}
+                     <p className="text-sm text-accent font-medium flex items-center mt-1">
+                       <DollarSign className="h-3 w-3 mr-1" /> Recargos/Extras: {formatCurrency(day.pagoTotalRecargosExtras)}
+                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1"> {/* Reduced gap */}
                     <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar día">
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -226,7 +241,7 @@ export default function Home() {
                           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
                              Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el día{' '}
-                             {day?.inputData?.startDate ? format(day.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
+                             {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
