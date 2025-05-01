@@ -290,7 +290,7 @@ export default function Home() {
             toast({
                 title: 'Error en el Cálculo', // Updated title
                 // Check for the specific generic server error message
-                description: errorMessage === "Hubo un error en el servidor al calcular."
+                description: errorMessage === "Hay fallos"
                              ? "Hay fallos" // Changed error message
                              : errorMessage, // Otherwise show the specific error
                 variant: 'destructive',
@@ -609,9 +609,9 @@ export default function Home() {
       <h1 className="text-3xl font-bold text-center mb-8">Calculadora de Nómina Quincenal</h1>
 
       {/* Section for Employee ID and Pay Period Selection */}
-      <Card className="mb-8 shadow-lg">
+      <Card className="mb-8 shadow-lg bg-card">
           <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-xl">
                   <User className="h-5 w-5" /> Selección de Colaborador y Período
               </CardTitle>
               <CardDescription>
@@ -724,15 +724,15 @@ export default function Home() {
           </CardContent>
       </Card>
 
-      {/* Main content area with 3 columns on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8"> {/* Add margin-bottom here */}
+      {/* Main content area with 3 columns on large screens - Adjusted layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8"> {/* Changed to grid-cols-5 */}
 
-          {/* Column 1: Add/Edit Day Form */}
+          {/* Column 1: Add/Edit Day Form - Takes 1 part */}
           <div className="lg:col-span-1">
               {/* Section for Adding/Editing a Single Day's Inputs */}
-              <Card className={`shadow-lg ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-xl">
                     {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
                     {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
                      {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
@@ -767,13 +767,13 @@ export default function Home() {
               </Card>
           </div>
 
-          {/* Column 2: Calculated Days List */}
-          <div className="lg:col-span-1 space-y-8">
+          {/* Column 2: Calculated Days List - Takes 2 parts */}
+          <div className="lg:col-span-2 space-y-8">
               {/* Section to Display Calculated Days and Allow Editing Results */}
               {calculatedDays.length > 0 && (
-                <Card className="shadow-lg">
+                <Card className="shadow-lg bg-card">
                   <CardHeader>
-                     <CardTitle className="flex items-center gap-2">
+                     <CardTitle className="flex items-center gap-2 text-xl">
                        <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
                          {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
                      </CardTitle>
@@ -905,9 +905,9 @@ export default function Home() {
 
               {/* Placeholder if no days are calculated yet */}
               {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
-                 <Card className="text-center p-8 border-dashed mt-8">
+                 <Card className="text-center p-8 border-dashed mt-8 bg-card">
                     <CardHeader>
-                        <CardTitle>Comienza a Calcular</CardTitle>
+                        <CardTitle className="text-xl">Comienza a Calcular</CardTitle>
                         <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
                     </CardHeader>
                  </Card>
@@ -916,15 +916,15 @@ export default function Home() {
                {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
                  <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
                     <CardHeader>
-                        <CardTitle>Selección Pendiente</CardTitle>
+                        <CardTitle className="text-xl">Selección Pendiente</CardTitle>
                         <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
                     </CardHeader>
                  </Card>
               )}
           </div>
 
-          {/* Column 3: Saved Payrolls List */}
-          <div className="lg:col-span-1">
+          {/* Column 3: Saved Payrolls List - Takes 2 parts */}
+          <div className="lg:col-span-2">
                {/* Section to Display Saved Payrolls */}
                <SavedPayrollList
                    payrolls={savedPayrolls}
@@ -963,14 +963,14 @@ export default function Home() {
                </AlertDialog>
           </div>
 
-      </div> {/* End of 3-column grid */}
+      </div> {/* End of 5-column grid */}
 
-       {/* Section for Quincenal Summary - Moved outside 3-col grid */}
+       {/* Section for Quincenal Summary - Moved outside grid, takes full width */}
        {quincenalSummary && (
-         <Card className="shadow-lg mt-8"> {/* Removed lg:col-span-1 */}
+         <Card className="shadow-lg mt-8 bg-card"> {/* Full width */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
-                 <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                 <CardTitle className="flex items-center gap-2 text-xl"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
@@ -988,3 +988,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
