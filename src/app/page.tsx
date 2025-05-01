@@ -358,8 +358,8 @@ export default function Home() {
             toast({
                 title: 'Error en el Cálculo', // Updated title
                 // Check for the specific generic server error message
-                description: errorMessage === "Hay fallos"
-                             ? "Hay fallos" // Changed error message
+                description: errorMessage === "Hubo un error en el servidor al calcular."
+                             ? "Hubo un error en el servidor al calcular." // Use the new generic message
                              : errorMessage, // Otherwise show the specific error
                 variant: 'destructive',
             });
@@ -1061,7 +1061,7 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
-                     <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={!!editingDayId || !!editingResultsId || isFormDisabled}>
+                     <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={isFormDisabled}>
                          <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Turno
                      </Button>
                   </CardContent>
@@ -1187,5 +1187,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
