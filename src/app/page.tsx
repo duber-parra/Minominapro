@@ -289,7 +289,10 @@ export default function Home() {
             setErrorDay(errorMessage);
             toast({
                 title: 'Error en el Cálculo', // Updated title
-                description: errorMessage === "Hubo un error en el servidor al calcular." ? "Hubo un error en el servidor al calcular." : errorMessage, // Keep user-provided generic message or show specific one
+                // Check for the specific generic server error message
+                description: errorMessage === "Hubo un error en el servidor al calcular."
+                             ? "Hubo un error en el servidor al calcular."
+                             : errorMessage, // Otherwise show the specific error
                 variant: 'destructive',
             });
         } else {
@@ -602,7 +605,7 @@ export default function Home() {
 
 
   return (
-    <main className="container mx-auto p-4 md:p-8 max-w-6xl">
+    <main className="container mx-auto p-4 md:p-8 max-w-7xl"> {/* Increased max-width */}
       <h1 className="text-3xl font-bold text-center mb-8 text-primary">Calculadora de Nómina Quincenal</h1>
 
       {/* Section for Employee ID and Pay Period Selection */}
@@ -721,253 +724,265 @@ export default function Home() {
           </CardContent>
       </Card>
 
+      {/* Main content area with 3 columns on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-       {/* Section to Display Saved Payrolls */}
-       <SavedPayrollList
-           payrolls={savedPayrolls}
-           onLoad={handleLoadSavedPayroll}
-           onDelete={(key) => setPayrollToDeleteKey(key)} // Trigger confirmation dialog
-           onBulkExport={handleBulkExportPDF}
-       />
-
-
-        {/* AlertDialog for Deleting Saved Payroll */}
-        <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
-           <AlertDialogContent>
-             <AlertDialogHeader>
-               <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle>
-               <AlertDialogDescription>
-                  Esta acción eliminará permanentemente la nómina guardada para{' '}
-                  <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> del período{' '}
-                  <strong>
-                    {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart
-                        ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy', { locale: es })
-                        : '?'}
-                  </strong> al <strong>
-                    {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd
-                        ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy', { locale: es })
-                        : '?'}
-                  </strong>. No se puede deshacer.
-               </AlertDialogDescription>
-             </AlertDialogHeader>
-             <AlertDialogFooter>
-               <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel>
-               <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90">
-                  Eliminar Nómina
-               </AlertDialogAction>
-             </AlertDialogFooter>
-           </AlertDialogContent>
-       </AlertDialog>
-
-
-      {/* Section for Adding/Editing a Single Day's Inputs */}
-      <Card className={`mb-8 shadow-lg ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
-        <CardHeader>
-          <CardTitle className="text-primary flex items-center gap-2">
-            {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
-            {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
-             {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
-          </CardTitle>
-          <CardDescription>
-            {isFormDisabled
-              ? 'Selecciona un colaborador y un período para habilitar esta sección.'
-              : editingDayId
-              ? `Modifica la fecha y horas para el turno iniciado el ${format(editingDayData?.startDate ?? new Date(), 'PPP', { locale: es })} y guarda los cambios.`
-              : 'Ingresa los detalles de un turno para incluirlo en el cálculo quincenal.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-           {isFormDisabled ? (
-                <div className="text-center text-muted-foreground italic py-4">
-                    Selecciona colaborador y período arriba.
-                </div>
-           ) : (
-              <WorkdayForm
-                key={editingDayId || 'new'} // Re-mount form when switching between add/edit or editing different days
-                onCalculationStart={handleDayCalculationStart}
-                onCalculationComplete={handleDayCalculationComplete}
-                isLoading={isLoadingDay}
-                initialData={editingDayData} // Pass initial data if editing inputs
-                existingId={editingDayId} // Pass the ID if editing inputs
-              />
-           )}
-          {errorDay && (
-            <p className="text-sm font-medium text-destructive mt-4">{errorDay}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Section to Display Calculated Days and Allow Editing Results */}
-      {calculatedDays.length > 0 && (
-        <Card className="mb-8 shadow-lg">
-          <CardHeader>
-             <CardTitle className="text-primary flex items-center gap-2">
-               <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
-                 {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
-             </CardTitle>
-            <CardDescription>Lista de los turnos incluidos en el cálculo actual. Puedes editar las horas calculadas o eliminar el turno.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              {calculatedDays // Already sorted by the update/add handler
-                .map((day, index) => (
-                <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-secondary/30'}`}>
-                   <div className="flex items-start justify-between mb-3">
-                     <div>
-                       <p className="font-semibold text-lg mb-1">Turno {index + 1}</p>
-                       <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1">
-                           <CalendarIcon className="h-4 w-4" />
-                           {format(day.inputData.startDate, 'PPPP', { locale: es })}
-                       </div>
-                       <div className="flex items-center text-sm text-muted-foreground gap-2">
-                           <Clock className="h-4 w-4" />
-                           {day.inputData.startTime} - {day.inputData.endTime}
-                           {day.inputData.endsNextDay ? ' (+1d)' : ''}
-                       </div>
-                     </div>
-                     <div className="text-right flex-shrink-0 ml-4">
-                         <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
-                         <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
-                            {/* Remove the explicit DollarSign icon here */}
-                            {formatCurrency(day.pagoTotalRecargosExtras)}
-                         </div>
-                        <div className="flex items-center justify-end gap-1 mt-2">
-                           {/* Button to edit INPUTS (date/time) */}
-                           <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingResultsId === day.id}>
-                             <Edit className="h-4 w-4" />
-                           </Button>
-                           {/* Button to edit RESULTS (hours) */}
-                           <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingDayId === day.id}>
-                              <PencilLine className="h-4 w-4" />
-                           </Button>
-                           {/* Delete Button */}
-                           <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}>
-                                    <Trash2 className="h-4 w-4" />
-                                 </Button>
-                              </AlertDialogTrigger>
-                             <AlertDialogContent>
-                               <AlertDialogHeader>
-                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                 <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el turno iniciado el{' '}
-                                    {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
-                                 </AlertDialogDescription>
-                               </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                 <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                                 <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90">
-                                    Eliminar
-                                 </AlertDialogAction>
-                               </AlertDialogFooter>
-                             </AlertDialogContent>
-                           </AlertDialog>
-                         </div>
-                     </div>
-                  </div>
-
-                  {/* Detailed Hour Breakdown or Editing Inputs */}
-                   <Separator className="my-3"/>
-                   {editingResultsId === day.id && editedHours ? (
-                       // EDITING MODE for Results
-                       <div className="space-y-3">
-                           <p className="text-sm font-medium text-primary">Editando horas calculadas:</p>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
-                               {displayOrder.map(key => (
-                                   <div key={key} className="space-y-1">
-                                       <Label htmlFor={`edit-hours-${day.id}-${key}`} className="text-xs text-muted-foreground">
-                                           {labelMap[key]?.replace(/ \(.+\)/, '') || key}
-                                       </Label>
-                                       <Input
-                                           id={`edit-hours-${day.id}-${key}`}
-                                           type="number" // Use number input
-                                           step="0.01" // Allow decimals
-                                           min="0"
-                                           value={editedHours[key] ?? 0} // Use number value
-                                           onChange={(e) => handleHourChange(e, key)}
-                                           className="h-8 text-sm"
-                                           placeholder="0.00"
-                                       />
-                                   </div>
-                               ))}
-                           </div>
-                           <div className="flex justify-end gap-2 mt-3">
-                               <Button variant="ghost" size="sm" onClick={handleCancelResults}>
-                                   <X className="mr-1 h-4 w-4" /> Cancelar
-                               </Button>
-                               <Button variant="default" size="sm" onClick={handleSaveResults}>
-                                   <Save className="mr-1 h-4 w-4" /> Guardar Horas
-                               </Button>
-                           </div>
-                       </div>
+          {/* Column 1: Add/Edit Day Form */}
+          <div className="lg:col-span-1">
+              {/* Section for Adding/Editing a Single Day's Inputs */}
+              <Card className={`shadow-lg ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                <CardHeader>
+                  <CardTitle className="text-primary flex items-center gap-2">
+                    {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
+                    {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
+                     {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
+                  </CardTitle>
+                  <CardDescription>
+                    {isFormDisabled
+                      ? 'Selecciona un colaborador y un período para habilitar esta sección.'
+                      : editingDayId
+                      ? `Modifica la fecha y horas para el turno iniciado el ${format(editingDayData?.startDate ?? new Date(), 'PPP', { locale: es })} y guarda los cambios.`
+                      : 'Ingresa los detalles de un turno para incluirlo en el cálculo quincenal.'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                   {isFormDisabled ? (
+                        <div className="text-center text-muted-foreground italic py-4">
+                            Selecciona colaborador y período arriba.
+                        </div>
                    ) : (
-                       // DISPLAY MODE for Results
-                       <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                           {displayOrder.map(key => {
-                               const hours = day.horasDetalladas[key];
-                               if (hours > 0) {
-                                   return (
-                                       <div key={key} className="flex justify-between items-center">
-                                           <span className="text-muted-foreground truncate mr-2">{labelMap[key]?.replace(/ \(.+\)/, '') || key}:</span>
-                                           <span className="font-medium text-right">{formatHours(hours)}h</span>
-                                       </div>
-                                   );
-                               }
-                               return null;
-                           })}
-                           <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed">
-                               <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span>
-                               <span className="font-semibold text-right">{formatHours(day.duracionTotalTrabajadaHoras)}h</span>
-                           </div>
-                       </div>
+                      <WorkdayForm
+                        key={editingDayId || 'new'} // Re-mount form when switching between add/edit or editing different days
+                        onCalculationStart={handleDayCalculationStart}
+                        onCalculationComplete={handleDayCalculationComplete}
+                        isLoading={isLoadingDay}
+                        initialData={editingDayData} // Pass initial data if editing inputs
+                        existingId={editingDayId} // Pass the ID if editing inputs
+                      />
                    )}
-                </li>
-              ))}
-            </ul>
-             <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={!!editingDayId || !!editingResultsId || isFormDisabled}>
-                 <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Turno
-             </Button>
-          </CardContent>
-        </Card>
-      )}
+                  {errorDay && (
+                    <p className="text-sm font-medium text-destructive mt-4">{errorDay}</p>
+                  )}
+                </CardContent>
+              </Card>
+          </div>
 
-      {/* Section for Quincenal Summary */}
-      {quincenalSummary && (
-         <Card className="shadow-lg mt-8">
-            <CardHeader className="flex flex-row items-center justify-between">
-               <div>
-                 <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-                 <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
-               </div>
-                <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
-                    <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
-                </Button>
-            </CardHeader>
-            <CardContent>
-               <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
-            </CardContent>
-         </Card>
-      )}
+          {/* Column 2: Calculated Days List & Summary */}
+          <div className="lg:col-span-1 space-y-8">
+              {/* Section to Display Calculated Days and Allow Editing Results */}
+              {calculatedDays.length > 0 && (
+                <Card className="shadow-lg">
+                  <CardHeader>
+                     <CardTitle className="text-primary flex items-center gap-2">
+                       <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
+                         {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
+                     </CardTitle>
+                    <CardDescription>Lista de los turnos incluidos en el cálculo actual. Puedes editar las horas calculadas o eliminar el turno.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
+                      {calculatedDays // Already sorted by the update/add handler
+                        .map((day, index) => (
+                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-secondary/30'}`}>
+                           <div className="flex items-start justify-between mb-3">
+                             <div>
+                               <p className="font-semibold text-lg mb-1">Turno {index + 1}</p>
+                               <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1">
+                                   <CalendarIcon className="h-4 w-4" />
+                                   {format(day.inputData.startDate, 'PPPP', { locale: es })}
+                               </div>
+                               <div className="flex items-center text-sm text-muted-foreground gap-2">
+                                   <Clock className="h-4 w-4" />
+                                   {day.inputData.startTime} - {day.inputData.endTime}
+                                   {day.inputData.endsNextDay ? ' (+1d)' : ''}
+                               </div>
+                             </div>
+                             <div className="text-right flex-shrink-0 ml-4">
+                                 <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
+                                 <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
+                                    {/* Removed the explicit DollarSign icon */}
+                                    {formatCurrency(day.pagoTotalRecargosExtras)}
+                                 </div>
+                                <div className="flex items-center justify-end gap-1 mt-2">
+                                   {/* Button to edit INPUTS (date/time) */}
+                                   <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingResultsId === day.id}>
+                                     <Edit className="h-4 w-4" />
+                                   </Button>
+                                   {/* Button to edit RESULTS (hours) */}
+                                   <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingDayId === day.id}>
+                                      <PencilLine className="h-4 w-4" />
+                                   </Button>
+                                   {/* Delete Button */}
+                                   <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}>
+                                            <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                      </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                            Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el turno iniciado el{' '}
+                                            {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90">
+                                            Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
+                                 </div>
+                             </div>
+                          </div>
 
-      {/* Placeholder if no days are calculated yet */}
-      {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
-         <Card className="text-center p-8 border-dashed mt-8">
-            <CardHeader>
-                <CardTitle>Comienza a Calcular</CardTitle>
-                <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
-            </CardHeader>
-         </Card>
-      )}
-       {/* Placeholder if form is disabled */}
-       {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
-         <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
-            <CardHeader>
-                <CardTitle>Selección Pendiente</CardTitle>
-                <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
-            </CardHeader>
-         </Card>
-      )}
+                          {/* Detailed Hour Breakdown or Editing Inputs */}
+                           <Separator className="my-3"/>
+                           {editingResultsId === day.id && editedHours ? (
+                               // EDITING MODE for Results
+                               <div className="space-y-3">
+                                   <p className="text-sm font-medium text-primary">Editando horas calculadas:</p>
+                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                                       {displayOrder.map(key => (
+                                           <div key={key} className="space-y-1">
+                                               <Label htmlFor={`edit-hours-${day.id}-${key}`} className="text-xs text-muted-foreground">
+                                                   {labelMap[key]?.replace(/ \(.+\)/, '') || key}
+                                               </Label>
+                                               <Input
+                                                   id={`edit-hours-${day.id}-${key}`}
+                                                   type="number" // Use number input
+                                                   step="0.01" // Allow decimals
+                                                   min="0"
+                                                   value={editedHours[key] ?? 0} // Use number value
+                                                   onChange={(e) => handleHourChange(e, key)}
+                                                   className="h-8 text-sm"
+                                                   placeholder="0.00"
+                                               />
+                                           </div>
+                                       ))}
+                                   </div>
+                                   <div className="flex justify-end gap-2 mt-3">
+                                       <Button variant="ghost" size="sm" onClick={handleCancelResults}>
+                                           <X className="mr-1 h-4 w-4" /> Cancelar
+                                       </Button>
+                                       <Button variant="default" size="sm" onClick={handleSaveResults}>
+                                           <Save className="mr-1 h-4 w-4" /> Guardar Horas
+                                       </Button>
+                                   </div>
+                               </div>
+                           ) : (
+                               // DISPLAY MODE for Results
+                               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                                   {displayOrder.map(key => {
+                                       const hours = day.horasDetalladas[key];
+                                       if (hours > 0) {
+                                           return (
+                                               <div key={key} className="flex justify-between items-center">
+                                                   <span className="text-muted-foreground truncate mr-2">{labelMap[key]?.replace(/ \(.+\)/, '') || key}:</span>
+                                                   <span className="font-medium text-right">{formatHours(hours)}h</span>
+                                               </div>
+                                           );
+                                       }
+                                       return null;
+                                   })}
+                                   <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed">
+                                       <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span>
+                                       <span className="font-semibold text-right">{formatHours(day.duracionTotalTrabajadaHoras)}h</span>
+                                   </div>
+                               </div>
+                           )}
+                        </li>
+                      ))}
+                    </ul>
+                     <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={!!editingDayId || !!editingResultsId || isFormDisabled}>
+                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Turno
+                     </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Section for Quincenal Summary */}
+              {quincenalSummary && (
+                 <Card className="shadow-lg mt-8">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                       <div>
+                         <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                         <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+                       </div>
+                        <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
+                            <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                       <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
+                    </CardContent>
+                 </Card>
+              )}
+
+              {/* Placeholder if no days are calculated yet */}
+              {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
+                 <Card className="text-center p-8 border-dashed mt-8">
+                    <CardHeader>
+                        <CardTitle>Comienza a Calcular</CardTitle>
+                        <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
+                    </CardHeader>
+                 </Card>
+              )}
+               {/* Placeholder if form is disabled */}
+               {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
+                 <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
+                    <CardHeader>
+                        <CardTitle>Selección Pendiente</CardTitle>
+                        <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
+                    </CardHeader>
+                 </Card>
+              )}
+          </div>
+
+          {/* Column 3: Saved Payrolls List */}
+          <div className="lg:col-span-1">
+               {/* Section to Display Saved Payrolls */}
+               <SavedPayrollList
+                   payrolls={savedPayrolls}
+                   onLoad={handleLoadSavedPayroll}
+                   onDelete={(key) => setPayrollToDeleteKey(key)} // Trigger confirmation dialog
+                   onBulkExport={handleBulkExportPDF}
+               />
+
+
+                {/* AlertDialog for Deleting Saved Payroll */}
+                <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
+                   <AlertDialogContent>
+                     <AlertDialogHeader>
+                       <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle>
+                       <AlertDialogDescription>
+                          Esta acción eliminará permanentemente la nómina guardada para{' '}
+                          <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> del período{' '}
+                          <strong>
+                            {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart
+                                ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy', { locale: es })
+                                : '?'}
+                          </strong> al <strong>
+                            {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd
+                                ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy', { locale: es })
+                                : '?'}
+                          </strong>. No se puede deshacer.
+                       </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                       <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel>
+                       <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90">
+                          Eliminar Nómina
+                       </AlertDialogAction>
+                     </AlertDialogFooter>
+                   </AlertDialogContent>
+               </AlertDialog>
+          </div>
+
+      </div> {/* End of 3-column grid */}
 
 
       <Toaster />

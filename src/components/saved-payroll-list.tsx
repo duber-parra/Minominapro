@@ -20,19 +20,23 @@ interface SavedPayrollListProps {
 }
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, onDelete, onBulkExport }) => {
-  if (payrolls.length === 0) {
-    return null; // Don't render anything if there are no saved payrolls
-  }
+//   Removed the early return to always show the card header
+//   if (payrolls.length === 0) {
+//     return null; // Don't render anything if there are no saved payrolls
+//   }
 
   return (
-    <Card className="mb-8 shadow-lg">
+    <Card className="shadow-lg"> {/* Removed mb-8 */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle className="text-primary flex items-center gap-2">
               <Users className="h-5 w-5" /> Nóminas Guardadas ({payrolls.length})
             </CardTitle>
             <CardDescription>
-              Lista de nóminas quincenales guardadas localmente. Puedes cargarlas para editar o eliminarlas.
+              {payrolls.length > 0
+                ? 'Lista de nóminas quincenales guardadas localmente. Puedes cargarlas para editar o eliminarlas.'
+                : 'No hay nóminas guardadas en este momento.'
+              }
             </CardDescription>
         </div>
         <Button onClick={onBulkExport} variant="outline" disabled={payrolls.length === 0}>
@@ -41,7 +45,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
       </CardHeader>
       <CardContent>
         {payrolls.length > 0 ? (
-          <ul className="space-y-4">
+          <ul className="space-y-4 max-h-[70vh] lg:max-h-[calc(100vh-250px)] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
             {payrolls.map((payroll) => (
               <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex-grow">
