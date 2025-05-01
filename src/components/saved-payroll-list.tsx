@@ -26,10 +26,10 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
 //   }
 
   return (
-    <Card className="shadow-lg"> {/* Removed mb-8 */}
+    <Card className="shadow-lg bg-card"> {/* Removed mb-8 */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-xl text-foreground">
               <Users className="h-5 w-5" /> Nóminas Guardadas ({payrolls.length})
             </CardTitle>
             <CardDescription>
@@ -49,7 +49,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
             {payrolls.map((payroll) => (
               <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start gap-3"> {/* Use items-start for better alignment when buttons stack */}
                 <div className="flex-grow min-w-0"> {/* Added min-w-0 to allow shrinking/wrapping */}
-                  <p className="font-semibold text-lg truncate">{payroll.employeeId}</p> {/* Added truncate */}
+                  <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeId}</p> {/* Added truncate */}
                   <p className="text-sm text-muted-foreground">
                     Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
                   </p>
@@ -65,16 +65,16 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                     Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })} {/* Display creation/save time */}
                   </p>
                 </div>
-                {/* Button container: Stack buttons vertically */}
-                <div className="flex flex-col space-y-2 flex-shrink-0 self-start sm:self-center"> {/* Changed to flex-col and space-y-2 */}
-                  <Button variant="outline" size="sm" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="w-full justify-start"> {/* Ensure buttons take full width of container */}
-                    <FileSearch className="mr-2 h-4 w-4" /> Cargar
+                {/* Button container: Use row layout for icons */}
+                <div className="flex flex-row gap-1 flex-shrink-0 self-start sm:self-center"> {/* Changed to row layout */}
+                  <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8"> {/* Changed to icon size */}
+                    <FileSearch className="h-4 w-4" />
                   </Button>
                   {/* Wrap the Trigger and Button within AlertDialog */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="w-full justify-start"> {/* Ensure buttons take full width of container */}
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"> {/* Changed to icon size */}
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </AlertDialogTrigger>
                     {/* The AlertDialogContent is managed in the parent component (page.tsx)
