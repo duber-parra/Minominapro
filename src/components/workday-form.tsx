@@ -317,7 +317,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            {includeBreak && (
              <Card className="bg-muted/30 border-dashed">
                 <CardHeader className="pb-2 pt-4">
-                   <CardTitle className="text-base text-primary">Configurar Descanso</CardTitle>
+                   <CardTitle className="text-base">Configurar Descanso</CardTitle>
                  </CardHeader>
                <CardContent className="space-y-4 pt-0 pb-4">
                  <div className="grid grid-cols-2 gap-4">

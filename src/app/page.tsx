@@ -291,7 +291,7 @@ export default function Home() {
                 title: 'Error en el Cálculo', // Updated title
                 // Check for the specific generic server error message
                 description: errorMessage === "Hubo un error en el servidor al calcular."
-                             ? "Hubo un error en el servidor al calcular."
+                             ? "Hay fallos" // Changed error message
                              : errorMessage, // Otherwise show the specific error
                 variant: 'destructive',
             });
@@ -606,12 +606,12 @@ export default function Home() {
 
   return (
     <main className="container mx-auto p-4 md:p-8 max-w-7xl"> {/* Increased max-width */}
-      <h1 className="text-3xl font-bold text-center mb-8 text-primary">Calculadora de Nómina Quincenal</h1>
+      <h1 className="text-3xl font-bold text-center mb-8">Calculadora de Nómina Quincenal</h1>
 
       {/* Section for Employee ID and Pay Period Selection */}
       <Card className="mb-8 shadow-lg">
           <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" /> Selección de Colaborador y Período
               </CardTitle>
               <CardDescription>
@@ -732,7 +732,7 @@ export default function Home() {
               {/* Section for Adding/Editing a Single Day's Inputs */}
               <Card className={`shadow-lg ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="text-primary flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2">
                     {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
                     {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
                      {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
@@ -773,7 +773,7 @@ export default function Home() {
               {calculatedDays.length > 0 && (
                 <Card className="shadow-lg">
                   <CardHeader>
-                     <CardTitle className="text-primary flex items-center gap-2">
+                     <CardTitle className="flex items-center gap-2">
                        <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
                          {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
                      </CardTitle>
@@ -800,7 +800,6 @@ export default function Home() {
                              <div className="text-right flex-shrink-0 ml-4">
                                  <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
                                  <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
-                                    {/* Removed the explicit DollarSign icon */}
                                     {formatCurrency(day.pagoTotalRecargosExtras)}
                                  </div>
                                 <div className="flex items-center justify-end gap-1 mt-2">
@@ -844,7 +843,7 @@ export default function Home() {
                            {editingResultsId === day.id && editedHours ? (
                                // EDITING MODE for Results
                                <div className="space-y-3">
-                                   <p className="text-sm font-medium text-primary">Editando horas calculadas:</p>
+                                   <p className="text-sm font-medium">Editando horas calculadas:</p>
                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
                                        {displayOrder.map(key => (
                                            <div key={key} className="space-y-1">
@@ -971,7 +970,7 @@ export default function Home() {
          <Card className="shadow-lg mt-8"> {/* Removed lg:col-span-1 */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
-                 <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                 <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>

@@ -29,7 +29,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
     <Card className="shadow-lg"> {/* Removed mb-8 */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-            <CardTitle className="text-primary flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" /> Nóminas Guardadas ({payrolls.length})
             </CardTitle>
             <CardDescription>
@@ -49,7 +49,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
             {payrolls.map((payroll) => (
               <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start gap-3"> {/* Use items-start for better alignment when buttons stack */}
                 <div className="flex-grow min-w-0"> {/* Added min-w-0 to allow shrinking/wrapping */}
-                  <p className="font-semibold text-lg text-primary truncate">{payroll.employeeId}</p> {/* Added truncate */}
+                  <p className="font-semibold text-lg truncate">{payroll.employeeId}</p> {/* Added truncate */}
                   <p className="text-sm text-muted-foreground">
                     Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
                   </p>

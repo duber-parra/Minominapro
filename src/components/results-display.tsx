@@ -159,9 +159,9 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%] text-primary">{isSummary ? `Categoría (Total ${diasCalculados} días)` : 'Categoría (Día Actual)'}</TableHead>
-              <TableHead className="text-right text-primary">Horas</TableHead>
-              <TableHead className="text-right text-primary">Pago (Recargo/Extra)</TableHead>
+              <TableHead className="w-[50%]">{isSummary ? `Categoría (Total ${diasCalculados} días)` : 'Categoría (Día Actual)'}</TableHead>
+              <TableHead className="text-right">Horas</TableHead>
+              <TableHead className="text-right">Pago (Recargo/Extra)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -184,7 +184,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
                     {/* Updated label with threshold */}
-                    {key === 'Ordinaria_Diurna_Base' ? labelMap[key] : (labelMap[key] || key)}
+                    {labelMap[key] || key}
                     </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
                   <TableCell className="text-right">
@@ -214,7 +214,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
                     <span>{formatCurrency((data as QuincenalCalculationSummary).salarioBaseQuincenal)}</span>
                  </div>
                  <Separator className="my-2" />
-                 <div className="flex justify-between font-bold text-xl text-primary">
+                 <div className="flex justify-between font-bold text-xl">
                    <span>Pago Bruto Estimado Quincenal:</span>
                    <span>{formatCurrency(totalConSalario)}</span>
                  </div>
@@ -237,7 +237,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
      <>
       {/* Title is handled by the parent component now */}
       {/* <CardHeader>
-        <CardTitle className="text-primary">{isSummary ? 'Resumen Quincenal' : 'Resultados del Día'}</CardTitle>
+        <CardTitle>{isSummary ? 'Resumen Quincenal' : 'Resultados del Día'}</CardTitle>
         <CardDescription>{isSummary ? `Detalle agregado para los ${results ? (results as QuincenalCalculationSummary).diasCalculados : 0} días.` : 'Detalle de horas y pago estimado para el día ingresado.'}</CardDescription>
       </CardHeader> */}
       {renderContent()}
@@ -245,20 +245,3 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
 
   );
 }
-
-// // Formatting functions remain the same
-// const formatCurrency = (value: number): string => {
-//     return new Intl.NumberFormat('es-CO', {
-//         style: 'currency',
-//         currency: 'COP',
-//         minimumFractionDigits: 0,
-//         maximumFractionDigits: 0,
-//     }).format(value);
-// };
-
-// const formatHours = (hours: number): string => {
-//     return hours.toLocaleString('es-CO', {
-//         minimumFractionDigits: 2,
-//         maximumFractionDigits: 2,
-//     });
-// };
