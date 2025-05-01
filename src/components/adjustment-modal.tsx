@@ -165,8 +165,9 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                     className={cn(
                         "text-foreground", // Use foreground for better contrast on light gradient
                         type === 'deduccion'
-                            ? "bg-destructive hover:bg-gradient-to-b hover:from-red-400 hover:to-red-600 hover:text-white" // Red gradient for deduction hover
-                            : "bg-primary hover:bg-gradient-to-b hover:from-lime-100 hover:to-green-500" // Apply gradient on hover for income
+                            ? "bg-destructive hover:bg-destructive/90" // Red background, slightly darker red on hover for deduction
+                            // Apply gradient on hover for income using arbitrary values
+                            : "bg-primary hover:bg-gradient-to-b hover:from-[#292F56] hover:to-[#ACFA70]"
                     )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
