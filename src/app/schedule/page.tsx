@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 
@@ -87,7 +87,7 @@ export default function SchedulePage() {
 
   // State derived from selected location and date
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]); // Holds ALL employees for the location
   const [scheduleData, setScheduleData] = useState<ScheduleData>(
        getInitialScheduleData(MOCK_DEPARTMENTS.filter(d => d.locationId === selectedLocationId), selectedDate)
    );
@@ -104,9 +104,10 @@ export default function SchedulePage() {
   useEffect(() => {
     if (selectedLocationId) {
       const filteredDepartments = MOCK_DEPARTMENTS.filter(dep => dep.locationId === selectedLocationId);
-      const filteredEmployees = MOCK_EMPLOYEES.filter(emp => emp.primaryLocationId === selectedLocationId);
+      // Load ALL employees for the location, filtering happens before rendering EmployeeList
+      const allLocationEmployees = MOCK_EMPLOYEES.filter(emp => emp.primaryLocationId === selectedLocationId);
       setDepartments(filteredDepartments);
-      setEmployees(filteredEmployees);
+      setEmployees(allLocationEmployees);
        // Reset schedule data when location changes or date changes
       setScheduleData(getInitialScheduleData(filteredDepartments, selectedDate));
 
@@ -119,6 +120,21 @@ export default function SchedulePage() {
      setIsModalOpen(false);
      setPendingAssignment(null);
   }, [selectedLocationId, selectedDate]); // Rerun when location or date changes
+
+
+    // --- Derived State: IDs of assigned employees ---
+    const assignedEmployeeIds = useMemo(() => {
+        const ids = new Set<string>();
+        Object.values(scheduleData.assignments).flat().forEach(assignment => {
+            ids.add(assignment.employee.id);
+        });
+        return ids;
+    }, [scheduleData]);
+
+    // --- Filtered Employees for the List ---
+    const availableEmployees = useMemo(() => {
+        return employees.filter(emp => !assignedEmployeeIds.has(emp.id));
+    }, [employees, assignedEmployeeIds]);
 
 
   // --- Event Handlers ---
@@ -140,26 +156,30 @@ export default function SchedulePage() {
 
     if (active && over && active.id !== over.id) {
        const employeeId = active.id as string;
-       const departmentId = over.id as string; // Assuming department columns have IDs matching department IDs
+       const targetId = over.id as string; // Could be department ID or another employee ID if sorting within list
 
-        const employee = employees.find(emp => emp.id === employeeId);
-        const department = departments.find(dep => dep.id === departmentId);
+       const employee = employees.find(emp => emp.id === employeeId);
+       const department = departments.find(dep => dep.id === targetId); // Check if target is a department
 
        if (employee && department) {
-           // Prevent assigning to the same department multiple times on the same drag (simple check)
-           if (!scheduleData.assignments[departmentId]?.some(a => a.employee.id === employeeId)) {
-               console.log(`Assigning ${employee.name} to ${department.name}`);
-                // Instead of directly adding, set state to open modal
-                setPendingAssignment({ employee, departmentId });
-                setIsModalOpen(true);
-           } else {
-               toast({
-                   title: "Ya Asignado",
-                   description: `${employee.name} ya tiene un turno asignado en ${department.name} para esta fecha.`,
-                   variant: "default",
-               });
+           // Check if the employee is ALREADY assigned anywhere in the schedule
+           if (assignedEmployeeIds.has(employeeId)) {
+                toast({
+                    title: "Ya Asignado",
+                    description: `${employee.name} ya tiene un turno asignado para este día. Elimina el turno existente primero si deseas reasignarlo.`,
+                    variant: "default",
+                    duration: 5000,
+                });
+                return; // Stop the assignment process
            }
+
+           console.log(`Assigning ${employee.name} to ${department.name}`);
+            // Instead of directly adding, set state to open modal
+            setPendingAssignment({ employee, departmentId: department.id });
+            setIsModalOpen(true);
        }
+       // Add logic here if you want to handle reordering within the EmployeeList (targetId would be another employee)
+       // else if (target is another employee in the list) { ... handle reorder ... }
     }
   };
 
@@ -396,7 +416,8 @@ export default function SchedulePage() {
             <div className={`grid grid-cols-1 gap-8 ${isWeeklyView ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
                  {!isWeeklyView && (
                  <div className="lg:col-span-1">
-                     <EmployeeList employees={employees} />
+                     {/* Pass the filtered list of available employees */}
+                     <EmployeeList employees={availableEmployees} />
                  </div>
                  )}
 
