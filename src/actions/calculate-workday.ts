@@ -12,7 +12,7 @@ import type { CalculationResults, CalculationError, WorkdayInput } from '@/types
 
 
 // --- Constantes y Parámetros ---
-const HORAS_JORNADA_BASE = 7.6; // Horas base antes de considerar extras (ej: 47h/sem / 6 dias = 7.83, pero para cálculo diario se suele usar 8h o valor acuerdo. ¡AJUSTAR!)
+const HORAS_JORNADA_BASE = 7.66; // Horas base antes de considerar extras (ej: 47h/sem / 6 dias = 7.83, pero para cálculo diario se suele usar 8h o valor acuerdo. ¡AJUSTAR!)
 const HORA_NOCTURNA_INICIO = 21; // 9 PM (inclusive)
 const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
 const HORA_INICIO_DESCANSO = 15; // 3 PM (inclusive)
@@ -280,3 +280,4 @@ export async function calculateWorkday(
         duracionTotalTrabajadaHoras: duracionTotalTrabajadaHoras
     };
 }
+
