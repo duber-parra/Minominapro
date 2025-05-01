@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -17,8 +18,9 @@ import { getColombianHolidays } from '@/services/colombian-holidays';
 const HORAS_JORNADA_BASE = 7.66; // Horas base antes de considerar extras
 const HORA_NOCTURNA_INICIO = 21; // 9 PM (inclusive)
 const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
-const HORA_INICIO_DESCANSO = 15; // 3 PM (inclusive)
-const HORA_FIN_DESCANSO = 18; // 6 PM (exclusive)
+// No longer needed as defaults, will be passed from form
+// const HORA_INICIO_DESCANSO = 15; // 3 PM (inclusive)
+// const HORA_FIN_DESCANSO = 18; // 6 PM (exclusive)
 
 // Valores por hora (pesos colombianos)
 // ESTE ES EL OBJETO QUE DEBES ACTUALIZAR SI LOS VALORES CAMBIAN:
@@ -64,12 +66,20 @@ function esDominical(fecha: Date): boolean {
     return getDay(fecha) === 0; // 0 = Domingo
 }
 
+// Helper to parse HH:mm time string into hours and minutes
+function parseTimeString(timeStr: string | undefined): { hours: number; minutes: number } | null {
+    if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) return null;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return { hours, minutes };
+}
+
+
 // --- Lógica Principal de Cálculo ---
 export async function calculateWorkday(
     values: WorkdayFormValues
 ): Promise<CalculationResults | CalculationError> {
 
-    const { startDate, startTime, endTime, endsNextDay, includeBreak } = values;
+    const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
 
     // --- Parseo y Validación Inicial ---
     const inicioDtStr = `${format(startDate, 'yyyy-MM-dd')} ${startTime}`;
@@ -94,6 +104,23 @@ export async function calculateWorkday(
     if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
         return { error: "La hora de fin debe ser posterior a la hora de inicio." };
     }
+
+    // --- Validar y parsear horas de descanso si aplica ---
+    let parsedBreakStart: { hours: number; minutes: number } | null = null;
+    let parsedBreakEnd: { hours: number; minutes: number } | null = null;
+
+    if (includeBreak) {
+        parsedBreakStart = parseTimeString(breakStartTime);
+        parsedBreakEnd = parseTimeString(breakEndTime);
+
+        if (!parsedBreakStart || !parsedBreakEnd) {
+             return { error: "Formato de hora de descanso inválido (HH:mm)." };
+        }
+        if (parsedBreakEnd.hours < parsedBreakStart.hours || (parsedBreakEnd.hours === parsedBreakStart.hours && parsedBreakEnd.minutes <= parsedBreakStart.minutes)) {
+             return { error: "La hora de fin del descanso debe ser posterior a la hora de inicio." };
+        }
+    }
+
 
     // --- Obtener Festivos para los años involucrados ---
     await getFestivosSet(getYear(inicioDt));
@@ -127,17 +154,15 @@ export async function calculateWorkday(
         const horaEval = getHours(puntoEvaluacion);
         const minutoEval = getMinutes(puntoEvaluacion); // Necesario para descansos precisos
 
-        // Verificar si es Descanso
+        // Verificar si es Descanso usando los tiempos parseados si includeBreak es true
         let esDescanso = false;
-        if (includeBreak) {
-             // El descanso es de 3:00 PM (inclusive) a 6:00 PM (exclusive)
-             const esHoraDescanso = horaEval >= HORA_INICIO_DESCANSO && horaEval < HORA_FIN_DESCANSO;
-              // Ajuste para incluir 3:00 PM y excluir 6:00 PM exacto
-             if (horaEval === HORA_INICIO_DESCANSO && minutoEval === 0) {
-                 esDescanso = true;
-             } else if (horaEval > HORA_INICIO_DESCANSO && horaEval < HORA_FIN_DESCANSO) {
-                 esDescanso = true;
-             }
+        if (includeBreak && parsedBreakStart && parsedBreakEnd) {
+             const horaActualTotalMinutos = horaEval * 60 + minutoEval;
+             const inicioDescansoTotalMinutos = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
+             const finDescansoTotalMinutos = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
+
+             // El descanso es inclusivo en el inicio y exclusivo en el fin
+             esDescanso = horaActualTotalMinutos >= inicioDescansoTotalMinutos && horaActualTotalMinutos < finDescansoTotalMinutos;
         }
 
         if (!esDescanso) {
@@ -213,3 +238,4 @@ export async function calculateWorkday(
         duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Incluir duración real trabajada
     };
 }
+

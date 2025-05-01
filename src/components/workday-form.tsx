@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -31,23 +32,53 @@ import { calculateWorkday } from '@/actions/calculate-workday'; // Assuming serv
 import type { CalculationResults, CalculationError } from '@/types'; // Assuming types are defined
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
+import { Switch } from '@/components/ui/switch'; // Import Switch
 
+const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const timeErrorMessage = 'Formato de hora inválido (HH:mm).';
 
 const formSchema = z.object({
   startDate: z.date({
     required_error: 'La fecha de inicio es requerida.',
   }),
-  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'Formato de hora inválido (HH:mm).',
-  }),
-  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'Formato de hora inválido (HH:mm).',
-  }),
+  startTime: z.string().regex(timeRegex, { message: timeErrorMessage }),
+  endTime: z.string().regex(timeRegex, { message: timeErrorMessage }),
   endsNextDay: z.boolean().default(false),
   includeBreak: z.boolean().default(false),
-});
+  breakStartTime: z.string().optional(),
+  breakEndTime: z.string().optional(),
+})
+.refine(
+  (data) => {
+    if (data.includeBreak) {
+      // If break is included, start and end times must be valid HH:mm format
+      return timeRegex.test(data.breakStartTime ?? '') && timeRegex.test(data.breakEndTime ?? '');
+    }
+    return true; // Not required if includeBreak is false
+  },
+  {
+    message: "Las horas de inicio y fin del descanso son requeridas y deben tener formato HH:mm si se incluye descanso.",
+    // Apply error to both fields potentially, or pick one as anchor
+    path: ["breakStartTime"],
+  }
+)
+.refine(
+    (data) => {
+        // If break included and both times are valid format, check if end is after start
+        if (data.includeBreak && timeRegex.test(data.breakStartTime ?? '') && timeRegex.test(data.breakEndTime ?? '')) {
+             // Basic time comparison HH:mm > HH:mm
+             return data.breakEndTime! > data.breakStartTime!;
+        }
+        return true; // Pass validation if break not included or times are invalid format (handled by previous refine/regex)
+    },
+    {
+        message: "La hora de fin del descanso debe ser posterior a la hora de inicio.",
+        path: ["breakEndTime"],
+    }
+);
 
-type WorkdayFormValues = z.infer<typeof formSchema>;
+
+export type WorkdayFormValues = z.infer<typeof formSchema>;
 
 interface WorkdayFormProps {
   onCalculationStart: () => void;
@@ -69,12 +100,15 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       endTime: '',
       endsNextDay: false,
       includeBreak: false,
+      breakStartTime: '15:00', // Default break start
+      breakEndTime: '18:00',   // Default break end
     },
   });
 
-  const { watch, setValue } = form;
+  const { watch, setValue, trigger } = form;
   const startDate = watch('startDate');
   const startTime = watch('startTime');
+  const includeBreak = watch('includeBreak');
 
   // Effect to update default end time and next day checkbox
   useEffect(() => {
@@ -90,10 +124,18 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     }
      // Reset end time if start time becomes invalid or empty
     else if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) {
-        // setValue('endTime', '');
-        // setValue('endsNextDay', false); // Optionally reset this too
+        // setValue('endTime', ''); // Keep commented to avoid clearing user input unnecessarily
+        // setValue('endsNextDay', false);
     }
   }, [startDate, startTime, setValue]);
+
+   // Effect to trigger validation when includeBreak changes
+   useEffect(() => {
+     if (includeBreak) {
+       trigger(["breakStartTime", "breakEndTime"]);
+     }
+   }, [includeBreak, trigger]);
+
 
   async function onSubmit(values: WorkdayFormValues) {
     onCalculationStart();
@@ -110,10 +152,10 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     } catch (error) {
         console.error("Calculation error:", error);
         const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
-        onCalculationComplete({ error: errorMessage });
+        onCalculationComplete({ error: "Hubo un error en el servidor al calcular." });
          toast({
            title: 'Cálculo Fallido',
-           description: errorMessage,
+           description: "Hubo un error en el servidor al calcular.",
            variant: 'destructive',
          });
     }
@@ -205,19 +247,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               control={form.control}
               name="endsNextDay"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/50">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/50">
+                   <div className="space-y-0.5">
+                    <FormLabel>Termina al día siguiente</FormLabel>
+                   </div>
                   <FormControl>
-                    <Checkbox
+                    <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      id="endsNextDay"
+                      aria-readonly
                     />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel htmlFor="endsNextDay" className="cursor-pointer">
-                      Termina al día siguiente
-                    </FormLabel>
-                  </div>
                 </FormItem>
               )}
             />
@@ -226,22 +266,58 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               control={form.control}
               name="includeBreak"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/50">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      id="includeBreak"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel htmlFor="includeBreak" className="cursor-pointer">
-                       Deducir tiempo de descanso estándar (3 PM - 6 PM)
-                    </FormLabel>
-                  </div>
-                </FormItem>
+                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/50">
+                   <div className="space-y-0.5">
+                       <FormLabel>Incluir descanso</FormLabel>
+                   </div>
+                   <FormControl>
+                       <Switch
+                           checked={field.value}
+                           onCheckedChange={field.onChange}
+                       />
+                   </FormControl>
+                 </FormItem>
               )}
             />
+
+           {includeBreak && (
+             <Card className="bg-muted/30 border-dashed">
+                <CardHeader className="pb-2 pt-4">
+                   <CardTitle className="text-base text-primary">Configurar Descanso</CardTitle>
+                 </CardHeader>
+               <CardContent className="space-y-4 pt-0 pb-4">
+                 <div className="grid grid-cols-2 gap-4">
+                   <FormField
+                     control={form.control}
+                     name="breakStartTime"
+                     render={({ field }) => (
+                       <FormItem>
+                         <FormLabel>Inicio del Descanso</FormLabel>
+                         <FormControl>
+                           <Input type="time" {...field} className="text-base" />
+                         </FormControl>
+                         <FormMessage />
+                       </FormItem>
+                     )}
+                   />
+                   <FormField
+                     control={form.control}
+                     name="breakEndTime"
+                     render={({ field }) => (
+                       <FormItem>
+                         <FormLabel>Fin del Descanso</FormLabel>
+                         <FormControl>
+                           <Input type="time" {...field} className="text-base" />
+                         </FormControl>
+                         <FormMessage />
+                       </FormItem>
+                     )}
+                   />
+                 </div>
+               </CardContent>
+             </Card>
+           )}
+
 
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
               {isLoading ? (
@@ -259,3 +335,4 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     </Card>
   );
 };
+
