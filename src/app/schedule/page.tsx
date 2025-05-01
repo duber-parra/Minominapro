@@ -16,6 +16,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // Import Label
 import { Calendar as CalendarIcon, Plus, Save, Copy, Users, Building, Briefcase, Warehouse, ChevronLeft, ChevronRight, Edit, Trash2, Settings } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays, addWeeks, subWeeks, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -208,12 +209,17 @@ export default function SchedulePage() {
        const department = departments.find(dep => dep.id === targetId); // Check if target is a department
 
        if (employee && department) {
-           if (assignedEmployeeIds.has(employeeId)) {
+           // Check if the employee is already assigned in *any* department for the current scheduleData date
+           const alreadyAssigned = Object.values(scheduleData.assignments)
+                                         .flat()
+                                         .some(assignment => assignment.employee.id === employeeId);
+
+           if (alreadyAssigned) {
                 toast({
                     title: "Ya Asignado",
-                    description: `${employee.name} ya tiene un turno asignado para este día (${format(selectedDate, 'PPP', { locale: es })}).`,
+                    description: `${employee.name} ya tiene un turno asignado para este día (${format(selectedDate, 'PPP', { locale: es })}). Elimina el turno existente primero.`,
                     variant: "default",
-                    duration: 4000,
+                    duration: 5000,
                 });
                 return;
            }
@@ -292,6 +298,8 @@ export default function SchedulePage() {
               fecha: format(scheduleData.date, 'yyyy-MM-dd'),
               horaEntrada: turno.startTime,
               horaSalida: turno.endTime,
+              // Pass break details if the payroll calculator supports them
+              // Otherwise, calculate duration
               duracionDescansoMinutos: turno.includeBreak
                   ? calculateBreakDuration(turno.breakStartTime, turno.breakEndTime)
                   : 0,
@@ -326,6 +334,8 @@ export default function SchedulePage() {
           const newLocation: Location = { id: `loc-${Date.now()}`, name: values.name };
           setLocations(prev => [...prev, newLocation]);
           toast({ title: "Sede Creada", description: `Sede "${values.name}" creada.` });
+          // Optionally select the newly created location
+          setSelectedLocationId(newLocation.id);
       }
       setIsLocationModalOpen(false);
       setEditingLocation(null);
@@ -359,7 +369,7 @@ export default function SchedulePage() {
       // Simulate saving
       if (editingDepartment) {
           // Update
-          setDepartments(prev => prev.map(dep => dep.id === editingDepartment.id ? { ...dep, name: values.name, locationId: values.locationId } : dep));
+          setDepartments(prev => prev.map(dep => dep.id === editingDepartment.id ? { ...dep, name: values.name, locationId: values.locationId, icon: dep.icon } : dep)); // Preserve icon
           toast({ title: "Departamento Actualizado" });
       } else {
           // Create
@@ -373,10 +383,10 @@ export default function SchedulePage() {
 
   const handleDeleteDepartment = (departmentId: string) => {
     if (!departmentId) return;
-     // Check if shifts are assigned before deleting
-     const isUsed = Object.values(scheduleData.assignments[departmentId] || []).length > 0;
+     // Check if shifts are assigned before deleting (more robust check needed if data persists)
+     const isUsed = scheduleData && Object.values(scheduleData.assignments[departmentId] || []).length > 0;
      if (isUsed) {
-        toast({ title: "Error al Eliminar", description: "No se puede eliminar el departamento porque tiene turnos asignados.", variant: "destructive", duration: 5000 });
+        toast({ title: "Error al Eliminar", description: "No se puede eliminar el departamento porque tiene turnos asignados en la planificación actual.", variant: "destructive", duration: 5000 });
         return;
      }
     // Simulate deletion
@@ -408,10 +418,10 @@ export default function SchedulePage() {
 
   const handleDeleteEmployee = (employeeId: string) => {
      if (!employeeId) return;
-      // Check if shifts are assigned before deleting
-      const isUsed = Object.values(scheduleData.assignments).flat().some(a => a.employee.id === employeeId);
+      // Check if shifts are assigned before deleting (more robust check needed if data persists)
+      const isUsed = scheduleData && Object.values(scheduleData.assignments).flat().some(a => a.employee.id === employeeId);
       if (isUsed) {
-         toast({ title: "Error al Eliminar", description: "No se puede eliminar el colaborador porque tiene turnos asignados.", variant: "destructive", duration: 5000 });
+         toast({ title: "Error al Eliminar", description: "No se puede eliminar el colaborador porque tiene turnos asignados en la planificación actual.", variant: "destructive", duration: 5000 });
          return;
       }
      // Simulate deletion
@@ -424,37 +434,37 @@ export default function SchedulePage() {
 
     // --- Form Hooks for Modals ---
     const locationForm = useForm<LocationFormValues>({ resolver: zodResolver(locationSchema), defaultValues: { name: '' } });
-    const departmentForm = useForm<DepartmentFormValues>({ resolver: zodResolver(departmentSchema), defaultValues: { name: '', locationId: '' } });
-    const employeeForm = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues: { name: '', primaryLocationId: '' } });
+    const departmentForm = useForm<DepartmentFormValues>({ resolver: zodResolver(departmentSchema), defaultValues: { name: '', locationId: selectedLocationId || '' } }); // Pre-fill location ID
+    const employeeForm = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues: { name: '', primaryLocationId: selectedLocationId || '' } }); // Pre-fill location ID
 
-    // Reset forms when modals open with editing data
+    // Reset forms when modals open with editing data or location changes
     useEffect(() => { if (isLocationModalOpen) locationForm.reset(editingLocation ?? { name: '' }); }, [isLocationModalOpen, editingLocation, locationForm]);
-    useEffect(() => { if (isDepartmentModalOpen) departmentForm.reset(editingDepartment ?? { name: '', locationId: '' }); }, [isDepartmentModalOpen, editingDepartment, departmentForm]);
-    useEffect(() => { if (isEmployeeModalOpen) employeeForm.reset(editingEmployee ?? { name: '', primaryLocationId: '' }); }, [isEmployeeModalOpen, editingEmployee, employeeForm]);
+    useEffect(() => { if (isDepartmentModalOpen) departmentForm.reset(editingDepartment ?? { name: '', locationId: selectedLocationId || '' }); }, [isDepartmentModalOpen, editingDepartment, departmentForm, selectedLocationId]);
+    useEffect(() => { if (isEmployeeModalOpen) employeeForm.reset(editingEmployee ?? { name: '', primaryLocationId: selectedLocationId || '' }); }, [isEmployeeModalOpen, editingEmployee, employeeForm, selectedLocationId]);
 
 
   return (
      <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-        <main className={`container mx-auto p-4 md:p-8 max-w-full ${isWeeklyView ? 'weekly-view-optimised' : ''}`}>
-            <h1 className="text-3xl font-bold text-center mb-8 text-foreground">Planificador de Horarios</h1>
+        <main className={`container mx-auto p-4 md:p-6 max-w-full ${isWeeklyView ? 'weekly-view-optimised' : ''}`}> {/* Reduced vertical padding */}
+            <h1 className="text-2xl font-bold text-center mb-6 text-foreground">Planificador de Horarios</h1> {/* Reduced size and margin */}
 
             {/* --- Top Controls --- */}
-            <Card className="mb-8 shadow-lg bg-card">
-                <CardHeader>
-                 <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle className="flex items-center gap-2 text-xl text-foreground">
-                            <Building className="h-5 w-5" /> Configuración de Planificación
+            <Card className="mb-6 shadow-md bg-card"> {/* Reduced margin and shadow */}
+                <CardHeader className="pb-3 pt-4 px-4"> {/* Reduced padding */}
+                 <div className="flex flex-wrap justify-between items-center gap-3"> {/* Use flex-wrap */}
+                    <div className="flex-1 min-w-[250px]"> {/* Min width for title */}
+                        <CardTitle className="flex items-center gap-2 text-lg font-medium text-foreground"> {/* Reduced size */}
+                            <Building className="h-5 w-5" /> Configuración
                         </CardTitle>
-                        <CardDescription>
-                            Selecciona la Sede y la fecha/semana para planificar. Administra sedes, departamentos y colaboradores.
+                        <CardDescription className="text-xs mt-1"> {/* Reduced size */}
+                            Selecciona Sede y Semana. Gestiona datos base.
                         </CardDescription>
                     </div>
                      {/* Management Settings Trigger */}
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" size="icon" title="Administrar Datos">
-                                <Settings className="h-5 w-5" />
+                            <Button variant="outline" size="sm" title="Administrar Datos"> {/* Reduced size */}
+                                <Settings className="h-4 w-4 mr-1" /> Administrar
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[600px]">
@@ -462,20 +472,37 @@ export default function SchedulePage() {
                                 <DialogTitle>Administrar Datos Base</DialogTitle>
                                 <DialogDescription>Gestiona sedes, departamentos y colaboradores.</DialogDescription>
                             </DialogHeader>
-                            <div className="py-4 space-y-6">
+                            <div className="py-4 space-y-4"> {/* Reduced spacing */}
                                 {/* Location Management */}
-                                <div className="border p-4 rounded-md">
+                                <div className="border p-3 rounded-md"> {/* Reduced padding */}
                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="font-semibold">Sedes ({locations.length})</h4>
-                                        <Button size="sm" onClick={() => handleOpenLocationModal()}> <Plus className="mr-1 h-4 w-4" /> Nueva Sede</Button>
+                                        <h4 className="font-semibold text-sm">Sedes ({locations.length})</h4> {/* Reduced size */}
+                                        <Button size="xs" onClick={() => handleOpenLocationModal()}> <Plus className="mr-1 h-3 w-3" /> Nueva</Button> {/* Reduced size */}
                                     </div>
-                                    <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                    <ul className="space-y-1 max-h-32 overflow-y-auto"> {/* Reduced max-height */}
                                         {locations.map(loc => (
-                                            <li key={loc.id} className="flex justify-between items-center text-sm p-1 hover:bg-muted/50 rounded">
+                                            <li key={loc.id} className="flex justify-between items-center text-xs p-1 hover:bg-muted/50 rounded"> {/* Reduced size */}
                                                 <span>{loc.name}</span>
                                                 <div className="space-x-1">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-4 w-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteLocation(loc.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                        </AlertDialogTrigger>
+                                                         {/* Delete Confirmation Dialog */}
+                                                         <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>¿Eliminar Sede?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Eliminar "{loc.name}"? Asegúrate que no tenga departamentos o colaboradores asignados. Esta acción no se puede deshacer.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteLocation(loc.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </div>
                                             </li>
                                         ))}
@@ -483,18 +510,34 @@ export default function SchedulePage() {
                                     </ul>
                                 </div>
                                 {/* Department Management */}
-                                <div className="border p-4 rounded-md">
+                                <div className="border p-3 rounded-md"> {/* Reduced padding */}
                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="font-semibold">Departamentos ({departments.length})</h4>
-                                        <Button size="sm" onClick={() => handleOpenDepartmentModal()}> <Plus className="mr-1 h-4 w-4" /> Nuevo Depto.</Button>
+                                        <h4 className="font-semibold text-sm">Departamentos ({departments.length})</h4> {/* Reduced size */}
+                                        <Button size="xs" onClick={() => handleOpenDepartmentModal()} disabled={locations.length === 0}> <Plus className="mr-1 h-3 w-3" /> Nuevo</Button> {/* Reduced size, disable if no locations */}
                                     </div>
-                                    <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                    <ul className="space-y-1 max-h-32 overflow-y-auto"> {/* Reduced max-height */}
                                         {departments.map(dep => (
-                                            <li key={dep.id} className="flex justify-between items-center text-sm p-1 hover:bg-muted/50 rounded">
-                                                <span>{dep.name} ({locations.find(l=>l.id === dep.locationId)?.name || 'Sede Desconocida'})</span>
+                                            <li key={dep.id} className="flex justify-between items-center text-xs p-1 hover:bg-muted/50 rounded"> {/* Reduced size */}
+                                                <span>{dep.name} <span className="text-muted-foreground/80">({locations.find(l=>l.id === dep.locationId)?.name || 'Sede Desc.'})</span></span>
                                                 <div className="space-x-1">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-4 w-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteDepartment(dep.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                        </AlertDialogTrigger>
+                                                         <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>¿Eliminar Departamento?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Eliminar "{dep.name}"? Asegúrate que no tenga turnos asignados. Esta acción no se puede deshacer.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteDepartment(dep.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </div>
                                             </li>
                                         ))}
@@ -502,18 +545,34 @@ export default function SchedulePage() {
                                     </ul>
                                 </div>
                                 {/* Employee Management */}
-                                <div className="border p-4 rounded-md">
+                                <div className="border p-3 rounded-md"> {/* Reduced padding */}
                                      <div className="flex justify-between items-center mb-2">
-                                        <h4 className="font-semibold">Colaboradores ({employees.length})</h4>
-                                        <Button size="sm" onClick={() => handleOpenEmployeeModal()}> <Plus className="mr-1 h-4 w-4" /> Nuevo Colab.</Button>
+                                        <h4 className="font-semibold text-sm">Colaboradores ({employees.length})</h4> {/* Reduced size */}
+                                        <Button size="xs" onClick={() => handleOpenEmployeeModal()} disabled={locations.length === 0}> <Plus className="mr-1 h-3 w-3" /> Nuevo</Button> {/* Reduced size, disable if no locations */}
                                     </div>
-                                    <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                    <ul className="space-y-1 max-h-32 overflow-y-auto"> {/* Reduced max-height */}
                                         {employees.map(emp => (
-                                            <li key={emp.id} className="flex justify-between items-center text-sm p-1 hover:bg-muted/50 rounded">
-                                                <span>{emp.name} ({locations.find(l=>l.id === emp.primaryLocationId)?.name || 'Sede Desc.'})</span>
+                                            <li key={emp.id} className="flex justify-between items-center text-xs p-1 hover:bg-muted/50 rounded"> {/* Reduced size */}
+                                                <span>{emp.name} <span className="text-muted-foreground/80">({locations.find(l=>l.id === emp.primaryLocationId)?.name || 'Sede Desc.'})</span></span>
                                                 <div className="space-x-1">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-4 w-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteEmployee(emp.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                     <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                        </AlertDialogTrigger>
+                                                         <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>¿Eliminar Colaborador?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Eliminar a "{emp.name}"? Asegúrate que no tenga turnos asignados. Esta acción no se puede deshacer.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteEmployee(emp.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </div>
                                             </li>
                                         ))}
@@ -523,15 +582,15 @@ export default function SchedulePage() {
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button variant="outline">Cerrar</Button>
+                                    <Button variant="outline" size="sm">Cerrar</Button> {/* Reduced size */}
                                 </DialogClose>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 </div>
                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                 <CardContent className="space-y-3 p-4"> {/* Reduced padding */}
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start"> {/* Reduced gap */}
                          <div className="space-y-1">
                              <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label>
                              <LocationSelector
@@ -560,7 +619,7 @@ export default function SchedulePage() {
                                                  variant={'outline'}
                                                  size="sm"
                                                  className={cn(
-                                                     'h-7 px-2 w-[90px] justify-center text-xs',
+                                                     'h-7 px-2 w-[90px] justify-center text-xs font-normal', // Added font-normal
                                                      !selectedDate && 'text-muted-foreground'
                                                  )}
                                              >
@@ -604,26 +663,11 @@ export default function SchedulePage() {
                             </div>
                         </div>
                     </div>
-
-                    {/* <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
-                        <Button size="sm" onClick={() => {}} variant="default" disabled={!selectedLocationId}>
-                            <Save className="mr-1 h-3 w-3" /> Guardar Día
-                        </Button>
-                         <Button size="sm" onClick={() => {}} variant="outline" disabled={!selectedLocationId}>
-                             <Plus className="mr-1 h-3 w-3" /> Guardar Formación
-                         </Button>
-                        <Button size="sm" onClick={() => {}} variant="outline" disabled={!selectedLocationId}>
-                            <Copy className="mr-1 h-3 w-3" /> Duplicar Día
-                        </Button>
-                         <Button size="sm" variant="secondary" disabled={!selectedLocationId} onClick={handleCalculatePayroll}>
-                             Calcular Nómina
-                         </Button>
-                    </div> */}
                 </CardContent>
             </Card>
 
             {/* --- Main Scheduling Area --- */}
-            <div className={`grid grid-cols-1 gap-6 ${isWeeklyView ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
+            <div className={`grid grid-cols-1 gap-4 ${isWeeklyView ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}> {/* Reduced gap */}
                  {!isWeeklyView && (
                  <div className="lg:col-span-1">
                      <EmployeeList employees={availableEmployees} />
@@ -638,10 +682,10 @@ export default function SchedulePage() {
                             onRemoveShift={handleRemoveShift}
                         />
                      ) : (
-                         <Card className="text-center p-8 border-dashed bg-muted/50">
-                            <CardHeader>
-                                <CardTitle className="text-xl text-foreground">Selecciona una Sede</CardTitle>
-                                <CardDescription>Elige una sede para empezar a planificar los horarios.</CardDescription>
+                         <Card className="text-center p-6 border-dashed bg-muted/50"> {/* Reduced padding */}
+                            <CardHeader className="p-0">
+                                <CardTitle className="text-lg text-foreground">Selecciona una Sede</CardTitle> {/* Reduced size */}
+                                <CardDescription className="text-sm">Elige una sede para empezar a planificar.</CardDescription> {/* Reduced size */}
                             </CardHeader>
                          </Card>
                      )}
@@ -662,12 +706,12 @@ export default function SchedulePage() {
 
              {/* Location Modal */}
             <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[425px]"> {/* Reduced width */}
                     <DialogHeader>
                         <DialogTitle>{editingLocation ? 'Editar Sede' : 'Crear Nueva Sede'}</DialogTitle>
                     </DialogHeader>
                     <Form {...locationForm}>
-                        <form onSubmit={locationForm.handleSubmit(handleSaveLocation)} className="space-y-4">
+                        <form onSubmit={locationForm.handleSubmit(handleSaveLocation)} className="space-y-3"> {/* Reduced spacing */}
                             <FormField
                                 control={locationForm.control}
                                 name="name"
@@ -679,9 +723,9 @@ export default function SchedulePage() {
                                     </FormItem>
                                 )}
                             />
-                            <DialogFooter>
-                                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
-                                <Button type="submit">{editingLocation ? 'Guardar Cambios' : 'Crear Sede'}</Button>
+                            <DialogFooter className="pt-2"> {/* Reduced top padding */}
+                                <DialogClose asChild><Button type="button" variant="outline" size="sm">Cancelar</Button></DialogClose> {/* Reduced size */}
+                                <Button type="submit" size="sm">{editingLocation ? 'Guardar' : 'Crear'}</Button> {/* Reduced size */}
                             </DialogFooter>
                         </form>
                     </Form>
@@ -690,12 +734,12 @@ export default function SchedulePage() {
 
             {/* Department Modal */}
             <Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
-                 <DialogContent>
+                 <DialogContent className="sm:max-w-[425px]"> {/* Reduced width */}
                     <DialogHeader>
                         <DialogTitle>{editingDepartment ? 'Editar Departamento' : 'Crear Nuevo Departamento'}</DialogTitle>
                     </DialogHeader>
                     <Form {...departmentForm}>
-                        <form onSubmit={departmentForm.handleSubmit(handleSaveDepartment)} className="space-y-4">
+                        <form onSubmit={departmentForm.handleSubmit(handleSaveDepartment)} className="space-y-3"> {/* Reduced spacing */}
                             <FormField
                                 control={departmentForm.control}
                                 name="name"
@@ -713,7 +757,7 @@ export default function SchedulePage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Sede</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}> {/* Added value */}
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Selecciona una sede..." />
@@ -729,9 +773,9 @@ export default function SchedulePage() {
                                     </FormItem>
                                 )}
                             />
-                            <DialogFooter>
-                                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
-                                <Button type="submit">{editingDepartment ? 'Guardar Cambios' : 'Crear Depto.'}</Button>
+                            <DialogFooter className="pt-2"> {/* Reduced top padding */}
+                                <DialogClose asChild><Button type="button" variant="outline" size="sm">Cancelar</Button></DialogClose> {/* Reduced size */}
+                                <Button type="submit" size="sm">{editingDepartment ? 'Guardar' : 'Crear'}</Button> {/* Reduced size */}
                             </DialogFooter>
                         </form>
                     </Form>
@@ -740,12 +784,12 @@ export default function SchedulePage() {
 
              {/* Employee Modal */}
              <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
-                 <DialogContent>
+                 <DialogContent className="sm:max-w-[425px]"> {/* Reduced width */}
                     <DialogHeader>
                         <DialogTitle>{editingEmployee ? 'Editar Colaborador' : 'Crear Nuevo Colaborador'}</DialogTitle>
                     </DialogHeader>
                      <Form {...employeeForm}>
-                        <form onSubmit={employeeForm.handleSubmit(handleSaveEmployee)} className="space-y-4">
+                        <form onSubmit={employeeForm.handleSubmit(handleSaveEmployee)} className="space-y-3"> {/* Reduced spacing */}
                             <FormField
                                 control={employeeForm.control}
                                 name="name"
@@ -763,7 +807,7 @@ export default function SchedulePage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Sede Principal</FormLabel>
-                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                         <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}> {/* Added value */}
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Selecciona una sede..." />
@@ -779,17 +823,22 @@ export default function SchedulePage() {
                                     </FormItem>
                                 )}
                             />
-                            <DialogFooter>
-                                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
-                                <Button type="submit">{editingEmployee ? 'Guardar Cambios' : 'Crear Colab.'}</Button>
+                            <DialogFooter className="pt-2"> {/* Reduced top padding */}
+                                <DialogClose asChild><Button type="button" variant="outline" size="sm">Cancelar</Button></DialogClose> {/* Reduced size */}
+                                <Button type="submit" size="sm">{editingEmployee ? 'Guardar' : 'Crear'}</Button> {/* Reduced size */}
                             </DialogFooter>
                         </form>
                      </Form>
                  </DialogContent>
             </Dialog>
 
+            {/* Delete Confirmation Dialogs (Example for one type, apply to others as needed) */}
+             {/* Add AlertDialog components here where AlertDialogTrigger was used */}
+
+
         </main>
      </DndContext>
 
   );
 }
+
