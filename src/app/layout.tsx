@@ -16,10 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es"> {/* Changed lang to es */}
+    // Ensure no whitespace or comments directly inside the <html> tag
+    <html lang="es">
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
         {children}
-        <Toaster /> {/* Add Toaster here */}
+        <Toaster />
       </body>
     </html>
   );
