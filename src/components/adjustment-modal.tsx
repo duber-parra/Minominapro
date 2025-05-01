@@ -123,7 +123,7 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                       placeholder="0.00"
                       className={cn(
                         // Apply focus ring color, not border by default
-                        type === 'deduccion' && 'focus-visible:ring-destructive'
+                        type === 'deduccion' && 'focus-visible:ring-destructive border-border hover:border-destructive focus:border-destructive'
                       )}
                       {...field}
                       // Handle undefined case for initial render if default is undefined
@@ -158,11 +158,16 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
-                 {/* Save button: default variant, green on hover */}
+                 {/* Save button: default variant, gradient on hover */}
                 <Button
                     type="submit"
                     variant="default" // Use default variant
-                    className="hover:bg-green-600 hover:text-white" // Green only on hover
+                    className={cn(
+                        "text-white", // Ensure text is visible on gradient
+                        type === 'deduccion'
+                            ? "bg-destructive hover:bg-gradient-to-b hover:from-red-400 hover:to-red-600" // Red gradient for deduction
+                            : "hover:bg-gradient-to-b hover:from-lime-100 hover:to-green-500" // Green gradient for income
+                    )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
                 </Button>
