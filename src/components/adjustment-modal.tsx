@@ -167,7 +167,7 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                         type === 'deduccion'
                             ? "bg-destructive hover:bg-destructive/90" // Red background, slightly darker red on hover for deduction
                             // Apply gradient on hover for income using arbitrary values
-                            : "bg-primary hover:bg-gradient-to-b hover:from-[#292F56] hover:to-[#ACFA70]"
+                            : "bg-primary hover:bg-[hsl(145.54deg_100%_47.45%)]" // Change hover from gradient to specific green HSL
                     )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
