@@ -18,9 +18,6 @@ import { getColombianHolidays } from '@/services/colombian-holidays';
 const HORAS_JORNADA_BASE = 7.66; // Horas base antes de considerar extras
 const HORA_NOCTURNA_INICIO = 21; // 9 PM (inclusive)
 const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
-// No longer needed as defaults, will be passed from form
-// const HORA_INICIO_DESCANSO = 15; // 3 PM (inclusive)
-// const HORA_FIN_DESCANSO = 18; // 6 PM (exclusive)
 
 // Valores por hora (pesos colombianos)
 // ESTE ES EL OBJETO QUE DEBES ACTUALIZAR SI LOS VALORES CAMBIAN:
@@ -34,7 +31,7 @@ const VALORES = {
     "HEND_F": 15472.83,                     // Hora Extra Dominical/Festiva Nocturna (después de 7.66h)
     "Ordinaria_Diurna_Base": 0          // Horas base diurnas laborales (sin recargo adicional sobre el salario)
 };
-const SALARIO_BASE_QUINCENAL = 711750; // Salario base quincenal para sumar al final
+// const SALARIO_BASE_QUINCENAL = 711750; // Salario base quincenal will be handled at the summary level
 
 // Cache para festivos
 let festivosCache: { [year: number]: Set<string> } = {};
@@ -75,8 +72,10 @@ function parseTimeString(timeStr: string | undefined): { hours: number; minutes:
 
 
 // --- Lógica Principal de Cálculo ---
-export async function calculateWorkday(
-    values: WorkdayFormValues
+// Returns calculation for a SINGLE workday
+export async function calculateSingleWorkday(
+    values: WorkdayFormValues,
+    id: string // Pass the unique ID for this calculation
 ): Promise<CalculationResults | CalculationError> {
 
     const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
@@ -86,7 +85,7 @@ export async function calculateWorkday(
     const inicioDt = parse(inicioDtStr, 'yyyy-MM-dd HH:mm', new Date());
 
     if (!isValid(inicioDt)) {
-        return { error: "Fecha u hora de inicio inválida." };
+        return { error: `ID ${id}: Fecha u hora de inicio inválida.` };
     }
 
     let finDt: Date;
@@ -98,11 +97,11 @@ export async function calculateWorkday(
 
 
     if (!isValid(finDt)) {
-        return { error: "Fecha u hora de fin inválida." };
+        return { error: `ID ${id}: Fecha u hora de fin inválida.` };
     }
 
     if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
-        return { error: "La hora de fin debe ser posterior a la hora de inicio." };
+        return { error: `ID ${id}: La hora de fin debe ser posterior a la hora de inicio.` };
     }
 
     // --- Validar y parsear horas de descanso si aplica ---
@@ -115,10 +114,10 @@ export async function calculateWorkday(
         parsedBreakEnd = parseTimeString(breakEndTime);
 
         if (!parsedBreakStart || !parsedBreakEnd) {
-             return { error: "Formato de hora de descanso inválido (HH:mm)." };
+             return { error: `ID ${id}: Formato de hora de descanso inválido (HH:mm).` };
         }
         if (parsedBreakEnd.hours < parsedBreakStart.hours || (parsedBreakEnd.hours === parsedBreakStart.hours && parsedBreakEnd.minutes <= parsedBreakStart.minutes)) {
-             return { error: "La hora de fin del descanso debe ser posterior a la hora de inicio." };
+             return { error: `ID ${id}: La hora de fin del descanso debe ser posterior a la hora de inicio.` };
         }
 
          // Calculate break duration in seconds
@@ -137,7 +136,7 @@ export async function calculateWorkday(
 
 
     // --- Inicializar contadores ---
-    let horasClasificadas = {
+    let horasClasificadas: CalculationResults['horasDetalladas'] = {
         "Ordinaria_Diurna_Base": 0.0,
         "Recargo_Noct_Base": 0.0,
         "Recargo_Dom_Diurno_Base": 0.0,
@@ -233,16 +232,17 @@ export async function calculateWorkday(
      }
 
 
-    // Sumar el salario base quincenal al pago total de recargos y extras
-    const pagoTotalConSalario = pagoTotalRecargosExtras + SALARIO_BASE_QUINCENAL;
+    // No sumar el salario base aquí, se hará en el resumen quincenal
+    // const pagoTotalConSalario = pagoTotalRecargosExtras + SALARIO_BASE_QUINCENAL;
 
     // --- Retornar Resultados ---
     return {
+        id: id, // Include the ID in the result
+        inputData: values, // Store the input data used
         horasDetalladas: horasClasificadas,
         pagoDetallado: pagoDetallado,
-        pagoTotalRecargosExtras: pagoTotalRecargosExtras, // Mantenemos el total solo de recargos/extras
-        pagoTotalConSalario: pagoTotalConSalario, // Añadimos el total con salario
-        duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Incluir duración real trabajada
+        pagoTotalRecargosExtras: pagoTotalRecargosExtras, // Only extras/surcharges for this day
+        pagoTotalConSalario: pagoTotalRecargosExtras, // Temporarily set this, might remove later as it's not quincenal total
+        duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Include actual worked duration for the day
     };
 }
-

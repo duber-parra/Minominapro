@@ -21,18 +21,21 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import type { CalculationResults, CalculationError } from '@/types';
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+// Removed unused import: CalculationError
+import type { CalculationResults, QuincenalCalculationSummary } from '@/types';
 
 interface ResultsDisplayProps {
-  results: CalculationResults | null;
+  // Can receive either single day results or summary results
+  results: CalculationResults | QuincenalCalculationSummary | null;
   error: string | null;
   isLoading: boolean;
+  isSummary?: boolean; // Flag to indicate if displaying summary
 }
 
 // Mapeo de claves a etiquetas legibles en español
 const labelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)', // Updated label
+    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
     Recargo_Dom_Diurno_Base: 'Recargo Dominical/Festivo Diurno (Base)',
     Recargo_Dom_Noct_Base: 'Recargo Dominical/Festivo Nocturno (Base)',
@@ -54,7 +57,8 @@ const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'HEND_F',
 ];
 
-export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoading }) => {
+export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoading, isSummary = false }) => {
+
   const renderSkeletons = () => (
     <div className="space-y-4">
       <Skeleton className="h-8 w-3/4" />
@@ -90,7 +94,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
       return (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error en el Cálculo</AlertTitle>
+          <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       );
@@ -99,57 +103,65 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
     if (!results) {
       return (
         <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Esperando Cálculo</AlertTitle>
-          <AlertDescription>Ingresa los datos en el formulario y presiona "Calcular Pago" para ver los resultados.</AlertDescription>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Esperando Datos</AlertTitle>
+          <AlertDescription>
+             {isSummary
+                ? 'Agrega días trabajados para ver el resumen quincenal.'
+                : 'Completa el formulario del día y presiona Calcular/Agregar para ver los resultados.'}
+          </AlertDescription>
         </Alert>
       );
     }
 
-    const {
-        horasDetalladas,
-        pagoDetallado,
-        pagoTotalRecargosExtras,
-        pagoTotalConSalario,
-        duracionTotalTrabajadaHoras
-    } = results;
+    // Determine which type of results we have
+    const data = isSummary ? results as QuincenalCalculationSummary : results as CalculationResults;
+    const horas = isSummary ? data.totalHorasDetalladas : data.horasDetalladas;
+    const pagos = isSummary ? data.totalPagoDetallado : data.pagoDetallado;
+    const totalRecargosExtras = isSummary ? data.totalPagoRecargosExtrasQuincena : data.pagoTotalRecargosExtras;
+    const totalConSalario = isSummary ? data.pagoTotalConSalarioQuincena : data.pagoTotalConSalario; // Note: pagoTotalConSalario for single day might be less useful now
+    const totalHorasTrabajadas = isSummary ? data.totalDuracionTrabajadaHorasQuincena : data.duracionTotalTrabajadaHoras;
+    const diasCalculados = isSummary ? data.diasCalculados : 1;
+
 
     return (
       <>
-        <Alert variant="default" className="mb-6 border-green-500 bg-green-50 dark:bg-green-900/20">
-             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-             <AlertTitle className="text-green-700 dark:text-green-300">Cálculo Exitoso</AlertTitle>
-             <AlertDescription className="text-green-600 dark:text-green-400">
-                El cálculo de la jornada se completó correctamente. Total horas trabajadas: {formatHours(duracionTotalTrabajadaHoras)}.
-             </AlertDescription>
-         </Alert>
+        {!isSummary && ( // Show success alert only for single day calculation success
+          <Alert variant="default" className="mb-6 border-green-500 bg-green-50 dark:bg-green-900/20">
+               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+               <AlertTitle className="text-green-700 dark:text-green-300">Cálculo de Día Exitoso</AlertTitle>
+               <AlertDescription className="text-green-600 dark:text-green-400">
+                  Total horas trabajadas este día: {formatHours(totalHorasTrabajadas)}.
+               </AlertDescription>
+           </Alert>
+        )}
 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%] text-primary">Categoría</TableHead>
+              <TableHead className="w-[50%] text-primary">Categoría ({isSummary ? `Total ${diasCalculados} días` : 'Día Actual'})</TableHead>
               <TableHead className="text-right text-primary">Horas</TableHead>
               <TableHead className="text-right text-primary">Pago (Recargo/Extra)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {displayOrder.map((key) => {
-              const horas = horasDetalladas[key];
-              const pago = pagoDetallado[key];
-              // No mostrar filas con 0 horas y 0 pago, excepto la base diurna si tiene horas
-              if ((horas === 0 && pago === 0) && key !== 'Ordinaria_Diurna_Base') {
+              const horasCategoria = horas[key];
+              const pagoCategoria = pagos[key];
+
+              // Conditionally display rows based on whether they have values
+              if ((horasCategoria === 0 && pagoCategoria === 0) && key !== 'Ordinaria_Diurna_Base') {
                   return null;
               }
-               // Para Ordinaria_Diurna_Base, mostrar si hay horas, aunque el pago sea 0
-              if (key === 'Ordinaria_Diurna_Base' && horas === 0) {
+              if (key === 'Ordinaria_Diurna_Base' && horasCategoria === 0) {
                   return null;
               }
 
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">{labelMap[key] || key}</TableCell>
-                  <TableCell className="text-right">{formatHours(horas)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(pago)}</TableCell>
+                  <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(pagoCategoria)}</TableCell>
                 </TableRow>
               );
             })}
@@ -157,37 +169,56 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
         </Table>
         <Separator className="my-4" />
         <div className="space-y-2">
+             <div className="flex justify-between font-semibold text-base">
+                 <span>Total Horas Trabajadas {isSummary ? 'en Quincena' : 'este Día'}:</span>
+                 <span>{formatHours(totalHorasTrabajadas)}</span>
+             </div>
+             <Separator className="my-2" />
              <div className="flex justify-between font-semibold text-lg">
-               <span>Total Recargos y Horas Extras:</span>
-               <span className="text-accent">{formatCurrency(pagoTotalRecargosExtras)}</span>
+               <span>Total Recargos y Horas Extras {isSummary ? 'Quincenales' : 'del Día'}:</span>
+               <span className="text-accent">{formatCurrency(totalRecargosExtras)}</span>
              </div>
-             <div className="flex justify-between font-bold text-xl text-primary">
-               <span>Pago Total Estimado (Incluye Base Quincenal):</span>
-               <span>{formatCurrency(pagoTotalConSalario)}</span>
-             </div>
+             {isSummary && ( // Only show total with salary in the summary view
+                <>
+                 <div className="flex justify-between text-muted-foreground">
+                    <span>+ Salario Base Quincenal:</span>
+                    <span>{formatCurrency((data as QuincenalCalculationSummary).salarioBaseQuincenal)}</span>
+                 </div>
+                 <Separator className="my-2" />
+                 <div className="flex justify-between font-bold text-xl text-primary">
+                   <span>Pago Bruto Estimado Quincenal:</span>
+                   <span>{formatCurrency(totalConSalario)}</span>
+                 </div>
+                </>
+             )}
         </div>
          <CardDescription className="mt-4 text-xs text-muted-foreground">
-            Nota: Este es un cálculo estimado. El pago final puede variar según deducciones, bonificaciones y políticas específicas de la empresa. El salario base quincenal es fijo ($711,750).
+             {isSummary
+                ? `Nota: Este es un cálculo bruto estimado para ${diasCalculados} días. El pago final incluirá deducciones legales, otros ingresos/deducciones y políticas específicas.`
+                : `Nota: Este es el cálculo solo para este día. El total quincenal incluirá el salario base y los resultados de otros días.`
+             }
+             {isSummary && ` El salario base quincenal considerado es ${formatCurrency((data as QuincenalCalculationSummary).salarioBaseQuincenal)}.`}
         </CardDescription>
       </>
     );
   };
 
   return (
-    <Card className="bg-card shadow-lg rounded-lg">
-      <CardHeader>
-        <CardTitle className="text-primary">Resultados del Cálculo</CardTitle>
-        <CardDescription>Detalle de horas y pago estimado para el periodo ingresado.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
-    </Card>
+    // Use passed-in Card structure if needed, or render directly
+     <>
+      {/* Title is handled by the parent component now */}
+      {/* <CardHeader>
+        <CardTitle className="text-primary">{isSummary ? 'Resumen Quincenal' : 'Resultados del Día'}</CardTitle>
+        <CardDescription>{isSummary ? `Detalle agregado para los ${results ? (results as QuincenalCalculationSummary).diasCalculados : 0} días.` : 'Detalle de horas y pago estimado para el día ingresado.'}</CardDescription>
+      </CardHeader> */}
+      {renderContent()}
+     </>
+
   );
 }
 
+// Formatting functions remain the same
 const formatCurrency = (value: number): string => {
-    // Format number to Colombian Pesos (COP) with thousand separators and without decimals
     return new Intl.NumberFormat('es-CO', {
         style: 'currency',
         currency: 'COP',
@@ -197,10 +228,8 @@ const formatCurrency = (value: number): string => {
 };
 
 const formatHours = (hours: number): string => {
-    // Format to use comma as decimal separator for Spanish locale
     return hours.toLocaleString('es-CO', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
 };
-
