@@ -51,27 +51,34 @@ const formSchema = z.object({
 .refine(
   (data) => {
     if (data.includeBreak) {
-      return timeRegex.test(data.breakStartTime ?? '') && timeRegex.test(data.breakEndTime ?? '');
+      // Check if both times are provided and match the regex format
+      const isBreakStartTimeValid = data.breakStartTime ? timeRegex.test(data.breakStartTime) : false;
+      const isBreakEndTimeValid = data.breakEndTime ? timeRegex.test(data.breakEndTime) : false;
+      return isBreakStartTimeValid && isBreakEndTimeValid;
     }
-    return true;
+    return true; // No validation needed if break is not included
   },
   {
-    message: "Las horas de inicio y fin del descanso son requeridas y deben tener formato HH:mm si se incluye descanso.",
-    path: ["breakStartTime"], // Anchor error to start time, user will see both fields
+    // This message appears if either time is missing or format is wrong when includeBreak is true
+    message: "Si incluye descanso, las horas de inicio y fin son requeridas (formato HH:mm).",
+    // Apply this error check to both fields, but path targets one for display logic
+    path: ["breakStartTime"],
   }
 )
 .refine(
     (data) => {
-        if (data.includeBreak && timeRegex.test(data.breakStartTime ?? '') && timeRegex.test(data.breakEndTime ?? '')) {
-             const [startH, startM] = (data.breakStartTime || "00:00").split(':').map(Number);
-             const [endH, endM] = (data.breakEndTime || "00:00").split(':').map(Number);
+        // Only validate if break is included AND both times are provided and valid format
+        if (data.includeBreak && data.breakStartTime && timeRegex.test(data.breakStartTime) && data.breakEndTime && timeRegex.test(data.breakEndTime)) {
+             const [startH, startM] = data.breakStartTime.split(':').map(Number);
+             const [endH, endM] = data.breakEndTime.split(':').map(Number);
+             // Check if end time is strictly after start time
              return endH > startH || (endH === startH && endM > startM);
         }
-        return true;
+        return true; // Pass validation if break not included or times are invalid/missing (handled by previous refine)
     },
     {
         message: "La hora de fin del descanso debe ser posterior a la hora de inicio.",
-        path: ["breakEndTime"],
+        path: ["breakEndTime"], // Show error associated with the end time field
     }
 );
 
@@ -97,38 +104,41 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const form = useForm<WorkdayFormValues>({
     resolver: zodResolver(formSchema),
     // Use initialData if provided (editing), otherwise use defaults (adding)
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      ...initialData,
+      startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate), // Ensure Date object
+      // Ensure optional break times are empty strings if null/undefined in initial data
+      breakStartTime: initialData.breakStartTime ?? '',
+      breakEndTime: initialData.breakEndTime ?? '',
+    } : {
       startDate: new Date(),
       startTime: '',
       endTime: '',
       endsNextDay: false,
       includeBreak: false,
-      breakStartTime: '15:00',
-      breakEndTime: '18:00',
+      breakStartTime: '', // Default to empty for new entries
+      breakEndTime: '',   // Default to empty for new entries
     },
   });
 
-  // Reset form when initialData changes (i.e., when starting to edit a different day or adding new)
-  useEffect(() => {
-    if (initialData) {
-      // Ensure date is a Date object when resetting
-      form.reset({
-        ...initialData,
-        startDate: new Date(initialData.startDate), // Parse if it's a string/number from state
-      });
-    } else {
-      // Reset to default values for adding a new day
-      form.reset({
-          startDate: new Date(),
-          startTime: '',
-          endTime: '',
-          endsNextDay: false,
-          includeBreak: false,
-          breakStartTime: '15:00',
-          breakEndTime: '18:00',
-      });
-    }
-  }, [initialData, form.reset, form]); // Added form to dependency array as reset is from form instance
+  // Reset form when initialData changes (i.e., when switching between add/edit or editing different days)
+   useEffect(() => {
+       form.reset(initialData ? {
+           ...initialData,
+           startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate),
+           // Ensure optional break times are handled correctly on reset
+           breakStartTime: initialData.breakStartTime ?? '',
+           breakEndTime: initialData.breakEndTime ?? '',
+       } : {
+           startDate: new Date(),
+           startTime: '',
+           endTime: '',
+           endsNextDay: false,
+           includeBreak: false,
+           breakStartTime: '', // Reset to empty
+           breakEndTime: '',   // Reset to empty
+       });
+   }, [initialData, form]); // form is stable, but reset is from it
 
 
   const { control, setValue, trigger, watch } = form;
@@ -156,10 +166,12 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       }
   }, [startDate, startTime, setValue, initialData, existingId]); // Add initialData and existingId to dependencies
 
-   // Effect to trigger validation for break times when includeBreak changes
+   // Effect to trigger validation for break times when includeBreak changes or when they are modified
    useEffect(() => {
-       trigger(["breakStartTime", "breakEndTime"]);
-   }, [includeBreak, trigger]);
+       if (includeBreak) {
+         trigger(["breakStartTime", "breakEndTime"]);
+       }
+   }, [includeBreak, trigger, watch('breakStartTime'), watch('breakEndTime')]); // Trigger also when break times change
 
 
   async function onSubmit(values: WorkdayFormValues) {
@@ -173,9 +185,12 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         // Toast notifications are now handled in the parent page component
     } catch (error) {
         console.error("Calculation error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
-        // Pass error back to parent
-        onCalculationComplete({ error: `Error al calcular día ${calculationId}: ${errorMessage}` });
+        // Use the user's generic message for unexpected server errors
+        const genericServerError = "Hubo un error en el servidor al calcular.";
+        // Prefer specific error messages if thrown by the action or underlying logic
+        const errorMessage = error instanceof Error && error.message ? error.message : genericServerError;
+        // Pass only the core error message back to the parent
+        onCalculationComplete({ error: errorMessage });
         // Toast handled in parent
     }
   }
@@ -313,7 +328,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                        <FormItem>
                          <FormLabel>Inicio Descanso</FormLabel>
                          <FormControl>
-                           <Input type="time" {...field} value={field.value || ''} className="text-base" />
+                           {/* Ensure value is controlled and never null/undefined for input[type=time] */}
+                           <Input type="time" {...field} value={field.value ?? ''} className="text-base" />
                          </FormControl>
                          <FormMessage />
                        </FormItem>
@@ -326,7 +342,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                        <FormItem>
                          <FormLabel>Fin Descanso</FormLabel>
                          <FormControl>
-                           <Input type="time" {...field} value={field.value || ''} className="text-base" />
+                           {/* Ensure value is controlled and never null/undefined for input[type=time] */}
+                           <Input type="time" {...field} value={field.value ?? ''} className="text-base" />
                          </FormControl>
                          <FormMessage />
                        </FormItem>

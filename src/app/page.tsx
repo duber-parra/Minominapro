@@ -50,8 +50,9 @@ export default function Home() {
     if (isCalculationError(data)) {
       setErrorDay(data.error);
       toast({
-        title: 'Error en Cálculo del Día',
-        description: data.error,
+        // Use the user-requested title and description for errors
+        title: 'Error en el Cálculo',
+        description: data.error || 'Hubo un error en el servidor al calcular', // Use specific error or fallback
         variant: 'destructive',
       });
     } else {
