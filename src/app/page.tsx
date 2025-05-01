@@ -725,7 +725,7 @@ export default function Home() {
       </Card>
 
       {/* Main content area with 3 columns on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8"> {/* Add margin-bottom here */}
 
           {/* Column 1: Add/Edit Day Form */}
           <div className="lg:col-span-1">
@@ -767,7 +767,7 @@ export default function Home() {
               </Card>
           </div>
 
-          {/* Column 2: Calculated Days List & Summary */}
+          {/* Column 2: Calculated Days List */}
           <div className="lg:col-span-1 space-y-8">
               {/* Section to Display Calculated Days and Allow Editing Results */}
               {calculatedDays.length > 0 && (
@@ -904,24 +904,6 @@ export default function Home() {
                 </Card>
               )}
 
-              {/* Section for Quincenal Summary */}
-              {quincenalSummary && (
-                 <Card className="shadow-lg mt-8">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                       <div>
-                         <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-                         <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
-                       </div>
-                        <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
-                            <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
-                        </Button>
-                    </CardHeader>
-                    <CardContent>
-                       <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
-                    </CardContent>
-                 </Card>
-              )}
-
               {/* Placeholder if no days are calculated yet */}
               {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
                  <Card className="text-center p-8 border-dashed mt-8">
@@ -983,6 +965,24 @@ export default function Home() {
           </div>
 
       </div> {/* End of 3-column grid */}
+
+       {/* Section for Quincenal Summary - Moved outside 3-col grid */}
+       {quincenalSummary && (
+         <Card className="shadow-lg mt-8"> {/* Removed lg:col-span-1 */}
+            <CardHeader className="flex flex-row items-center justify-between">
+               <div>
+                 <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                 <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+               </div>
+                <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
+                    <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
+                </Button>
+            </CardHeader>
+            <CardContent>
+               <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
+            </CardContent>
+         </Card>
+       )}
 
 
       <Toaster />
