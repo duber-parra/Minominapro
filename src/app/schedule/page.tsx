@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon, Plus, Save, Copy, Users, Building, Briefcase, Warehouse } from 'lucide-react'; // Added icons
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from 'date-fns';
+import { Calendar as CalendarIcon, Plus, Save, Copy, Users, Building, Briefcase, Warehouse, ChevronLeft, ChevronRight } from 'lucide-react'; // Added Chevron icons
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays, addWeeks, subWeeks, isSameDay } from 'date-fns'; // Added addWeeks, subWeeks, isSameDay
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -78,12 +78,13 @@ const calculateBreakDuration = (start?: string, end?: string): number => {
     }
 };
 
+const weekStartsOn = 1; // Start week on Monday
+
 export default function SchedulePage() {
   const { toast } = useToast();
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(MOCK_LOCATIONS[0]?.id);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily'); // State for view mode
-  // const [weekDates, setWeekDates] = useState<Date[]>([]); // Dates for the selected week
 
   // State derived from selected location and date
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -96,6 +97,15 @@ export default function SchedulePage() {
   // State for the shift detail modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState<{ employee: Employee, departmentId: string } | null>(null);
+
+
+  // --- Calculate data for the selected week ---
+   const currentWeekStart = useMemo(() => startOfWeek(selectedDate, { locale: es, weekStartsOn }), [selectedDate]);
+   const currentWeekEnd = useMemo(() => endOfWeek(selectedDate, { locale: es, weekStartsOn }), [selectedDate]);
+   const weekDates = useMemo(() => eachDayOfInterval({
+       start: currentWeekStart,
+       end: currentWeekEnd,
+   }), [currentWeekStart, currentWeekEnd]);
 
 
   // --- Effects ---
@@ -151,6 +161,16 @@ export default function SchedulePage() {
     }
   };
 
+  // --- Week Navigation Handlers ---
+  const goToPreviousWeek = () => {
+      setSelectedDate(subWeeks(selectedDate, 1));
+  };
+
+  const goToNextWeek = () => {
+      setSelectedDate(addWeeks(selectedDate, 1));
+  };
+
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -162,11 +182,11 @@ export default function SchedulePage() {
        const department = departments.find(dep => dep.id === targetId); // Check if target is a department
 
        if (employee && department) {
-           // Check if the employee is ALREADY assigned anywhere in the schedule
+           // Check if the employee is ALREADY assigned anywhere in the schedule for the selected day
            if (assignedEmployeeIds.has(employeeId)) {
                 toast({
                     title: "Ya Asignado",
-                    description: `${employee.name} ya tiene un turno asignado para este día. Elimina el turno existente primero si deseas reasignarlo.`,
+                    description: `${employee.name} ya tiene un turno asignado para este día (${format(selectedDate, 'PPP', { locale: es })}). Elimina el turno existente primero si deseas reasignarlo.`,
                     variant: "default",
                     duration: 5000,
                 });
@@ -205,7 +225,7 @@ export default function SchedulePage() {
 
             toast({
                 title: "Turno Asignado",
-                description: `Turno de ${details.startTime} a ${details.endTime} para ${employee.name} en ${departments.find(d=>d.id === departmentId)?.name}.`,
+                description: `Turno de ${details.startTime} a ${details.endTime} para ${employee.name} en ${departments.find(d=>d.id === departmentId)?.name} el ${format(selectedDate, 'PPP', {locale: es})}.`,
             });
         }
         setIsModalOpen(false);
@@ -312,11 +332,6 @@ export default function SchedulePage() {
     // handleDateChange(nextDay);
   };
 
-   // --- Calculate data for the selected week ---
-   const weekDates = eachDayOfInterval({
-       start: startOfWeek(selectedDate, { locale: es, weekStartsOn: 1 }), // Assuming Monday start
-       end: endOfWeek(selectedDate, { locale: es, weekStartsOn: 1 }),
-   });
 
     // --- Optimisation for Weekly View ---
     const isWeeklyView = viewMode === 'weekly';
@@ -337,62 +352,77 @@ export default function SchedulePage() {
                     Selecciona la Sede y la fecha/semana para planificar los turnos.
                 </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    {/* Location Selector */}
-                     <div className="space-y-2">
-                        <label htmlFor="location-select" className="text-sm font-medium">Sede</label>
-                         <LocationSelector
-                            locations={MOCK_LOCATIONS}
-                            selectedLocationId={selectedLocationId}
-                            onLocationChange={handleLocationChange}
-                        />
-                     </div>
-
-
-                    {/* Date Selector */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Fecha</label>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                            variant={'outline'}
-                            className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !selectedDate && 'text-muted-foreground'
-                            )}
-                            >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {selectedDate ? format(selectedDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={handleDateChange}
-                            initialFocus
-                            locale={es}
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        {/* Location Selector */}
+                        <div className="space-y-2">
+                            <label htmlFor="location-select" className="text-sm font-medium">Sede</label>
+                            <LocationSelector
+                                locations={MOCK_LOCATIONS}
+                                selectedLocationId={selectedLocationId}
+                                onLocationChange={handleLocationChange}
                             />
-                        </PopoverContent>
-                        </Popover>
+                        </div>
+
+                         {/* Week Display and Navigation */}
+                        <div className="space-y-2 md:col-span-2">
+                             <label className="text-sm font-medium">Semana</label>
+                             <div className="flex items-center justify-between p-2 border rounded-md bg-background">
+                                <div className="flex items-center gap-2">
+                                    <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                                    <span className="font-medium">
+                                        Semana del {format(currentWeekStart, 'dd MMM', { locale: es })}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="icon" onClick={goToPreviousWeek} className="h-8 w-8">
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={'outline'} size="sm" className="h-8 px-3">
+                                                {/* Display selected day if in current week, else week start */}
+                                                {format(selectedDate, 'EEE dd', { locale: es })}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={selectedDate}
+                                                onSelect={handleDateChange}
+                                                initialFocus
+                                                defaultMonth={selectedDate} // Center calendar on selected month
+                                                locale={es}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="outline" size="icon" onClick={goToNextWeek} className="h-8 w-8">
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                             </div>
+                             {/* Simple Day Picker within the week */}
+                             <div className="flex justify-center gap-1 pt-2 flex-wrap">
+                                {weekDates.map(day => (
+                                    <Button
+                                        key={day.toISOString()}
+                                        variant={isSameDay(day, selectedDate) ? 'default' : 'outline'}
+                                        size="sm"
+                                        className={`h-auto flex flex-col items-center px-2 py-1 ${isSameDay(day, selectedDate) ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        onClick={() => handleDateChange(day)}
+                                    >
+                                        <span className="text-xs uppercase">{format(day, 'EEE', { locale: es })}</span>
+                                        <span className="font-semibold">{format(day, 'dd', { locale: es })}</span>
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+
                     </div>
 
-                     {/* View Mode Selector (Optional - Placeholder) */}
-                     {/* <div className="space-y-2">
-                        <label htmlFor="view-mode-select" className="text-sm font-medium">Vista</label>
-                         <Select value={viewMode} onValueChange={(value: 'daily' | 'weekly') => setViewMode(value)}>
-                            <SelectTrigger id="view-mode-select">
-                                <SelectValue placeholder="Seleccionar vista" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="daily">Diaria</SelectItem>
-                                <SelectItem value="weekly">Semanal</SelectItem>
-                            </SelectContent>
-                        </Select>
-                     </div> */}
 
                     {/* Action Buttons */}
-                    <div className="md:col-span-3 flex flex-wrap gap-2 mt-4">
+                    <div className="flex flex-wrap gap-2 pt-4 border-t">
                         <Button onClick={handleSaveDay} variant="default" disabled={!selectedLocationId}>
                             <Save className="mr-2 h-4 w-4" /> Guardar Día
                         </Button>
@@ -402,7 +432,6 @@ export default function SchedulePage() {
                         <Button onClick={handleDuplicateDay} variant="outline" disabled={!selectedLocationId}>
                             <Copy className="mr-2 h-4 w-4" /> Duplicar a Mañana
                         </Button>
-                         {/* <Button variant="secondary">Asignar Descanso</Button> */}
                          {/* Add button to trigger Payroll Calculation */}
                          <Button variant="secondary" disabled={!selectedLocationId} onClick={handleCalculatePayroll}>
                             Calcular Nómina con Horario
