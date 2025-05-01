@@ -27,7 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger as DialogPrimitiveTrigger } from "@/components/ui/dialog"; // Use DialogPrimitiveTrigger to avoid conflict
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog"; // Use DialogPrimitiveTrigger to avoid conflict
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
@@ -123,11 +123,19 @@ export default function SchedulePage() {
     const filteredDepartments = departments.filter(dep => dep.locationId === selectedLocationId);
 
     // Filter employees available for assignment (not already assigned in the current view)
-    const assignedEmployeeIds = new Set<string>();
-    Object.values(currentDaySchedule.assignments).forEach(deptAssignments => {
-        deptAssignments.forEach(assignment => assignedEmployeeIds.add(assignment.employee.id));
-    });
-    const availableEmployees = filteredEmployees.filter(emp => !assignedEmployeeIds.has(emp.id));
+     const getAssignedEmployeeIds = useCallback(() => {
+         const assignedIds = new Set<string>();
+         const dateKey = format(targetDate, 'yyyy-MM-dd');
+         const daySchedule = scheduleData[dateKey];
+         if (daySchedule) {
+             Object.values(daySchedule.assignments).forEach(deptAssignments => {
+                 deptAssignments.forEach(assignment => assignedIds.add(assignment.employee.id));
+             });
+         }
+         return assignedIds;
+     }, [scheduleData, targetDate]);
+
+    const availableEmployees = filteredEmployees.filter(emp => !getAssignedEmployeeIds().has(emp.id));
 
 
     const handleOpenShiftModal = (employee: Employee, departmentId: string, date: Date) => {
@@ -378,7 +386,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-3 w-3" /></Button>
                                                      <AlertDialog>
-                                                         <AlertDialogTrigger>
+                                                         <AlertDialogTrigger asChild>
                                                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                          <AlertDialogContent>
@@ -412,7 +420,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                         <AlertDialogTrigger>
+                                                         <AlertDialogTrigger asChild>
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                           <AlertDialogContent>
@@ -446,7 +454,7 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button>
                                                        <AlertDialog>
-                                                          <AlertDialogTrigger>
+                                                          <AlertDialogTrigger asChild>
                                                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                            <AlertDialogContent>
