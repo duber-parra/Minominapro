@@ -55,11 +55,9 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
 }) => {
   const form = useForm<AdjustmentFormValues>({
     resolver: zodResolver(adjustmentSchema),
-    defaultValues: initialData ? {
-        monto: initialData.monto,
-        descripcion: initialData.descripcion || '', // Ensure empty string if undefined
-    } : {
-      monto: 0, // Start with 0 or make it undefined to force input
+    // Initial default values - these will be overridden by useEffect
+    defaultValues: {
+      monto: undefined,
       descripcion: '',
     },
   });
@@ -67,16 +65,30 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
   // Reset form when initialData changes or modal opens/closes
    React.useEffect(() => {
         if (isOpen) {
-            form.reset(initialData ? {
-                monto: initialData.monto,
-                descripcion: initialData.descripcion || '',
-            } : {
-                monto: undefined, // Use undefined to clear number input properly
-                descripcion: '',
-            });
+            let resetValues: Partial<AdjustmentFormValues>;
+            if (initialData) {
+                // Editing existing item
+                resetValues = {
+                    monto: initialData.monto,
+                    descripcion: initialData.descripcion || '',
+                };
+            } else if (type === 'ingreso') {
+                // Adding NEW income - set defaults
+                resetValues = {
+                    monto: 100000, // Default amount
+                    descripcion: 'Aux de Transporte', // Default description
+                };
+            } else {
+                // Adding NEW deduction or other cases
+                resetValues = {
+                    monto: undefined, // Use undefined to clear number input properly
+                    descripcion: '',
+                };
+            }
+            form.reset(resetValues);
             form.clearErrors(); // Clear previous errors
         }
-    }, [isOpen, initialData, form]);
+    }, [isOpen, initialData, form, type]); // Added `type` dependency
 
 
   const onSubmit = (values: AdjustmentFormValues) => {
