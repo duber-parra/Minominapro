@@ -12,8 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus } from 'lucide-react'; // Added Bus icon
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns } from 'date-fns';
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2 } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays } from 'date-fns'; // Added addDays
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -192,7 +192,7 @@ export default function Home() {
     const [editingResultsId, setEditingResultsId] = useState<string | null>(null); // For editing calculated hours
     const [editedHours, setEditedHours] = useState<CalculationResults['horasDetalladas'] | null>(null); // Temp state for edited hours
     const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
-    const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false);
+    const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false); // Loading state for individual day calculation/duplication
     const [errorDay, setErrorDay] = useState<string | null>(null);
     const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load for current employee/period
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]); // State for the list of all saved payrolls
@@ -619,20 +619,66 @@ export default function Home() {
     return calculatedDays.find(day => day.id === editingDayId)?.inputData;
   }, [editingDayId, calculatedDays]);
 
-  const handleAddNewDay = () => {
-     if (!employeeId || !payPeriodStart || !payPeriodEnd) {
-         toast({
-             title: 'Información Incompleta',
-             description: 'Selecciona un colaborador y período antes de agregar un turno.',
-             variant: 'destructive',
-         });
-         return;
-     }
-    setEditingDayId(null); // Ensure we are adding a new day, not editing inputs
-    setEditingResultsId(null); // Ensure we are not editing results
-    setEditedHours(null);
-    // WorkdayForm should reset due to key change or useEffect dependency on initialData
-  };
+  // Function to handle "Duplicar Turno Sig. Día"
+  const handleDuplicateToNextDay = useCallback(async () => {
+    const lastDay = calculatedDays.length > 0 ? calculatedDays[calculatedDays.length - 1] : null;
+    if (!lastDay || !payPeriodStart || !payPeriodEnd) {
+        toast({
+            title: 'No se puede duplicar',
+            description: calculatedDays.length === 0 ? 'Agrega al menos un turno primero.' : 'Selecciona un período válido.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    handleDayCalculationStart(); // Set loading state
+
+    const nextDayDate = addDays(lastDay.inputData.startDate, 1);
+
+    // Check if the next day is within the current pay period
+    if (nextDayDate > payPeriodEnd) {
+        setIsLoadingDay(false); // Stop loading
+        toast({
+            title: 'Fecha Fuera de Período',
+            description: `El siguiente día (${format(nextDayDate, 'PPP', { locale: es })}) está fuera del período quincenal seleccionado. No se puede duplicar.`,
+            variant: 'destructive',
+            duration: 5000,
+        });
+        return;
+    }
+
+    // Create the input data for the next day
+    const nextDayValues: WorkdayFormValues = {
+        ...lastDay.inputData,
+        startDate: nextDayDate,
+        // Reset 'endsNextDay' based on the new date and original times (calculateSingleWorkday will handle it correctly)
+        // The calculation logic itself will determine if the duplicated shift crosses midnight *relative to its new start date*
+        // We don't need to explicitly set endsNextDay here, the existing logic handles it.
+    };
+
+    // Generate a unique ID for the new duplicated day
+    const newDayId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    try {
+        // Calculate the duplicated day
+        const result = await calculateSingleWorkday(nextDayValues, newDayId);
+        handleDayCalculationComplete(result); // Use the existing completion handler
+        if (!isCalculationError(result)) {
+             toast({
+                title: 'Turno Duplicado',
+                description: `Se duplicó el último turno para el ${format(nextDayDate, 'PPP', { locale: es })}.`,
+             });
+        }
+    } catch (error) {
+        console.error("Error duplicando el turno:", error);
+        const errorMessage = error instanceof Error && error.message ? error.message : "Hubo un error al duplicar el turno.";
+        handleDayCalculationComplete({ error: errorMessage }); // Use existing error handling
+    } finally {
+        // Ensure loading state is turned off even if handled in handleDayCalculationComplete
+        setIsLoadingDay(false);
+    }
+}, [calculatedDays, payPeriodStart, payPeriodEnd, toast, handleDayCalculationStart, handleDayCalculationComplete]);
+
 
   // Determine if form or summary should be disabled
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
@@ -1061,9 +1107,20 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
-                     <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={isFormDisabled}>
-                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Turno
-                     </Button>
+                     {/* Replace "Agregar Otro Turno" with "Duplicar Turno Sig. Día" */}
+                     <Button
+                        variant="outline"
+                        onClick={handleDuplicateToNextDay}
+                        className="mt-6 w-full md:w-auto"
+                        disabled={isFormDisabled || isLoadingDay || calculatedDays.length === 0} // Disable if form disabled, loading, or no days exist
+                      >
+                        {isLoadingDay ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CopyPlus className="mr-2 h-4 w-4" />
+                        )}
+                        Duplicar Turno Sig. Día
+                      </Button>
                   </CardContent>
                 </Card>
               )}
