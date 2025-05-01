@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'react';
 import { WorkdayForm } from '@/components/workday-form';
-import { ResultsDisplay, labelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers
+import { ResultsDisplay, labelMap as fullLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -169,6 +169,19 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
        if (dateDiff !== 0) return dateDiff;
        return a.employeeId.localeCompare(b.employeeId);
     });
+};
+
+
+// --- Abbreviated Label Map for Compact Display ---
+const abbreviatedLabelMap: Record<string, string> = {
+    Ordinaria_Diurna_Base: 'H.Base Diu.',
+    Recargo_Noct_Base: 'Rec.Noct.',
+    Recargo_Dom_Diurno_Base: 'Rec.Dom.Diu.',
+    Recargo_Dom_Noct_Base: 'Rec.Dom.Noct.',
+    HED: 'HED',
+    HEN: 'HEN',
+    HEDD_F: 'HEDD/F',
+    HEND_F: 'HEND/F',
 };
 
 
@@ -1055,11 +1068,11 @@ export default function Home() {
                                // EDITING MODE for Results
                                <div className="space-y-3">
                                    <p className="text-sm font-medium text-foreground">Editando horas calculadas:</p>
-                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3"> {/* Adjusted grid cols */}
                                        {displayOrder.map(key => (
                                            <div key={key} className="space-y-1">
                                                <Label htmlFor={`edit-hours-${day.id}-${key}`} className="text-xs text-muted-foreground">
-                                                   {labelMap[key]?.replace(/ \(.+\)/, '') || key}
+                                                   {abbreviatedLabelMap[key] || key} {/* Use abbreviated label */}
                                                </Label>
                                                <Input
                                                    id={`edit-hours-${day.id}-${key}`}
@@ -1085,14 +1098,14 @@ export default function Home() {
                                </div>
                            ) : (
                                // DISPLAY MODE for Results
-                               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1 text-sm"> {/* Responsive grid */}
                                    {displayOrder.map(key => {
                                        const hours = day.horasDetalladas[key];
                                        if (hours > 0) {
                                            return (
-                                               <div key={key} className="flex justify-between items-center">
-                                                   <span className="text-muted-foreground truncate mr-2">{labelMap[key]?.replace(/ \(.+\)/, '') || key}:</span>
-                                                   <span className="font-medium text-right text-foreground">{formatHours(hours)}h</span>
+                                               <div key={key} className="flex justify-between items-center space-x-1">
+                                                   <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> {/* Use abbreviated label */}
+                                                   <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span>
                                                </div>
                                            );
                                        }

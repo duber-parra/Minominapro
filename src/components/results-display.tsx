@@ -51,7 +51,7 @@ interface ResultsDisplayProps {
 
 // Mapeo de claves a etiquetas legibles en español
 export const labelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)', // Updated label to reflect the threshold
+    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
     Recargo_Dom_Diurno_Base: 'Recargo Dominical/Festivo Diurno (Base)',
     Recargo_Dom_Noct_Base: 'Recargo Dominical/Festivo Nocturno (Base)',
@@ -60,6 +60,19 @@ export const labelMap: Record<string, string> = {
     HEDD_F: 'Horas Extras Diurnas (Dominical/Festivo)',
     HEND_F: 'Horas Extras Nocturnas (Dominical/Festivo)',
 };
+
+// --- Abbreviated Label Map for Compact Display ---
+export const abbreviatedLabelMap: Record<string, string> = {
+    Ordinaria_Diurna_Base: 'H.Base Diu.',
+    Recargo_Noct_Base: 'Rec.Noct.',
+    Recargo_Dom_Diurno_Base: 'Rec.Dom.Diu.',
+    Recargo_Dom_Noct_Base: 'Rec.Dom.Noct.',
+    HED: 'HED',
+    HEN: 'HEN',
+    HEDD_F: 'HEDD/F',
+    HEND_F: 'HEND/F',
+};
+
 
 // Orden deseado para mostrar los resultados
 export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
@@ -252,7 +265,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
-                    {labelMap[key] || key}
+                    {isSummary ? (labelMap[key] || key) : (abbreviatedLabelMap[key] || key)} {/* Use abbreviated for single day */}
                   </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
                   <TableCell className="text-right">
@@ -392,7 +405,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                            size="sm"
                            onClick={onAddDeduccion}
                            disabled={!onAddDeduccion}
-                           className="hover:bg-destructive hover:text-white" // Keep red hover for deduction button
+                           className="hover:bg-destructive hover:text-destructive-foreground" // Restored red hover for deduction button
                        >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
