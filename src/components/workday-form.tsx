@@ -136,9 +136,9 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       breakEndTime: initialData.breakEndTime ?? '',
     } : {
       startDate: new Date(),
-      startTime: '',
-      endTime: '',
-      endsNextDay: false,
+      startTime: '12:00', // Default start time 12:00 PM
+      endTime: '22:00',   // Default end time 10:00 PM
+      endsNextDay: false, // Recalculated based on default times if needed
       includeBreak: false,
       breakStartTime: '', // Default to empty for new entries
       breakEndTime: '',   // Default to empty for new entries
@@ -159,13 +159,19 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            breakEndTime: initialData.breakEndTime ?? '',
        } : {
            startDate: new Date(),
-           startTime: '',
-           endTime: '',
-           endsNextDay: false,
+           startTime: '12:00', // Reset to default start time
+           endTime: '22:00',   // Reset to default end time
+           endsNextDay: false, // Calculate based on defaults
            includeBreak: false,
            breakStartTime: '', // Reset to empty
            breakEndTime: '',   // Reset to empty
        });
+        // Explicitly calculate endsNextDay for default times when resetting to 'new'
+        if (!initialData) {
+            const defaultStartH = 12;
+            const defaultEndH = 22;
+            setValue('endsNextDay', defaultEndH < defaultStartH);
+        }
    }, [initialData, form]); // form is stable, but reset is from it
 
 
@@ -199,23 +205,15 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
    }, [startDate]);
 
 
-  // Effect to update default end time and next day checkbox - ONLY IF NOT EDITING
+  // Effect to update endsNextDay when times change
   useEffect(() => {
-      // Only run this effect if we are adding a new entry (no initialData or existingId)
-      if (!initialData && !existingId) {
-          if (startDate && startTime && /^\d{2}:\d{2}$/.test(startTime)) {
-              const startDateTimeStr = `${format(startDate, 'yyyy-MM-dd')} ${startTime}`;
-              const startDt = parse(startDateTimeStr, 'yyyy-MM-dd HH:mm', new Date());
-
-              if (isValid(startDt)) {
-                  const defaultEndDt = addHours(startDt, 10); // Default 10 hours shift
-                  setValue('endTime', format(defaultEndDt, 'HH:mm'), { shouldValidate: true }); // Trigger validation
-                  setValue('endsNextDay', !isSameDay(startDt, defaultEndDt));
-              }
-          }
-          // No automatic reset of endTime when startTime is invalid to avoid frustrating user input
+      if (startTime && timeRegex.test(startTime) && form.getValues('endTime') && timeRegex.test(form.getValues('endTime'))) {
+          const [startH] = startTime.split(':').map(Number);
+          const [endH] = form.getValues('endTime').split(':').map(Number);
+          setValue('endsNextDay', endH < startH);
       }
-  }, [startDate, startTime, setValue, initialData, existingId]); // Add initialData and existingId to dependencies
+  }, [startTime, watch('endTime'), setValue, form]); // Rerun when startTime or endTime changes
+
 
    // Ref to track the previous state of includeBreak
    const prevIncludeBreak = useRef(includeBreak);
@@ -461,4 +459,3 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         </Form>
   );
 };
-
