@@ -606,12 +606,12 @@ export default function Home() {
 
   return (
     <main className="container mx-auto p-4 md:p-8 max-w-7xl"> {/* Increased max-width */}
-      <h1 className="text-3xl font-bold text-center mb-8">Calculadora de Nómina Quincenal</h1>
+      <h1 className="text-3xl font-bold text-center mb-8 text-foreground">Calculadora de Nómina Quincenal</h1>
 
       {/* Section for Employee ID and Pay Period Selection */}
       <Card className="mb-8 shadow-lg bg-card">
           <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
+              <CardTitle className="flex items-center gap-2 text-xl text-foreground">
                   <User className="h-5 w-5" /> Selección de Colaborador y Período
               </CardTitle>
               <CardDescription>
@@ -724,15 +724,15 @@ export default function Home() {
           </CardContent>
       </Card>
 
-      {/* Main content area with 3 columns on large screens - Adjusted layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8"> {/* Changed to grid-cols-5 */}
+      {/* Main content area with 3 columns on large screens - Adjusted layout to 7 parts */}
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8"> {/* Changed to grid-cols-7 */}
 
-          {/* Column 1: Add/Edit Day Form - Takes 1 part */}
-          <div className="lg:col-span-1">
+          {/* Column 1: Add/Edit Day Form - Takes 2 parts */}
+          <div className="lg:col-span-2">
               {/* Section for Adding/Editing a Single Day's Inputs */}
               <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
+                  <CardTitle className="flex items-center gap-2 text-xl text-foreground">
                     {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
                     {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
                      {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
@@ -767,13 +767,13 @@ export default function Home() {
               </Card>
           </div>
 
-          {/* Column 2: Calculated Days List - Takes 2 parts */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* Column 2: Calculated Days List - Takes 3 parts */}
+          <div className="lg:col-span-3 space-y-8">
               {/* Section to Display Calculated Days and Allow Editing Results */}
               {calculatedDays.length > 0 && (
                 <Card className="shadow-lg bg-card">
                   <CardHeader>
-                     <CardTitle className="flex items-center gap-2 text-xl">
+                     <CardTitle className="flex items-center gap-2 text-xl text-foreground">
                        <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
                          {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
                      </CardTitle>
@@ -786,7 +786,7 @@ export default function Home() {
                         <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-secondary/30'}`}>
                            <div className="flex items-start justify-between mb-3">
                              <div>
-                               <p className="font-semibold text-lg mb-1">Turno {index + 1}</p>
+                               <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
                                <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1">
                                    <CalendarIcon className="h-4 w-4" />
                                    {format(day.inputData.startDate, 'PPPP', { locale: es })}
@@ -907,7 +907,7 @@ export default function Home() {
               {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
                  <Card className="text-center p-8 border-dashed mt-8 bg-card">
                     <CardHeader>
-                        <CardTitle className="text-xl">Comienza a Calcular</CardTitle>
+                        <CardTitle className="text-xl text-foreground">Comienza a Calcular</CardTitle>
                         <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
                     </CardHeader>
                  </Card>
@@ -916,7 +916,7 @@ export default function Home() {
                {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
                  <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
                     <CardHeader>
-                        <CardTitle className="text-xl">Selección Pendiente</CardTitle>
+                        <CardTitle className="text-xl text-foreground">Selección Pendiente</CardTitle>
                         <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
                     </CardHeader>
                  </Card>
@@ -963,14 +963,14 @@ export default function Home() {
                </AlertDialog>
           </div>
 
-      </div> {/* End of 5-column grid */}
+      </div> {/* End of 7-column grid */}
 
        {/* Section for Quincenal Summary - Moved outside grid, takes full width */}
        {quincenalSummary && (
          <Card className="shadow-lg mt-8 bg-card"> {/* Full width */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
-                 <CardTitle className="flex items-center gap-2 text-xl"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                 <CardTitle className="flex items-center gap-2 text-xl text-foreground"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
@@ -990,3 +990,5 @@ export default function Home() {
 }
 
     
+
+      
