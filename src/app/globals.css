@@ -8,17 +8,17 @@ body {
 
 @layer base {
   :root {
-    --background: 210 17% 95%; /* Light Gray */
+    --background: 210 17% 95%; /* Keep Light Gray */
     --foreground: 240 10% 3.9%; /* Default Dark */
-    --card: 0 0% 100%;
+    --card: 0 0% 100%; /* Set to white */
     --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
+    --popover: 0 0% 100%; /* Set to white */
     --popover-foreground: 240 10% 3.9%;
     --primary: 233 64% 30%; /* Dark Blue */
     --primary-foreground: 210 40% 98%; /* Light color for text on dark blue */
-    --secondary: 210 17% 90%; /* Slightly darker gray */
+    --secondary: 0 0% 100%; /* Set to white */
     --secondary-foreground: 240 10% 3.9%; /* Default Dark */
-    --muted: 210 17% 90%; /* Same as secondary for muted */
+    --muted: 0 0% 100%; /* Set to white */
     --muted-foreground: 240 5% 64.9%; /* Lighter gray for muted text */
     --accent: 174 63% 40%; /* Teal */
     --accent-foreground: 0 0% 98%; /* White/Light text on Teal */
@@ -38,22 +38,22 @@ body {
   .dark {
     --background: 233 30% 10%; /* Very Dark Blue */
     --foreground: 210 40% 98%; /* Light Gray */
-    --card: 233 30% 12%; /* Slightly lighter dark blue */
+    --card: 233 30% 15%; /* Slightly lighter dark */
     --card-foreground: 210 40% 98%;
-    --popover: 233 30% 10%;
+    --popover: 233 30% 15%; /* Match card */
     --popover-foreground: 210 40% 98%;
     --primary: 233 64% 70%; /* Lighter Blue */
     --primary-foreground: 233 64% 10%; /* Dark text on Lighter Blue */
-    --secondary: 233 30% 15%; /* Darker Blue/Gray */
+    --secondary: 233 30% 18%; /* Slightly lighter than card */
     --secondary-foreground: 210 40% 98%; /* Light Gray */
-    --muted: 233 30% 15%; /* Same as secondary */
+    --muted: 233 30% 18%; /* Match secondary */
     --muted-foreground: 210 40% 60%; /* Grayer text */
     --accent: 174 63% 50%; /* Brighter Teal */
     --accent-foreground: 0 0% 9%; /* Dark text on Teal */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 233 30% 20%; /* Darker border */
-    --input: 233 30% 20%; /* Darker input */
+    --border: 233 30% 25%; /* Darker border */
+    --input: 233 30% 25%; /* Darker input */
     --ring: 174 63% 50%; /* Brighter Teal for ring */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
