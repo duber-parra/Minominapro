@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { format, parse, addHours, isValid, isSameDay } from 'date-fns';
+import { format, parse, addHours, isValid, isSameDay, getYear, isSunday } from 'date-fns'; // Added getYear, isSunday
 import { es } from 'date-fns/locale'; // Import Spanish locale
 
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import type { CalculationResults, CalculationError } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from '@/components/ui/switch';
+import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
 
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const timeErrorMessage = 'Formato de hora inválido (HH:mm).';
@@ -93,6 +94,29 @@ interface WorkdayFormProps {
   existingId?: string | null; // Optional ID for editing
 }
 
+// Cache for holidays
+let holidaysCache: { [year: number]: Set<string> } = {};
+
+async function fetchAndCacheHolidays(year: number): Promise<Set<string>> {
+    if (holidaysCache[year]) {
+        return holidaysCache[year];
+    }
+    try {
+        const holidays = await getColombianHolidays(year);
+        if (!Array.isArray(holidays)) {
+            console.error(`Error: getColombianHolidays(${year}) did not return an array.`);
+            throw new Error(`Formato de respuesta inválido para festivos de ${year}.`);
+        }
+        const holidaySet = new Set(holidays.map(h => format(new Date(h.year, h.month - 1, h.day), 'yyyy-MM-dd')));
+        holidaysCache[year] = holidaySet;
+        return holidaySet;
+    } catch (error) {
+        console.error(`Error fetching or caching holidays for ${year}:`, error);
+        return new Set(); // Return empty set on error
+    }
+}
+
+
 export const WorkdayForm: FC<WorkdayFormProps> = ({
   onCalculationStart,
   onCalculationComplete,
@@ -121,6 +145,10 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     },
   });
 
+   // --- State for Holiday Check ---
+   const [isHoliday, setIsHoliday] = useState<boolean>(false);
+   const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
+
   // Reset form when initialData changes (i.e., when switching between add/edit or editing different days)
    useEffect(() => {
        form.reset(initialData ? {
@@ -146,6 +174,29 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const startDate = watch('startDate');
   const startTime = watch('startTime');
   const includeBreak = watch('includeBreak');
+
+   // --- Effect to check if startDate is a holiday ---
+   useEffect(() => {
+       if (startDate && isValid(startDate)) {
+           const year = getYear(startDate);
+           const dateStr = format(startDate, 'yyyy-MM-dd');
+           setIsCheckingHoliday(true); // Indicate loading
+
+           fetchAndCacheHolidays(year)
+               .then(holidaySet => {
+                   setIsHoliday(holidaySet.has(dateStr));
+               })
+               .catch(error => {
+                   console.error("Error checking holiday status:", error);
+                   setIsHoliday(false); // Assume not holiday on error
+               })
+               .finally(() => {
+                   setIsCheckingHoliday(false); // Finish loading
+               });
+       } else {
+           setIsHoliday(false); // Not a holiday if date is invalid
+       }
+   }, [startDate]);
 
 
   // Effect to update default end time and next day checkbox - ONLY IF NOT EDITING
@@ -217,10 +268,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           variant={'outline'}
                           className={cn(
                             'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
+                            !field.value && 'text-muted-foreground',
+                             // Add conditional border for holidays
+                             isHoliday && 'border-accent border-2',
+                             // Optionally add style for Sunday too
+                             !isHoliday && startDate && isSunday(startDate) && 'border-blue-300 border'
                           )}
+                          disabled={isCheckingHoliday} // Disable while checking
                         >
-                          {field.value ? (
+                          {isCheckingHoliday ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : field.value ? (
                             format(field.value instanceof Date ? field.value : new Date(field.value), 'PPP', { locale: es }) // Ensure it's a Date object
                           ) : (
                             <span>Selecciona una fecha</span>
@@ -239,9 +297,18 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         }
                         initialFocus
                         locale={es}
+                         modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
+                         modifiersClassNames={{ holiday: 'text-accent font-bold', sunday: 'text-blue-600' }}
                       />
                     </PopoverContent>
                   </Popover>
+                  {/* Display holiday/Sunday indicator */}
+                  {isHoliday && !isCheckingHoliday && (
+                      <p className="text-xs text-accent font-semibold mt-1 pl-1"> • Día festivo</p>
+                  )}
+                   {!isHoliday && startDate && isSunday(startDate) && !isCheckingHoliday && (
+                      <p className="text-xs text-blue-600 font-semibold mt-1 pl-1"> • Domingo</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -355,12 +422,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            )}
 
 
-            <Button type="submit" className="w-full bg-[#4D44E1] hover:bg-[#4D44E1]/90 text-white" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-[#4D44E1] hover:bg-[#4D44E1]/90 text-white" disabled={isLoading || isCheckingHoliday}> {/* Disable submit while checking holiday */}
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {existingId ? 'Guardando Cambios...' : 'Agregando Día...'}
                 </>
+              ) : isCheckingHoliday ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verificando Festivo...
+                  </>
               ) : (
                  existingId ? <><Save className="mr-2 h-4 w-4" /> Guardar Cambios</> : <><Plus className="mr-2 h-4 w-4" /> Agregar Día a la Quincena</>
               )}
@@ -369,3 +441,4 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         </Form>
   );
 };
+

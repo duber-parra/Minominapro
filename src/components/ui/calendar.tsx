@@ -3,14 +3,17 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, type DateFormatter } from "react-day-picker"
+import { DayPicker, type DateFormatter, type DayModifiers, type Matcher } from "react-day-picker" // Added DayModifiers, Matcher
 import type { Locale } from 'date-fns'; // Import Locale type
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
+// --- Added modifier props ---
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
     locale?: Locale; // Add locale prop
+    modifiers?: DayModifiers; // Allow passing custom modifiers
+    modifiersClassNames?: Record<string, string>; // Allow passing class names for modifiers
 }
 
 function Calendar({
@@ -18,6 +21,8 @@ function Calendar({
   classNames,
   showOutsideDays = true,
   locale, // Destructure locale
+  modifiers, // Destructure modifiers
+  modifiersClassNames, // Destructure modifier class names
   ...props
 }: CalendarProps) {
   return (
@@ -67,6 +72,8 @@ function Calendar({
         ),
       }}
       locale={locale} // Pass locale to DayPicker
+      modifiers={modifiers} // Pass modifiers
+      modifiersClassNames={modifiersClassNames} // Pass modifier class names
       {...props}
     />
   )
