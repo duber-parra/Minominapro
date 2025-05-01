@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Imported useMemo
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -77,8 +77,7 @@ export default function SchedulePage() {
     const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
     const [currentDate, setCurrentDate] = useState(new Date()); // Track current date for week view
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({}); // Store data per date key "yyyy-MM-dd"
-    const [viewMode, setViewMode] = useState<'day' | 'week'>('day'); // 'day' or 'week'
-
+    const [viewMode, setViewMode] = useState<'day' | 'week'>('week'); // Default to week view
     const [selectedLocationId, setSelectedLocationId] = useState<string>(initialLocations[0].id);
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -106,20 +105,28 @@ export default function SchedulePage() {
     const weekDates = getWeekDates(currentDate);
     const currentDayKey = format(targetDate, 'yyyy-MM-dd'); // Date key for current schedule
 
-    const currentDaySchedule = scheduleData[currentDayKey] || { date: targetDate, assignments: {} };
+    // Helper to get schedule for a specific date, handling potential undefined
+    const getScheduleForDate = (date: Date): ScheduleData => {
+        const key = format(date, 'yyyy-MM-dd');
+        return scheduleData[key] || { date: date, assignments: {} };
+    }
 
     // Derived state for available employees
     const assignedEmployeeIds = useMemo(() => {
         const ids = new Set<string>();
-        const dateKey = format(targetDate, 'yyyy-MM-dd');
-        const daySchedule = scheduleData[dateKey];
-        if (daySchedule) {
-            Object.values(daySchedule.assignments).forEach(deptAssignments => {
-                deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
-            });
-        }
+        const datesToConsider = viewMode === 'week' ? weekDates : [targetDate];
+
+        datesToConsider.forEach(date => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const daySchedule = scheduleData[dateKey];
+            if (daySchedule) {
+                Object.values(daySchedule.assignments).forEach(deptAssignments => {
+                    deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
+                });
+            }
+        });
         return ids;
-    }, [scheduleData, targetDate]);
+    }, [scheduleData, targetDate, viewMode, weekDates]);
 
     const filteredEmployees = useMemo(() => employees.filter(emp => emp.primaryLocationId === selectedLocationId), [employees, selectedLocationId]);
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
@@ -375,28 +382,28 @@ export default function SchedulePage() {
                      {/* --- Configuration & Available Employees (Takes 3/12 width on large screens) --- */}
                      <div className={`lg:col-span-3 space-y-6 ${viewMode === 'week' ? 'hidden lg:block' : ''}`}> {/* Always show on large screens */}
                          {/* Configuration Card */}
-                         <Card className="shadow-md bg-card">
-                              <CardHeader className="pb-3 pt-4 px-4">
-                                 <CardTitle className="text-lg">Configuración</CardTitle>
-                                 <CardDescription>Sedes, Deptos, Colaboradores</CardDescription>
+                         <Card className="shadow-md bg-card border border-border">
+                              <CardHeader className="pb-3 pt-4 px-4 border-b">
+                                 <CardTitle className="text-lg font-medium text-foreground">Configuración</CardTitle>
+                                 <CardDescription className="text-xs text-muted-foreground">Sedes, Deptos, Colaboradores</CardDescription>
                              </CardHeader>
-                             <CardContent className="px-4 pb-4 space-y-4 text-sm">
+                             <CardContent className="px-4 py-4 space-y-4 text-sm">
                                  {/* Locations */}
                                  <div className="space-y-1">
                                      <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold flex items-center gap-1"><Building className="h-3 w-3"/>Sedes ({locations.length})</h4>
-                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
+                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-3.5 w-3.5 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                      </div>
                                      <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                          {locations.map((loc) => (
                                              <li key={loc.id} className="flex items-center justify-between group py-0.5">
-                                                 <span className={`truncate ${loc.id === selectedLocationId ? 'font-bold text-primary' : ''}`}>{loc.name}</span>
+                                                 <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-3 w-3" /></Button>
+                                                     <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger> {/* Removed asChild */}
+                                                          <AlertDialogTrigger asChild>
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                           {/* Content defined later */}
@@ -406,22 +413,23 @@ export default function SchedulePage() {
                                          ))}
                                      </ul>
                                  </div>
+                                 <Separator />
                                  {/* Departments */}
                                  <div className="space-y-1">
                                       <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold flex items-center gap-1"><Building2 className="h-3 w-3"/>Departamentos ({filteredDepartments.length})</h4>
-                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Depto. a esta Sede">
+                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-3.5 w-3.5 text-muted-foreground"/>Departamentos ({filteredDepartments.length})</h4>
+                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Depto. a esta Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                       </div>
                                      <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                          {filteredDepartments.map((dep) => (
                                              <li key={dep.id} className="flex items-center justify-between group py-0.5">
-                                                 <span className="truncate">{dep.name}</span>
+                                                 <span className="truncate text-muted-foreground">{dep.name}</span>
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-3 w-3" /></Button>
+                                                     <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                         <AlertDialogTrigger> {/* Removed asChild */}
+                                                         <AlertDialogTrigger asChild>
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                           {/* Content defined later */}
@@ -431,22 +439,23 @@ export default function SchedulePage() {
                                          ))}
                                      </ul>
                                  </div>
+                                 <Separator/>
                                   {/* Employees */}
                                  <div className="space-y-1">
                                      <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold flex items-center gap-1"><Users className="h-3 w-3"/>Colaboradores ({filteredEmployees.length})</h4>
-                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador a esta Sede">
+                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-3.5 w-3.5 text-muted-foreground"/>Colaboradores ({filteredEmployees.length})</h4>
+                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador a esta Sede">
                                              <Plus className="h-4 w-4" />
                                          </Button>
                                      </div>
                                       <ul className="space-y-1 max-h-24 overflow-y-auto text-xs border rounded-md p-2 bg-muted/30">
                                           {filteredEmployees.map((emp) => (
                                               <li key={emp.id} className="flex items-center justify-between group py-0.5">
-                                                  <span className="truncate">{emp.name}</span>
+                                                  <span className="truncate text-muted-foreground">{emp.name}</span>
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-3 w-3" /></Button>
+                                                      <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-3 w-3" /></Button>
                                                        <AlertDialog>
-                                                          <AlertDialogTrigger> {/* Removed asChild */}
+                                                          <AlertDialogTrigger asChild>
                                                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                            {/* Content defined later */}
@@ -474,6 +483,7 @@ export default function SchedulePage() {
                             weekDates={weekDates} // Pass week dates
                             currentDate={targetDate} // Pass target date for single day view or start of week
                             onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
+                            getScheduleForDate={getScheduleForDate} // Pass helper function
                         />
                      </div>
                  </div>
