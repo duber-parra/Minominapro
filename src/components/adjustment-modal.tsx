@@ -154,20 +154,19 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
              <DialogFooter className="mt-4">
                  <DialogClose asChild>
                      {/* Cancel button: outline variant, red on hover */}
-                    <Button type="button" variant="outline" className="hover:bg-red-600 hover:text-white">
+                    <Button type="button" variant="outline" > {/* Removed custom hover */}
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
                  {/* Save button: default variant, gradient on hover */}
                 <Button
                     type="submit"
-                    variant="default" // Use default variant
+                    // Use default variant for income, destructive for deduction
+                    variant={type === 'deduccion' ? "destructive" : "default"}
+                    // Removed custom background/hover classes
                     className={cn(
-                        "text-foreground", // Use foreground for better contrast on light gradient
-                        type === 'deduccion'
-                            ? "bg-destructive hover:bg-destructive/90" // Red background, slightly darker red on hover for deduction
-                            // Apply hover color for income using arbitrary values
-                            : "bg-primary hover:bg-[hsl(145.54deg_100%_56.86%)]" // Changed hover to specified green HSL
+                        // Optionally add text color if needed, but variants should handle it
+                        // type === 'deduccion' ? "text-destructive-foreground" : "text-primary-foreground"
                     )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
