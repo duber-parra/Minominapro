@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser } from 'lucide-react'; // Added Save, X, PencilLine, User, FolderSync, Eraser
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown } from 'lucide-react'; // Added Save, X, PencilLine, User, FolderSync, Eraser, FileDown
 import { format, parseISO, startOfMonth, endOfMonth, setDate } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { VALORES } from '@/config/payroll-values'; // Import VALORES from new location
+import { exportPayrollToPDF } from '@/lib/pdf-exporter'; // Import the PDF export function
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
@@ -426,6 +427,32 @@ export default function Home() {
   // Determine if form or summary should be disabled
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
 
+  // --- PDF Export Handler ---
+  const handleExportPDF = () => {
+     if (!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
+         toast({
+             title: 'Datos Incompletos para Exportar',
+             description: 'Asegúrate de tener un colaborador, período y cálculo quincenal completado.',
+             variant: 'destructive',
+         });
+         return;
+     }
+     try {
+        exportPayrollToPDF(quincenalSummary, employeeId, payPeriodStart, payPeriodEnd);
+        toast({
+            title: 'PDF Exportado',
+            description: `Comprobante de nómina para ${employeeId} generado.`,
+        });
+     } catch (error) {
+        console.error("Error exporting PDF:", error);
+         toast({
+             title: 'Error al Exportar PDF',
+             description: 'No se pudo generar el archivo PDF.',
+             variant: 'destructive',
+         });
+     }
+  };
+
 
   return (
     <main className="container mx-auto p-4 md:p-8 max-w-6xl">
@@ -719,9 +746,14 @@ export default function Home() {
       {/* Section for Quincenal Summary */}
       {quincenalSummary && (
          <Card className="shadow-lg mt-8">
-            <CardHeader>
-               <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-               <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+               <div>
+                 <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
+                 <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+               </div>
+                <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
+                    <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
+                </Button>
             </CardHeader>
             <CardContent>
                <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
@@ -753,6 +785,4 @@ export default function Home() {
     </main>
   );
 }
-
-
 
