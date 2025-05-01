@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -14,9 +13,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch'; // Import Switch
 import { Save, X } from 'lucide-react';
 import type { ShiftDetails } from '@/types/schedule'; // Assuming type exists
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface ShiftDetailModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface ShiftDetailModalProps {
 
 // Basic time validation (HH:MM format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const timeErrorMessage = 'Formato HH:MM inválido.';
 
 export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   isOpen,
@@ -41,22 +43,27 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   const { toast } = useToast();
   const [startTime, setStartTime] = useState(initialDetails?.startTime || '08:00');
   const [endTime, setEndTime] = useState(initialDetails?.endTime || '17:00');
-  const [breakDuration, setBreakDuration] = useState(
-    (initialDetails?.breakDurationMinutes ?? 60).toString() // Default to 60 mins
-  );
+  const [includeBreak, setIncludeBreak] = useState(initialDetails?.includeBreak || false); // Default to false
+  const [breakStartTime, setBreakStartTime] = useState(initialDetails?.breakStartTime || '15:00'); // Default 3 PM
+  const [breakEndTime, setBreakEndTime] = useState(initialDetails?.breakEndTime || '18:00'); // Default 6 PM
+
   const [startTimeError, setStartTimeError] = useState<string | null>(null);
   const [endTimeError, setEndTimeError] = useState<string | null>(null);
-  const [breakError, setBreakError] = useState<string | null>(null);
+  const [breakStartTimeError, setBreakStartTimeError] = useState<string | null>(null);
+  const [breakEndTimeError, setBreakEndTimeError] = useState<string | null>(null);
 
   // Reset state when modal opens or initial details change
   useEffect(() => {
     if (isOpen) {
       setStartTime(initialDetails?.startTime || '08:00');
       setEndTime(initialDetails?.endTime || '17:00');
-      setBreakDuration((initialDetails?.breakDurationMinutes ?? 60).toString());
+      setIncludeBreak(initialDetails?.includeBreak || false);
+      setBreakStartTime(initialDetails?.breakStartTime || '15:00');
+      setBreakEndTime(initialDetails?.breakEndTime || '18:00');
       setStartTimeError(null);
       setEndTimeError(null);
-      setBreakError(null);
+      setBreakStartTimeError(null);
+      setBreakEndTimeError(null);
     }
   }, [isOpen, initialDetails]);
 
@@ -64,29 +71,44 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
     let isValid = true;
     setStartTimeError(null);
     setEndTimeError(null);
-    setBreakError(null);
+    setBreakStartTimeError(null);
+    setBreakEndTimeError(null);
 
     if (!timeRegex.test(startTime)) {
-      setStartTimeError('Formato HH:MM inválido.');
+      setStartTimeError(timeErrorMessage);
       isValid = false;
     }
     if (!timeRegex.test(endTime)) {
-      setEndTimeError('Formato HH:MM inválido.');
+      setEndTimeError(timeErrorMessage);
       isValid = false;
     }
 
-    const breakMinutes = parseInt(breakDuration, 10);
-    if (isNaN(breakMinutes) || breakMinutes < 0) {
-      setBreakError('Debe ser un número positivo o 0.');
-      isValid = false;
+    // Validate break times only if break is included
+    if (includeBreak) {
+        if (!breakStartTime || !timeRegex.test(breakStartTime)) {
+            setBreakStartTimeError(timeErrorMessage);
+            isValid = false;
+        }
+        if (!breakEndTime || !timeRegex.test(breakEndTime)) {
+            setBreakEndTimeError(timeErrorMessage);
+            isValid = false;
+        }
+
+        // Check break end time is after break start time
+        if (isValid && breakStartTime && breakEndTime && breakStartTime >= breakEndTime) {
+             setBreakEndTimeError('Hora fin descanso debe ser posterior a hora inicio.');
+             isValid = false;
+             // Note: Simple comparison works for HH:MM within the same day.
+             // More complex logic needed if breaks can cross midnight (unlikely scenario).
+        }
     }
+
 
     // Basic check: end time should be after start time (doesn't handle overnight yet)
     if (isValid && startTime >= endTime) {
-        setEndTimeError('Hora de fin debe ser posterior a la hora de inicio.');
-        // Note: This simple check fails for overnight shifts. Needs date-fns or similar for proper comparison.
-        // For now, we allow it but ideally should be handled.
-        // isValid = false; // Temporarily allow overnight for simplicity
+        // Allow overnight shifts for simplicity, maybe add a warning or flag later
+        // setEndTimeError('Hora de fin debe ser posterior a la hora de inicio.');
+        // isValid = false;
     }
 
 
@@ -94,7 +116,9 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
       onSave({
         startTime,
         endTime,
-        breakDurationMinutes: breakMinutes,
+        includeBreak,
+        breakStartTime: includeBreak ? breakStartTime : undefined, // Only save if included
+        breakEndTime: includeBreak ? breakEndTime : undefined,     // Only save if included
       });
     } else {
         toast({
@@ -119,47 +143,77 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
           {/* Start Time */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="start-time" className="text-right">
-              Inicio
+              Inicio Turno
             </Label>
             <Input
               id="start-time"
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className={`col-span-3 ${startTimeError ? 'border-destructive ring-destructive' : ''}`}
+              className={cn("col-span-3", startTimeError && 'border-destructive ring-destructive')}
             />
              {startTimeError && <p className="col-span-4 text-xs text-destructive text-right">{startTimeError}</p>}
           </div>
           {/* End Time */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="end-time" className="text-right">
-              Fin
+              Fin Turno
             </Label>
             <Input
               id="end-time"
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className={`col-span-3 ${endTimeError ? 'border-destructive ring-destructive' : ''}`}
+              className={cn("col-span-3", endTimeError && 'border-destructive ring-destructive')}
             />
              {endTimeError && <p className="col-span-4 text-xs text-destructive text-right">{endTimeError}</p>}
           </div>
-          {/* Break Duration */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="break-duration" className="text-right">
-              Descanso (min)
-            </Label>
-            <Input
-              id="break-duration"
-              type="number"
-              value={breakDuration}
-              onChange={(e) => setBreakDuration(e.target.value)}
-              min="0"
-              className={`col-span-3 ${breakError ? 'border-destructive ring-destructive' : ''}`}
-              placeholder="Ej: 60"
-            />
-             {breakError && <p className="col-span-4 text-xs text-destructive text-right">{breakError}</p>}
+
+          {/* Include Break Switch */}
+          <div className="flex items-center justify-between space-x-2 pt-2 border-t mt-2">
+             <Label htmlFor="include-break" className="font-medium">
+                Incluir Descanso
+             </Label>
+             <Switch
+                id="include-break"
+                checked={includeBreak}
+                onCheckedChange={setIncludeBreak}
+             />
           </div>
+
+
+          {/* Conditional Break Time Inputs */}
+          {includeBreak && (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="break-start-time" className="text-right">
+                  Inicio Descanso
+                </Label>
+                <Input
+                  id="break-start-time"
+                  type="time"
+                  value={breakStartTime}
+                  onChange={(e) => setBreakStartTime(e.target.value)}
+                  className={cn("col-span-3", breakStartTimeError && 'border-destructive ring-destructive')}
+                />
+                 {breakStartTimeError && <p className="col-span-4 text-xs text-destructive text-right">{breakStartTimeError}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="break-end-time" className="text-right">
+                  Fin Descanso
+                </Label>
+                <Input
+                  id="break-end-time"
+                  type="time"
+                  value={breakEndTime}
+                  onChange={(e) => setBreakEndTime(e.target.value)}
+                  className={cn("col-span-3", breakEndTimeError && 'border-destructive ring-destructive')}
+                />
+                 {breakEndTimeError && <p className="col-span-4 text-xs text-destructive text-right">{breakEndTimeError}</p>}
+              </div>
+            </>
+          )}
+
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -175,5 +229,3 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
     </Dialog>
   );
 };
-
-    

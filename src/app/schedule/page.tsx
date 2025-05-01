@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -24,7 +23,7 @@ import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal'; // Pl
 
 // Placeholder Types - Define these properly in types/schedule.ts
 // Assuming these types exist in a dedicated types file
-import type { Location, Department, Employee, ShiftAssignment, ShiftDetails, ScheduleData } from '@/types/schedule';
+import type { Location, Department, Employee, ShiftAssignment, ShiftDetails, ScheduleData, PayrollCalculationInput } from '@/types/schedule'; // Added PayrollCalculationInput
 
 // Mock Data (Replace with API calls or context later)
 const MOCK_LOCATIONS: Location[] = [
@@ -59,6 +58,26 @@ const getInitialScheduleData = (departments: Department[], selectedDate: Date): 
     return data;
 };
 
+// Helper to calculate break duration in minutes (basic implementation)
+const calculateBreakDuration = (start?: string, end?: string): number => {
+    if (!start || !end) return 0;
+    try {
+        const [startH, startM] = start.split(':').map(Number);
+        const [endH, endM] = end.split(':').map(Number);
+        const startDate = new Date(0, 0, 0, startH, startM);
+        let endDate = new Date(0, 0, 0, endH, endM);
+        // Basic handling if break crosses midnight (add a day to end date) - unlikely for breaks
+        if (endDate < startDate) {
+            endDate.setDate(endDate.getDate() + 1);
+        }
+        const diffMs = endDate.getTime() - startDate.getTime();
+        return Math.round(diffMs / (1000 * 60));
+    } catch (e) {
+        console.error("Error calculating break duration:", e);
+        return 0;
+    }
+};
+
 export default function SchedulePage() {
   const { toast } = useToast();
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(MOCK_LOCATIONS[0]?.id);
@@ -66,8 +85,6 @@ export default function SchedulePage() {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily'); // State for view mode
   // const [weekDates, setWeekDates] = useState<Date[]>([]); // Dates for the selected week
 
-  // State for schedule data { [departmentId]: ShiftAssignment[] }
-  // const [schedule, setSchedule] = useState<ScheduleData>({});
   // State derived from selected location and date
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -90,7 +107,7 @@ export default function SchedulePage() {
       const filteredEmployees = MOCK_EMPLOYEES.filter(emp => emp.primaryLocationId === selectedLocationId);
       setDepartments(filteredDepartments);
       setEmployees(filteredEmployees);
-       // Reset schedule data when location changes
+       // Reset schedule data when location changes or date changes
       setScheduleData(getInitialScheduleData(filteredDepartments, selectedDate));
 
     } else {
@@ -101,7 +118,7 @@ export default function SchedulePage() {
      // Reset modal state
      setIsModalOpen(false);
      setPendingAssignment(null);
-  }, [selectedLocationId, selectedDate]); // Also update schedule when date changes
+  }, [selectedLocationId, selectedDate]); // Rerun when location or date changes
 
 
   // --- Event Handlers ---
@@ -146,13 +163,18 @@ export default function SchedulePage() {
     }
   };
 
+    // Updated to use new ShiftDetails structure
     const handleSaveShiftDetails = (details: ShiftDetails) => {
         if (pendingAssignment) {
             const { employee, departmentId } = pendingAssignment;
             const newAssignment: ShiftAssignment = {
                 id: `shift-${Date.now()}-${employee.id}`, // Simple unique ID
                 employee,
-                ...details, // Includes startTime, endTime, breakDurationMinutes
+                startTime: details.startTime,
+                endTime: details.endTime,
+                includeBreak: details.includeBreak,
+                breakStartTime: details.includeBreak ? details.breakStartTime : undefined,
+                breakEndTime: details.includeBreak ? details.breakEndTime : undefined,
             };
 
              setScheduleData(prevData => {
@@ -186,6 +208,62 @@ export default function SchedulePage() {
             variant: "destructive",
          });
     };
+
+  const handleCalculatePayroll = () => {
+      // 1. Gather Data for a specific employee and period (replace with actual selection logic)
+      const targetEmployeeId = 'emp-1'; // Example: Calculate for Ana García
+      const periodStartDate = startOfWeek(selectedDate, { locale: es, weekStartsOn: 1 }); // Example: Current week start
+      const periodEndDate = endOfWeek(selectedDate, { locale: es, weekStartsOn: 1 }); // Example: Current week end
+      const salarioBase = 711750; // Example base salary
+
+      // 2. Filter assignments for the target employee within the period
+      // This is a simplified example assuming scheduleData holds only one day.
+      // In a real app, you'd query saved data for the entire period.
+      const employeeShiftsForPeriod: ShiftAssignment[] = [];
+      Object.values(scheduleData.assignments).flat().forEach(assignment => {
+          if (assignment.employee.id === targetEmployeeId) {
+              // Here, you'd also check if scheduleData.date is within the periodStartDate/periodEndDate
+              // For this example, we assume scheduleData.date is the date we care about
+               if (scheduleData.date >= periodStartDate && scheduleData.date <= periodEndDate) {
+                   employeeShiftsForPeriod.push(assignment);
+               }
+          }
+      });
+
+       // 3. Structure the data for the Payroll Calculator
+      const payrollInput: PayrollCalculationInput = {
+          employeeId: targetEmployeeId,
+          periodoInicio: format(periodStartDate, 'yyyy-MM-dd'),
+          periodoFin: format(periodEndDate, 'yyyy-MM-dd'),
+          salarioBasePeriodo: salarioBase,
+          turnos: employeeShiftsForPeriod.map(turno => ({
+              fecha: format(scheduleData.date, 'yyyy-MM-dd'), // Use the date from scheduleData
+              horaEntrada: turno.startTime,
+              horaSalida: turno.endTime,
+              // Calculate duration from break start/end times if available
+              duracionDescansoMinutos: turno.includeBreak
+                  ? calculateBreakDuration(turno.breakStartTime, turno.breakEndTime)
+                  : 0,
+          })),
+      };
+
+       // 4. Send data to the Payroll Calculator
+       // This might involve navigating to the calculator page with state, using context,
+       // or calling an API endpoint if the calculator is a separate service.
+       console.log("Enviando datos a la Calculadora de Nómina:", payrollInput);
+       alert(`Simulación: Enviando datos para calcular nómina de ${targetEmployeeId}. Ver consola.`);
+
+        // TODO: Implement actual navigation or data passing mechanism
+        // Example (if using router and state):
+        // router.push({
+        //   pathname: '/', // Assuming calculator is at the root
+        //   query: { payrollData: JSON.stringify(payrollInput) },
+        // });
+         toast({
+            title: "Enviando a Calculadora",
+            description: `Preparando datos de ${targetEmployeeId} para cálculo de nómina.`,
+         });
+  };
 
 
   // --- Placeholder Actions ---
@@ -306,7 +384,7 @@ export default function SchedulePage() {
                         </Button>
                          {/* <Button variant="secondary">Asignar Descanso</Button> */}
                          {/* Add button to trigger Payroll Calculation */}
-                         <Button variant="secondary" disabled={!selectedLocationId} onClick={() => alert('Funcionalidad "Calcular Nómina" pendiente.')}>
+                         <Button variant="secondary" disabled={!selectedLocationId} onClick={handleCalculatePayroll}>
                             Calcular Nómina con Horario
                          </Button>
                     </div>
@@ -362,5 +440,3 @@ export default function SchedulePage() {
 
   );
 }
-
-    

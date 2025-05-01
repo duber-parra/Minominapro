@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,9 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove }) =>
              <p className="text-xs text-muted-foreground flex items-center gap-1">
                  <Clock className="h-3 w-3" />
                  {assignment.startTime} - {assignment.endTime}
-                 {assignment.breakDurationMinutes > 0 && ` (${assignment.breakDurationMinutes}m descanso)`}
+                 {assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime && (
+                    <span className="ml-1">(D: {assignment.breakStartTime}-{assignment.breakEndTime})</span>
+                 )}
              </p>
          </div>
          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive ml-2" onClick={onRemove}>
@@ -39,5 +40,3 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove }) =>
      </Card>
   );
 };
-
-    

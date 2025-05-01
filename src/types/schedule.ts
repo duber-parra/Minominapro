@@ -1,4 +1,3 @@
-
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -25,7 +24,9 @@ export interface Employee {
 export interface ShiftDetails {
     startTime: string; // Format "HH:MM"
     endTime: string;   // Format "HH:MM"
-    breakDurationMinutes: number;
+    includeBreak: boolean; // Flag to indicate if break is included
+    breakStartTime?: string; // Format "HH:MM", optional
+    breakEndTime?: string;   // Format "HH:MM", optional
 }
 
 export interface ShiftAssignment extends ShiftDetails {
@@ -48,11 +49,12 @@ export interface ShiftTemplate {
   name: string;
   locationId: string;
   assignments: {
-    [departmentId: string]: Pick<ShiftAssignment, 'employee' | 'startTime' | 'endTime' | 'breakDurationMinutes'>[];
+    [departmentId: string]: Pick<ShiftAssignment, 'employee' | 'startTime' | 'endTime' | 'includeBreak' | 'breakStartTime' | 'breakEndTime'>[];
   };
 }
 
 // Interface for data sent to Payroll Calculator
+// TODO: Update this interface if the payroll calculator needs the break start/end times
 export interface PayrollCalculationInput {
   employeeId: string;
   periodoInicio: string; // Format "YYYY-MM-DD"
@@ -62,8 +64,7 @@ export interface PayrollCalculationInput {
     fecha: string;          // Format "YYYY-MM-DD"
     horaEntrada: string;    // Format "HH:MM"
     horaSalida: string;     // Format "HH:MM"
-    duracionDescansoMinutos: number;
+    // Consider how break information should be passed. Duration might still be useful.
+    duracionDescansoMinutos: number; // Keeping this for now, calculate from start/end times if provided
   }[];
 }
-
-    
