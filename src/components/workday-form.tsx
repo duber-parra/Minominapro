@@ -2,7 +2,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -217,12 +217,32 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       }
   }, [startDate, startTime, setValue, initialData, existingId]); // Add initialData and existingId to dependencies
 
-   // Effect to trigger validation for break times when includeBreak changes or when they are modified
+   // Ref to track the previous state of includeBreak
+   const prevIncludeBreak = useRef(includeBreak);
+
+   // Effect to trigger validation and set defaults for break times
    useEffect(() => {
        if (includeBreak) {
-         trigger(["breakStartTime", "breakEndTime"]);
+           // If the switch was just turned ON
+           if (!prevIncludeBreak.current) {
+               setValue('breakStartTime', '15:00', { shouldValidate: true });
+               setValue('breakEndTime', '18:00', { shouldValidate: true });
+           } else {
+               // If the switch was already on, just trigger validation when times change
+               trigger(["breakStartTime", "breakEndTime"]);
+           }
+       } else {
+           // If the switch was just turned OFF
+           if (prevIncludeBreak.current) {
+               // Optionally reset fields when turned off
+               // setValue('breakStartTime', '', { shouldValidate: false });
+               // setValue('breakEndTime', '', { shouldValidate: false });
+               // form.clearErrors(["breakStartTime", "breakEndTime"]);
+           }
        }
-   }, [includeBreak, trigger, watch('breakStartTime'), watch('breakEndTime')]); // Trigger also when break times change
+       // Update the previous state ref *after* the logic runs
+       prevIncludeBreak.current = includeBreak;
+   }, [includeBreak, trigger, setValue, watch('breakStartTime'), watch('breakEndTime')]); // Trigger also when break times change
 
 
   async function onSubmit(values: WorkdayFormValues) {
