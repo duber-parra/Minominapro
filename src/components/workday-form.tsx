@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { format, parse, addHours, isValid, isSameDay, getYear, isSunday, addDays } from 'date-fns'; // Added addDays
+import { format, parse, addHours, isValid, isSameDay, getYear, isSunday, addDays } from 'date-fns'; // Added addDays and isSameDay
 import { es } from 'date-fns/locale'; // Import Spanish locale
 
 import { Button } from '@/components/ui/button';
@@ -142,8 +142,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       endTime: '22:00',   // Default end time 10:00 PM
       endsNextDay: false, // Recalculated based on default times if needed
       includeBreak: false,
-      breakStartTime: '', // Default to empty for new entries
-      breakEndTime: '',   // Default to empty for new entries
+      breakStartTime: '15:00', // Default break start if enabled
+      breakEndTime: '18:00',   // Default break end if enabled
     },
   });
 
@@ -340,7 +340,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
                          modifiersClassNames={{
-                             holiday: 'ring-2 ring-offset-1 ring-accent text-accent font-bold', // Use ring utility
+                             holiday: 'ring-2 ring-offset-1 ring-accent text-accent font-bold border-accent border-2', // Use ring utility + border
                              sunday: 'text-primary'
                          }}
                       />
@@ -485,5 +485,3 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         </Form>
   );
 };
-
-    
