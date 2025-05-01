@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -202,3 +203,4 @@ const formatHours = (hours: number): string => {
         maximumFractionDigits: 2,
     });
 };
+

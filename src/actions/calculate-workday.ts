@@ -25,13 +25,13 @@ const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
 // Valores por hora (pesos colombianos)
 // ESTE ES EL OBJETO QUE DEBES ACTUALIZAR SI LOS VALORES CAMBIAN:
 const VALORES = {
-    "Recargo_Noct_Base": 2166,          // Recargo Nocturno (dentro de las 7.6h base, laboral)
-    "HED": 7736.41,                        // Hora Extra Diurna (después de 7.6h,laboral, hasta las 9 pm )
-    "HEN": 10830.98,                        // Hora Extra Nocturna (después de 7.6h, laboral)
-    "Recargo_Dom_Diurno_Base": 4642,    // Recargo Dominical/Festivo Diurno (dentro de 7.6h)
-    "Recargo_Dom_Noct_Base": 6808,    // Recargo Dominical/Festivo Nocturno (dentro de 7.6h)
-    "HEDD_F": 12378.26,                     // Hora Extra Dominical/Festiva Diurna (después de 7.6h)
-    "HEND_F": 15472.83,                     // Hora Extra Dominical/Festiva Nocturna (después de 7.6h)
+    "Recargo_Noct_Base": 2166,          // Recargo Nocturno (dentro de las 7.66h base, laboral)
+    "HED": 7736.41,                        // Hora Extra Diurna (después de 7.66h,laboral, hasta las 9 pm )
+    "HEN": 10830.98,                        // Hora Extra Nocturna (después de 7.66h, laboral)
+    "Recargo_Dom_Diurno_Base": 4642,    // Recargo Dominical/Festivo Diurno (dentro de 7.66h)
+    "Recargo_Dom_Noct_Base": 6808,    // Recargo Dominical/Festivo Nocturno (dentro de 7.66h)
+    "HEDD_F": 12378.26,                     // Hora Extra Dominical/Festiva Diurna (después de 7.66h)
+    "HEND_F": 15472.83,                     // Hora Extra Dominical/Festiva Nocturna (después de 7.66h)
     "Ordinaria_Diurna_Base": 0          // Horas base diurnas laborales (sin recargo adicional sobre el salario)
 };
 const SALARIO_BASE_QUINCENAL = 711750; // Salario base quincenal para sumar al final
@@ -108,6 +108,7 @@ export async function calculateWorkday(
     // --- Validar y parsear horas de descanso si aplica ---
     let parsedBreakStart: { hours: number; minutes: number } | null = null;
     let parsedBreakEnd: { hours: number; minutes: number } | null = null;
+    let breakDurationSeconds = 0; // Initialize break duration
 
     if (includeBreak) {
         parsedBreakStart = parseTimeString(breakStartTime);
@@ -119,6 +120,12 @@ export async function calculateWorkday(
         if (parsedBreakEnd.hours < parsedBreakStart.hours || (parsedBreakEnd.hours === parsedBreakStart.hours && parsedBreakEnd.minutes <= parsedBreakStart.minutes)) {
              return { error: "La hora de fin del descanso debe ser posterior a la hora de inicio." };
         }
+
+         // Calculate break duration in seconds
+         const breakStartTotalMinutes = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
+         const breakEndTotalMinutes = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
+         breakDurationSeconds = (breakEndTotalMinutes - breakStartTotalMinutes) * 60;
+
     }
 
 
@@ -140,10 +147,14 @@ export async function calculateWorkday(
         "HEDD_F": 0.0,
         "HEND_F": 0.0
     };
-    let duracionTotalTrabajadaSegundos = 0;
-    let segundosTrabajadosAcumulados = 0; // Para rastrear el umbral de horas extra
+    let duracionTotalSegundosBrutos = differenceInSeconds(finDt, inicioDt);
+    let duracionTotalTrabajadaSegundos = duracionTotalSegundosBrutos - (includeBreak ? breakDurationSeconds : 0);
 
-    // --- Iterar minuto a minuto ---
+    if (duracionTotalTrabajadaSegundos < 0) duracionTotalTrabajadaSegundos = 0; // Ensure it doesn't go negative
+
+    let segundosTrabajadosAcumulados = 0; // To track the extra hours threshold
+
+    // --- Iterar minuto a minuto sobre el tiempo BRUTO (antes de descontar descanso) ---
     let cursorDt = inicioDt;
 
     while (isBefore(cursorDt, finDt)) {
@@ -166,8 +177,9 @@ export async function calculateWorkday(
         }
 
         if (!esDescanso) {
-            duracionTotalTrabajadaSegundos += 60; // Sumar un minuto trabajado
-            const horasTrabajadasAcumuladas = duracionTotalTrabajadaSegundos / 3600.0;
+            // Solo clasificar si NO es descanso
+            segundosTrabajadosAcumulados += 60; // Sumar un minuto efectivamente trabajado
+            const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
             const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
             const esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
             const esNocturna = horaEval >= HORA_NOCTURNA_INICIO || horaEval < HORA_NOCTURNA_FIN;
@@ -189,7 +201,6 @@ export async function calculateWorkday(
                         categoria = "Recargo_Noct_Base";
                     } else {
                          // Para las horas base diurnas, no sumamos recargo, pero sí contamos las horas.
-                         // Podríamos omitir la suma aquí si solo queremos recargos, pero lo mantenemos por claridad.
                          horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
                          // No asignamos categoría para no sumar recargo de VALORES["Ordinaria_Diurna_Base"] que es 0
                     }
@@ -200,10 +211,6 @@ export async function calculateWorkday(
             if (categoria && categoria !== "Ordinaria_Diurna_Base") {
                 horasClasificadas[categoria] += 1 / 60;
             }
-             // Asegurarnos de contar también las horas base diurnas dominicales/festivas y nocturnas para el total
-             else if (categoria === null && !esNocturna && !esFestivoDominical && !esHoraExtra) {
-                 // Ya sumado arriba
-             }
         }
 
         cursorDt = cursorPlusOneMin; // Avanzar al siguiente minuto
