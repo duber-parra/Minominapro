@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
 import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2 } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays } from 'date-fns'; // Added addDays
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay } from 'date-fns'; // Added addDays and isSameDay
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -813,6 +813,12 @@ export default function Home() {
    };
 
 
+    // --- Function to check if a date is already calculated ---
+    const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
+        return calculatedDays.some(day => isSameDay(day.inputData.startDate, dateToCheck));
+    }, [calculatedDays]);
+
+
 
   return (
     <main className="container mx-auto p-4 md:p-8 max-w-7xl"> {/* Increased max-width */}
@@ -946,17 +952,19 @@ export default function Home() {
               {/* Section for Adding/Editing a Single Day's Inputs */}
               <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl text-foreground">
-                    {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
+                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size to lg */}
+                    {editingDayId ? <Edit className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />} {/* Reduced icon size */}
                     {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
-                     {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
+                     {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId}`}
+                     {/* Removed period dates from title */}
                   </CardTitle>
                   <CardDescription>
                     {isFormDisabled
                       ? 'Selecciona un colaborador y un período para habilitar esta sección.'
                       : editingDayId
-                      ? `Modifica la fecha y horas para el turno iniciado el ${format(editingDayData?.startDate ?? new Date(), 'PPP', { locale: es })} y guarda los cambios.`
-                      : 'Ingresa los detalles de un turno para incluirlo en el cálculo quincenal.'}
+                      ? `Modifica la fecha y horas para el turno.`
+                      : 'Ingresa los detalles de un turno para incluirlo.'}
+                     {/* Simplified descriptions */}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -972,7 +980,7 @@ export default function Home() {
                         isLoading={isLoadingDay}
                         initialData={editingDayData} // Pass initial data if editing inputs
                         existingId={editingDayId} // Pass the ID if editing inputs
-                        isDateCalculated={(date) => calculatedDays.some(day => isSameDay(day.inputData.startDate, date))} // Pass check function
+                        isDateCalculated={isDateCalculated} // Pass check function
                       />
                    )}
                   {errorDay && (
@@ -988,11 +996,11 @@ export default function Home() {
               {calculatedDays.length > 0 && (
                 <Card className="shadow-lg bg-card">
                   <CardHeader>
-                     <CardTitle className="flex items-center gap-2 text-xl text-foreground">
-                       <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
-                         {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
+                     <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size */}
+                       <Clock className="h-4 w-4"/> Turnos Agregados ({calculatedDays.length}) {/* Reduced icon size */}
+                         {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId}`} {/* Removed period */}
                      </CardTitle>
-                    <CardDescription>Lista de los turnos incluidos en el cálculo actual. Puedes editar las horas calculadas o eliminar el turno.</CardDescription>
+                    <CardDescription>Lista de turnos incluidos. Puedes editar horas o eliminar.</CardDescription> {/* Simplified */}
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
@@ -1134,8 +1142,8 @@ export default function Home() {
               {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
                  <Card className="text-center p-8 border-dashed mt-8 bg-card">
                     <CardHeader>
-                        <CardTitle className="text-xl text-foreground">Comienza a Calcular</CardTitle>
-                        <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
+                        <CardTitle className="text-lg text-foreground">Comienza a Calcular</CardTitle> {/* Reduced size */}
+                        <CardDescription>Agrega el primer turno para {employeeId} para iniciar el cálculo.</CardDescription> {/* Simplified */}
                     </CardHeader>
                  </Card>
               )}
@@ -1143,8 +1151,8 @@ export default function Home() {
                {isFormDisabled && calculatedDays.length === 0 && ( // Only show if no days loaded AND form disabled
                  <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
                     <CardHeader>
-                        <CardTitle className="text-xl text-foreground">Selección Pendiente</CardTitle>
-                        <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
+                        <CardTitle className="text-lg text-foreground">Selección Pendiente</CardTitle> {/* Reduced size */}
+                        <CardDescription>Ingresa ID de colaborador y período para empezar.</CardDescription> {/* Simplified */}
                     </CardHeader>
                  </Card>
               )}
@@ -1197,8 +1205,8 @@ export default function Home() {
          <Card className="shadow-lg mt-8 bg-card"> {/* Full width */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
-                 <CardTitle className="flex items-center gap-2 text-xl text-foreground"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-                 <CardDescription>Resultados agregados para los {quincenalSummary?.diasCalculados ?? 0} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+                 <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle> {/* Reduced size */}
+                 <CardDescription>Resultados agregados para {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription> {/* Simplified */}
                </div>
                 <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
                     <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
@@ -1249,3 +1257,4 @@ export default function Home() {
     </main>
   );
 }
+

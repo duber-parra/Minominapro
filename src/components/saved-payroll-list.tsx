@@ -50,13 +50,13 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
     <Card className="shadow-lg bg-card">
       <CardHeader className="relative flex flex-row items-start justify-between pb-4"> {/* Use relative for positioning button */}
         <div className="flex-1 pr-16"> {/* Add padding to prevent overlap */}
-            <CardTitle className="flex items-center gap-2 text-xl text-foreground">
-              <Users className="h-5 w-5" /> Nóminas Guardadas ({payrolls.length})
+            <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size */}
+              <Users className="h-4 w-4" /> Nóminas Guardadas ({payrolls.length}) {/* Reduced icon size */}
             </CardTitle>
             <CardDescription>
               {payrolls.length > 0
-                ? 'Lista de nóminas quincenales guardadas localmente. Puedes cargarlas para editar o eliminarlas.'
-                : 'No hay nóminas guardadas en este momento.'
+                ? 'Carga o elimina nóminas guardadas.' // Simplified
+                : 'No hay nóminas guardadas.'
               }
             </CardDescription>
         </div>
@@ -110,5 +110,3 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
     </Card>
   );
 };
-
-    
