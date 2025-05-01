@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -500,7 +499,7 @@ export default function SchedulePage() {
                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive"><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
                                                         </AlertDialogTrigger>
                                                          {/* Delete Confirmation Dialog */}
                                                          <AlertDialogContent>
@@ -536,7 +535,7 @@ export default function SchedulePage() {
                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive"><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
                                                         </AlertDialogTrigger>
                                                          <AlertDialogContent>
                                                             <AlertDialogHeader>
@@ -571,7 +570,7 @@ export default function SchedulePage() {
                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button> {/* Reduced size */}
                                                      <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {}}><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
+                                                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive"><Trash2 className="h-3 w-3" /></Button> {/* Reduced size */}
                                                         </AlertDialogTrigger>
                                                          <AlertDialogContent>
                                                             <AlertDialogHeader>
@@ -854,3 +853,4 @@ export default function SchedulePage() {
 
   );
 }
+
