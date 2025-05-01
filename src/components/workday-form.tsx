@@ -355,7 +355,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            )}
 
 
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-[#4D44E1] hover:bg-[#4D44E1]/90 text-white" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
