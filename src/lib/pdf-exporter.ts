@@ -223,7 +223,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
      doc.setFontSize(14);
      doc.setFont('helvetica', 'bold');
      doc.text('Neto a Pagar Estimado Quincenal:', 14, currentY);
-     doc.text(formatCurrency(netoAPagar), pageWidth - 14, currentY, { align: 'right', textColor: [40, 54, 123] }); // Dark Blue
+     doc.text(formatCurrency(netoAPagar), pageWidth - 14, currentY, { align: 'right', textColor: [76, 67, 223] }); // Use primary color #4C43DF
      currentY += 15;
 
     // --- Signature Area ---

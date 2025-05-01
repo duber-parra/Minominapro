@@ -290,7 +290,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                              // Add conditional border for holidays
                              isHoliday && 'border-accent border-2',
                              // Optionally add style for Sunday too
-                             !isHoliday && startDate && isSunday(startDate) && 'border-blue-300 border'
+                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border' // Use primary color for Sunday border
                           )}
                           disabled={isCheckingHoliday} // Disable while checking
                         >
@@ -316,7 +316,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         initialFocus
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
-                         modifiersClassNames={{ holiday: 'text-accent font-bold', sunday: 'text-blue-600' }}
+                         modifiersClassNames={{ holiday: 'text-accent font-bold', sunday: 'text-primary' }} // Use primary text color for Sunday
                       />
                     </PopoverContent>
                   </Popover>
@@ -325,7 +325,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                       <p className="text-xs text-accent font-semibold mt-1 pl-1"> • Día festivo</p>
                   )}
                    {!isHoliday && startDate && isSunday(startDate) && !isCheckingHoliday && (
-                      <p className="text-xs text-blue-600 font-semibold mt-1 pl-1"> • Domingo</p>
+                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Domingo</p> // Use primary text color
                   )}
                   <FormMessage />
                 </FormItem>
@@ -440,7 +440,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            )}
 
 
-            <Button type="submit" className="w-full bg-[#4D44E1] hover:bg-[#4D44E1]/90 text-white" disabled={isLoading || isCheckingHoliday}> {/* Disable submit while checking holiday */}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isCheckingHoliday}> {/* Use theme color & Disable submit while checking holiday */}
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

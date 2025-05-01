@@ -898,7 +898,7 @@ export default function Home() {
                 <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
                    <Button
                      onClick={handleLoadData}
-                     className="w-full bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white" // Applied the requested color
+                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" // Use theme color
                      disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
                        <FolderSync className="mr-2 h-4 w-4" /> Cargar/Actualizar Turnos
                    </Button>

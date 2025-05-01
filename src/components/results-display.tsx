@@ -392,7 +392,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                            size="sm"
                            onClick={onAddDeduccion}
                            disabled={!onAddDeduccion}
-                           className="hover:bg-[#EF4444] hover:text-white" // Added hover styles
+                           className="hover:bg-destructive hover:text-white" // Keep red hover for deduction button
                        >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
@@ -431,7 +431,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 <Separator className="my-4" />
                 <div className="flex justify-between font-bold text-xl mt-4">
                   <span className="text-foreground">Neto a Pagar Estimado Quincenal:</span>
-                  <span className="text-primary">{formatCurrency(netoAPagar)}</span>
+                  <span className="text-primary">{formatCurrency(netoAPagar)}</span> {/* Use theme's primary color */}
                 </div>
              </>
         )}
