@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon } from 'lucide-react'; // Added CalendarIcon
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -358,7 +357,7 @@ export default function SchedulePage() {
                      {/* --- Configuration & Available Employees (Combined and smaller) --- */}
                      <div className={`lg:col-span-3 xl:col-span-2 space-y-6 ${viewMode === 'week' ? 'lg:hidden' : ''}`}> {/* Hide on week view on large screens */}
                          {/* Configuration Card */}
-                         <Card className="shadow-md">
+                         <Card className="shadow-md bg-card">
                              <CardHeader className="pb-3 pt-4 px-4">
                                  <CardTitle className="text-lg">Configuración</CardTitle>
                                  {/* <CardDescription>Sedes, Deptos, Empleados.</CardDescription> */}
@@ -379,7 +378,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenLocationModal(loc)}><Edit className="h-3 w-3" /></Button>
                                                      <AlertDialog>
-                                                         <AlertDialogTrigger> {/* Removed asChild */}
+                                                         <AlertDialogTrigger>
                                                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                          <AlertDialogContent>
@@ -389,7 +388,7 @@ export default function SchedulePage() {
                                                              </AlertDialogHeader>
                                                              <AlertDialogFooter>
                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => setItemToDelete({ type: 'location', id: loc.id, name: loc.name })}>Eliminar</AlertDialogAction>
+                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'location', id: loc.id, name: loc.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
                                                              </AlertDialogFooter>
                                                          </AlertDialogContent>
                                                      </AlertDialog>
@@ -413,7 +412,7 @@ export default function SchedulePage() {
                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenDepartmentModal(dep)}><Edit className="h-3 w-3" /></Button>
                                                       <AlertDialog>
-                                                         <AlertDialogTrigger> {/* Removed asChild */}
+                                                         <AlertDialogTrigger>
                                                               <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                          </AlertDialogTrigger>
                                                           <AlertDialogContent>
@@ -423,7 +422,7 @@ export default function SchedulePage() {
                                                              </AlertDialogHeader>
                                                              <AlertDialogFooter>
                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => setItemToDelete({ type: 'department', id: dep.id, name: dep.name })}>Eliminar</AlertDialogAction>
+                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'department', id: dep.id, name: dep.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
                                                              </AlertDialogFooter>
                                                          </AlertDialogContent>
                                                       </AlertDialog>
@@ -447,7 +446,7 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleOpenEmployeeModal(emp)}><Edit className="h-3 w-3" /></Button>
                                                        <AlertDialog>
-                                                          <AlertDialogTrigger> {/* Removed asChild */}
+                                                          <AlertDialogTrigger>
                                                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
                                                           </AlertDialogTrigger>
                                                            <AlertDialogContent>
@@ -457,7 +456,7 @@ export default function SchedulePage() {
                                                               </AlertDialogHeader>
                                                               <AlertDialogFooter>
                                                                   <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => setItemToDelete({ type: 'employee', id: emp.id, name: emp.name })}>Eliminar</AlertDialogAction>
+                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => { setItemToDelete({ type: 'employee', id: emp.id, name: emp.name }); handleDeleteItem(); }}>Eliminar</AlertDialogAction>
                                                               </AlertDialogFooter>
                                                           </AlertDialogContent>
                                                        </AlertDialog>
