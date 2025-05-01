@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -365,9 +366,9 @@ export default function SchedulePage() {
                         </div>
 
                          {/* Week Display and Navigation */}
-                        <div className="space-y-2 md:col-span-2">
+                        <div className="md:col-span-2"> {/* Removed space-y-2 */}
                              <label className="text-sm font-medium">Semana</label>
-                             <div className="flex items-center justify-between p-2 border rounded-md bg-background">
+                             <div className="flex items-center justify-between p-2 border rounded-md bg-background mt-2"> {/* Added mt-2 */}
                                 <div className="flex items-center gap-2">
                                     <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                                     <span className="font-medium">
@@ -402,13 +403,13 @@ export default function SchedulePage() {
                                 </div>
                              </div>
                              {/* Simple Day Picker within the week */}
-                             <div className="flex justify-center gap-1 pt-2 flex-wrap">
+                             <div className="flex justify-center gap-1 pt-1 flex-wrap"> {/* Reduced pt-2 to pt-1 */}
                                 {weekDates.map(day => (
                                     <Button
                                         key={day.toISOString()}
                                         variant={isSameDay(day, selectedDate) ? 'default' : 'outline'}
                                         size="sm"
-                                        className={`h-auto flex flex-col items-center px-2 py-1 ${isSameDay(day, selectedDate) ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`h-auto flex flex-col items-center px-2 py-1 ${isSameDay(day, selectedDate) ? 'text-primary-foreground bg-primary hover:bg-primary/90' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}`} // Adjusted styling
                                         onClick={() => handleDateChange(day)}
                                     >
                                         <span className="text-xs uppercase">{format(day, 'EEE', { locale: es })}</span>
