@@ -3,14 +3,14 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { WorkdayForm } from '@/components/workday-form';
-import { ResultsDisplay } from '@/components/results-display';
+import { ResultsDisplay, labelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary } from '@/types';
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign } from 'lucide-react'; // Added DollarSign
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon } from 'lucide-react'; // Added Clock, CalendarIcon
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -32,15 +32,7 @@ import {
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
 
-// Helper function to format currency (can be moved to utils later)
-const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
+// Helper function to format currency moved to results-display
 
 
 export default function Home() {
@@ -204,61 +196,92 @@ export default function Home() {
       {calculatedDays.length > 0 && (
         <Card className="mb-8 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-primary">Días Calculados para la Quincena</CardTitle>
+             <CardTitle className="text-primary flex items-center gap-2">
+               <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
+             </CardTitle>
             <CardDescription>Lista de los días incluidos en el cálculo actual. Puedes editarlos o eliminarlos.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
+            <ul className="space-y-4"> {/* Increased spacing */}
               {calculatedDays
                 .sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime()) // Sort by date
-                .map((day) => (
-                <li key={day.id} className="flex items-center justify-between p-3 border rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                  <div className="flex-1 mr-4"> {/* Added flex-1 and margin */}
-                    <p className="font-medium">{format(day.inputData.startDate, 'PPPP', { locale: es })}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {day.inputData.startTime} - {day.inputData.endTime}
-                      {day.inputData.endsNextDay ? ' (+1d)' : ''}
-                      {` | ${day.duracionTotalTrabajadaHoras.toFixed(2)} hrs`}
-                    </p>
-                     {/* Added section to display the calculated payment */}
-                     <p className="text-sm text-accent font-medium flex items-center mt-1">
-                       <DollarSign className="h-3 w-3 mr-1" /> Recargos/Extras: {formatCurrency(day.pagoTotalRecargosExtras)}
-                     </p>
+                .map((day, index) => (
+                <li key={day.id} className="p-4 border rounded-lg bg-secondary/30 shadow-sm transition-colors"> {/* Added shadow */}
+                   <div className="flex items-start justify-between mb-3"> {/* Changed justify-between */}
+                     <div>
+                       <p className="font-semibold text-lg mb-1">Turno {index + 1}</p> {/* Use index for turn number */}
+                       <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1">
+                           <CalendarIcon className="h-4 w-4" />
+                           {format(day.inputData.startDate, 'PPPP', { locale: es })}
+                       </div>
+                       <div className="flex items-center text-sm text-muted-foreground gap-2">
+                           <Clock className="h-4 w-4" />
+                           {day.inputData.startTime} - {day.inputData.endTime}
+                           {day.inputData.endsNextDay ? ' (+1d)' : ''}
+                           {/* Removed total hours from here, added below */}
+                       </div>
+                     </div>
+                     <div className="text-right flex-shrink-0 ml-4"> {/* Added flex-shrink-0 and margin */}
+                         <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
+                         <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1"> {/* Increased text size */}
+                            <DollarSign className="h-4 w-4" /> {formatCurrency(day.pagoTotalRecargosExtras)}
+                         </div>
+                        <div className="flex items-center justify-end gap-1 mt-2"> {/* Moved buttons here */}
+                           <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar día" className="h-8 w-8"> {/* Adjusted button size */}
+                             <Edit className="h-4 w-4" />
+                           </Button>
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar día"> {/* Adjusted button size */}
+                                    <Trash2 className="h-4 w-4" />
+                                 </Button>
+                              </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el día{' '}
+                                    {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                                 <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90">
+                                    Eliminar
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                         </div>
+                     </div>
                   </div>
-                  <div className="flex items-center gap-1"> {/* Reduced gap */}
-                    <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar día">
-                      <Edit className="h-4 w-4" />
-                    </Button>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDayToDeleteId(day.id)} title="Eliminar día">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                             Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el día{' '}
-                             {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90">
-                             Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-
-                  </div>
+                  {/* Detailed Hour Breakdown */}
+                   <Separator className="my-3"/>
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                       {displayOrder.map(key => {
+                           const hours = day.horasDetalladas[key];
+                           // Only display if hours > 0
+                           if (hours > 0) {
+                               return (
+                                   <div key={key} className="flex justify-between items-center">
+                                       <span className="text-muted-foreground truncate mr-2">{labelMap[key]?.replace(/ \(.+\)/, '') || key}:</span> {/* Shorten label */}
+                                       <span className="font-medium text-right">{formatHours(hours)}h</span>
+                                   </div>
+                               );
+                           }
+                           return null;
+                       })}
+                       {/* Always show total worked hours for the day */}
+                        <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed">
+                            <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span>
+                            <span className="font-semibold text-right">{formatHours(day.duracionTotalTrabajadaHoras)}h</span>
+                        </div>
+                   </div>
                 </li>
               ))}
             </ul>
-             <Button variant="outline" onClick={handleAddNewDay} className="mt-4 w-full md:w-auto">
+             <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto"> {/* Increased margin */}
                  <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Día
              </Button>
           </CardContent>
@@ -267,14 +290,13 @@ export default function Home() {
 
       {/* Section for Quincenal Summary */}
       {quincenalSummary && (
-         <Card className="shadow-lg">
+         <Card className="shadow-lg mt-8"> {/* Added margin top */}
             <CardHeader>
                <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
                <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} días calculados.</CardDescription>
             </CardHeader>
             <CardContent>
                {/* Pass the summary data to ResultsDisplay */}
-               {/* Need to adapt ResultsDisplay to accept QuincenalCalculationSummary or handle it here */}
                <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
             </CardContent>
             {/* Potentially add "Guardar Nómina" button here */}
@@ -283,7 +305,7 @@ export default function Home() {
 
       {/* Placeholder if no days are calculated yet */}
       {calculatedDays.length === 0 && !editingDayId && (
-         <Card className="text-center p-8 border-dashed">
+         <Card className="text-center p-8 border-dashed mt-8"> {/* Added margin top */}
             <CardHeader>
                 <CardTitle>Comienza a Calcular</CardTitle>
                 <CardDescription>Agrega el primer día trabajado para iniciar el cálculo de la nómina quincenal.</CardDescription>
@@ -296,4 +318,3 @@ export default function Home() {
     </main>
   );
 }
-

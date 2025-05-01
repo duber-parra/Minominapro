@@ -34,8 +34,8 @@ interface ResultsDisplayProps {
 }
 
 // Mapeo de claves a etiquetas legibles en español
-const labelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
+export const labelMap: Record<string, string> = {
+    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)', // Updated label to reflect the threshold
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
     Recargo_Dom_Diurno_Base: 'Recargo Dominical/Festivo Diurno (Base)',
     Recargo_Dom_Noct_Base: 'Recargo Dominical/Festivo Nocturno (Base)',
@@ -46,7 +46,7 @@ const labelMap: Record<string, string> = {
 };
 
 // Orden deseado para mostrar los resultados
-const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
+export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'Ordinaria_Diurna_Base',
     'Recargo_Noct_Base',
     'Recargo_Dom_Diurno_Base',
@@ -56,6 +56,26 @@ const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'HEDD_F',
     'HEND_F',
 ];
+
+// Helper function for formatting currency (can be moved to utils later)
+export const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0, // Changed to 0 as per user request (implicitly via example)
+        maximumFractionDigits: 0, // Changed to 0 as per user request (implicitly via example)
+    }).format(value);
+};
+
+// Helper function for formatting hours
+export const formatHours = (hours: number): string => {
+    // Display with 2 decimal places for consistency
+    return hours.toLocaleString('es-CO', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+};
+
 
 export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoading, isSummary = false }) => {
 
@@ -139,7 +159,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%] text-primary">Categoría ({isSummary ? `Total ${diasCalculados} días` : 'Día Actual'})</TableHead>
+              <TableHead className="w-[50%] text-primary">{isSummary ? `Categoría (Total ${diasCalculados} días)` : 'Categoría (Día Actual)'}</TableHead>
               <TableHead className="text-right text-primary">Horas</TableHead>
               <TableHead className="text-right text-primary">Pago (Recargo/Extra)</TableHead>
             </TableRow>
@@ -150,18 +170,27 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
               const pagoCategoria = pagos[key];
 
               // Conditionally display rows based on whether they have values
-              if ((horasCategoria === 0 && pagoCategoria === 0) && key !== 'Ordinaria_Diurna_Base') {
+              // Show Ordinaria_Diurna_Base only if it has hours
+              if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) {
                   return null;
               }
-              if (key === 'Ordinaria_Diurna_Base' && horasCategoria === 0) {
+              // Hide other categories if both hours and payment are zero
+              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) {
                   return null;
               }
 
+
               return (
                 <TableRow key={key}>
-                  <TableCell className="font-medium text-muted-foreground">{labelMap[key] || key}</TableCell>
+                  <TableCell className="font-medium text-muted-foreground">
+                    {/* Updated label with threshold */}
+                    {key === 'Ordinaria_Diurna_Base' ? labelMap[key] : (labelMap[key] || key)}
+                    </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(pagoCategoria)}</TableCell>
+                  <TableCell className="text-right">
+                    {/* For Ordinaria_Diurna_Base, show N/A or similar for payment as it's base salary */}
+                    {key === 'Ordinaria_Diurna_Base' ? '-' : formatCurrency(pagoCategoria)}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -217,19 +246,19 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({ results, error, isLoad
   );
 }
 
-// Formatting functions remain the same
-const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
+// // Formatting functions remain the same
+// const formatCurrency = (value: number): string => {
+//     return new Intl.NumberFormat('es-CO', {
+//         style: 'currency',
+//         currency: 'COP',
+//         minimumFractionDigits: 0,
+//         maximumFractionDigits: 0,
+//     }).format(value);
+// };
 
-const formatHours = (hours: number): string => {
-    return hours.toLocaleString('es-CO', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-};
+// const formatHours = (hours: number): string => {
+//     return hours.toLocaleString('es-CO', {
+//         minimumFractionDigits: 2,
+//         maximumFractionDigits: 2,
+//     });
+// };
