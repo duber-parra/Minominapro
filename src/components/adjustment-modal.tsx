@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea'; // Use Textarea for description
 import type { AdjustmentItem } from '@/types';
 import { Save, X } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
 // Schema for the modal form
 const adjustmentSchema = z.object({
@@ -120,11 +121,15 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                   <FormLabel>{amountLabel}</FormLabel>
                   <FormControl>
                      {/* Use type="number", step="any" for decimals */}
+                     {/* Add conditional styling for deduction */}
                     <Input
                       type="number"
                       step="any"
                       min="0.01" // Ensure positive
                       placeholder="0.00"
+                      className={cn(
+                        type === 'deduccion' && 'focus-visible:ring-destructive border-border focus-visible:border-destructive'
+                      )}
                       {...field}
                       // Handle undefined case for initial render if default is undefined
                       value={field.value === undefined ? '' : field.value}
@@ -157,7 +162,8 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
-                <Button type="submit">
+                 {/* Apply destructive variant conditionally */}
+                <Button type="submit" variant={type === 'deduccion' ? 'destructive' : 'default'}>
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
                 </Button>
             </DialogFooter>
