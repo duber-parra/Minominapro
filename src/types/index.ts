@@ -1,10 +1,13 @@
 
+
+// src/types/index.ts
+
 import type { WorkdayFormValues } from '@/components/workday-form';
 
 
  export interface CalculationResults {
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
-   inputData: WorkdayFormValues; // Store the input that generated this result for editing
+   inputData: Omit<WorkdayFormValues, 'startDate'> & { startDate: Date | string }; // Allow string temporarily for storage/parsing
    horasDetalladas: {
      Ordinaria_Diurna_Base: number;      // Horas dentro de jornada (7.66h), diurnas, sin recargo base adicional
      Recargo_Noct_Base: number;            // Horas dentro de jornada (7.66h), nocturnas (solo valor del recargo)
@@ -19,7 +22,7 @@ import type { WorkdayFormValues } from '@/components/workday-form';
      [key in keyof CalculationResults['horasDetalladas']]: number; // Pago por cada categoría de hora
    };
    pagoTotalRecargosExtras: number; // Suma del pago por recargos y horas extras únicamente para este día
-   pagoTotalConSalario: number; // Suma de pagoTotalRecargosExtras + SALARIO_BASE_QUINCENAL (para un solo día, puede no ser útil)
+   pagoTotalConSalario: number; // Represents ONLY the extra pay for the day
    duracionTotalTrabajadaHoras: number; // Duración total trabajada en horas (descontando descansos) para este día
  }
 
@@ -42,3 +45,4 @@ import type { WorkdayFormValues } from '@/components/workday-form';
  export function isCalculationError(obj: any): obj is CalculationError {
     return obj && typeof obj.error === 'string';
  }
+

@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useMemo, ChangeEvent } from 'react';
+import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'react';
 import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary } from '@/types';
@@ -11,10 +11,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input'; // Import Input for editing hours
-import { Label } from '@/components/ui/label'; // Import Label for editing hours
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine } from 'lucide-react'; // Added Save, X, PencilLine
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
+import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser } from 'lucide-react'; // Added Save, X, PencilLine, User, FolderSync, Eraser
+import { format, parseISO, startOfMonth, endOfMonth, setDate } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -30,56 +30,208 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { VALORES } from '@/config/payroll-values'; // Import VALORES from new location
 
 // Example fixed salary for demonstration
 const SALARIO_BASE_QUINCENAL_FIJO = 711750;
 
+// --- LocalStorage Key Generation ---
+const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
+    if (!employeeId || !periodStart || !periodEnd) return null;
+    const startStr = format(periodStart, 'yyyy-MM-dd');
+    const endStr = format(periodEnd, 'yyyy-MM-dd');
+    // Sanitize employeeId to be safe for keys (basic example)
+    const safeEmployeeId = employeeId.replace(/[^a-zA-Z0-9_-]/g, '');
+    return `payroll_${safeEmployeeId}_${startStr}_${endStr}`;
+};
+
+// --- Helper to parse stored data (revives dates) ---
+const parseStoredData = (jsonData: string | null): CalculationResults[] => {
+    if (!jsonData) return [];
+    try {
+        const data = JSON.parse(jsonData) as CalculationResults[];
+        // Revive date objects
+        return data.map(day => ({
+            ...day,
+            inputData: {
+                ...day.inputData,
+                startDate: day.inputData.startDate ? parseISO(day.inputData.startDate as unknown as string) : new Date(),
+            }
+        }));
+    } catch (error) {
+        console.error("Error parsing data from localStorage:", error);
+        return []; // Return empty array on error
+    }
+};
+
 
 export default function Home() {
-  // State for individual day calculations
-  const [calculatedDays, setCalculatedDays] = useState<CalculationResults[]>([]);
-  const [editingDayId, setEditingDayId] = useState<string | null>(null); // For editing inputs (date/time)
-  const [editingResultsId, setEditingResultsId] = useState<string | null>(null); // For editing calculated hours
-  const [editedHours, setEditedHours] = useState<CalculationResults['horasDetalladas'] | null>(null); // Temp state for edited hours
-  const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
+    // --- State ---
+    const [employeeId, setEmployeeId] = useState<string>('');
+    const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
+        const now = new Date();
+        return now.getDate() <= 15 ? startOfMonth(now) : setDate(startOfMonth(now), 16);
+    });
+    const [payPeriodEnd, setPayPeriodEnd] = useState<Date | undefined>(() => {
+         const now = new Date();
+         if (now.getDate() <= 15) {
+            return setDate(startOfMonth(now), 15);
+         } else {
+            return endOfMonth(now);
+         }
+    });
+    const [calculatedDays, setCalculatedDays] = useState<CalculationResults[]>([]);
+    const [editingDayId, setEditingDayId] = useState<string | null>(null); // For editing inputs (date/time)
+    const [editingResultsId, setEditingResultsId] = useState<string | null>(null); // For editing calculated hours
+    const [editedHours, setEditedHours] = useState<CalculationResults['horasDetalladas'] | null>(null); // Temp state for edited hours
+    const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
+    const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false);
+    const [errorDay, setErrorDay] = useState<string | null>(null);
+    const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load
 
-  // State for loading and errors related to single day calculation/addition
-  const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false);
-  const [errorDay, setErrorDay] = useState<string | null>(null);
+    const { toast } = useToast();
 
-  const { toast } = useToast();
+    // --- Effects for Loading and Saving ---
 
-  // Function to handle adding or updating a day's calculation (from WorkdayForm)
-  const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
-    setIsLoadingDay(false);
-    if (isCalculationError(data)) {
-      const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
-      setErrorDay(errorMessage);
-      toast({
-        title: 'Error en el Cálculo',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } else {
-      setErrorDay(null);
-      setCalculatedDays((prevDays) => {
-        const existingIndex = prevDays.findIndex((day) => day.id === data.id);
-        if (existingIndex > -1) {
-          const updatedDays = [...prevDays];
-          updatedDays[existingIndex] = data;
-          return updatedDays;
-        } else {
-          return [...prevDays, data];
+    // Load data from localStorage when employee/period changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') { // Ensure running on client
+            const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+            if (storageKey) {
+                console.log(`Attempting to load data for key: ${storageKey}`);
+                const storedData = localStorage.getItem(storageKey);
+                const parsedData = parseStoredData(storedData);
+                setCalculatedDays(parsedData);
+                setIsDataLoaded(true); // Mark data as loaded (or attempted)
+                 toast({
+                     title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
+                     description: storedData ? `Se cargaron ${parsedData.length} turnos para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
+                     variant: storedData ? 'default' : 'default', // 'default' for info style
+                 });
+            } else {
+                // Clear days if key is invalid (e.g., missing employee ID or dates)
+                setCalculatedDays([]);
+                setIsDataLoaded(true); // Still considered 'loaded' (with empty data)
+            }
         }
-      });
-      setEditingDayId(null); // Clear input editing state
-      toast({
-        title: `Día ${editingDayId ? 'Actualizado' : 'Agregado'}`,
-        description: `Cálculo para ${format(data.inputData.startDate, 'PPP', { locale: es })} ${editingDayId ? 'actualizado' : 'agregado a la quincena.'}`,
-      });
-    }
-  };
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast]); // Add toast to dependency array
+
+    // Save data to localStorage whenever calculatedDays changes (after initial load)
+    useEffect(() => {
+        if (typeof window !== 'undefined' && isDataLoaded) { // Ensure running on client and after initial load
+            const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+            if (storageKey && calculatedDays.length >= 0) { // Allow saving empty array to clear storage
+                try {
+                     console.log(`Attempting to save ${calculatedDays.length} days to key: ${storageKey}`);
+                    localStorage.setItem(storageKey, JSON.stringify(calculatedDays));
+                } catch (error) {
+                    console.error("Error saving data to localStorage:", error);
+                    toast({
+                        title: 'Error al Guardar',
+                        description: 'No se pudieron guardar los cambios localmente.',
+                        variant: 'destructive',
+                    });
+                }
+            }
+        }
+    }, [calculatedDays, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add dependencies
+
+
+  // --- Event Handlers ---
+
+    const handleLoadData = useCallback(() => {
+        // This function essentially re-triggers the load useEffect by potentially changing dependencies,
+        // or just provides user feedback. The actual loading happens in useEffect.
+        if (!employeeId || !payPeriodStart || !payPeriodEnd) {
+             toast({
+                 title: 'Información Incompleta',
+                 description: 'Por favor, ingresa el ID del colaborador y selecciona un período.',
+                 variant: 'destructive',
+             });
+             return;
+        }
+        // Trigger useEffect reload by setting state again (even if same value)
+        // Or simply rely on the existing useEffect which runs on change
+        setIsDataLoaded(false); // Force reload state
+        // The useEffect listening to employeeId, payPeriodStart, payPeriodEnd will run
+         toast({
+             title: 'Recargando Datos...',
+             description: `Buscando turnos para ${employeeId}.`,
+         });
+          // Force re-trigger loading effect
+         setEmployeeId(e => e);
+         setPayPeriodStart(d => d ? new Date(d) : undefined);
+         setPayPeriodEnd(d => d ? new Date(d) : undefined);
+
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast]);
+
+    const handleClearPeriodData = () => {
+         const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+         if (storageKey && typeof window !== 'undefined') {
+            localStorage.removeItem(storageKey);
+         }
+         setCalculatedDays([]); // Clear state immediately
+         setEditingDayId(null);
+         setEditingResultsId(null);
+         setEditedHours(null);
+         toast({
+            title: 'Datos del Período Eliminados',
+            description: `Se han borrado los turnos guardados localmente para ${employeeId} en este período.`,
+            variant: 'destructive',
+         });
+    };
+
+
+    // Function to handle adding or updating a day's calculation (from WorkdayForm)
+    const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
+        setIsLoadingDay(false);
+        if (isCalculationError(data)) {
+            const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
+            setErrorDay(errorMessage);
+            toast({
+                title: 'Error en el Cálculo',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+        } else {
+             // Validate if the calculated day's date falls within the selected pay period
+            if (!payPeriodStart || !payPeriodEnd || data.inputData.startDate < payPeriodStart || data.inputData.startDate > payPeriodEnd) {
+                setErrorDay(`La fecha del turno (${format(data.inputData.startDate, 'PPP', { locale: es })}) está fuera del período seleccionado.`);
+                toast({
+                    title: 'Fecha Fuera de Período',
+                    description: `El turno del ${format(data.inputData.startDate, 'PPP', { locale: es })} no pertenece al período quincenal seleccionado (${format(payPeriodStart!, 'dd/MM')} - ${format(payPeriodEnd!, 'dd/MM/yyyy')}). No se agregó.`,
+                    variant: 'destructive',
+                    duration: 5000,
+                });
+                // Do not add or update if outside the period
+                setEditingDayId(null); // Still clear editing state
+                return; // Stop processing
+            }
+
+            setErrorDay(null);
+            setCalculatedDays((prevDays) => {
+                const existingIndex = prevDays.findIndex((day) => day.id === data.id);
+                let updatedDays;
+                if (existingIndex > -1) {
+                    updatedDays = [...prevDays];
+                    updatedDays[existingIndex] = data;
+                } else {
+                    updatedDays = [...prevDays, data];
+                }
+                // Sort days after adding/updating
+                return updatedDays.sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime());
+            });
+            setEditingDayId(null); // Clear input editing state
+            toast({
+                title: `Turno ${editingDayId ? 'Actualizado' : 'Agregado'}`,
+                description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} ${editingDayId ? 'actualizado en la quincena.' : 'agregado a la quincena.'}`,
+            });
+        }
+    };
+
 
   const handleDayCalculationStart = () => {
     setIsLoadingDay(true);
@@ -166,7 +318,7 @@ export default function Home() {
                 duracionTotalTrabajadaHoras: newTotalHorasTrabajadas, // Update total hours based on edited values
             };
 
-            return updatedDays;
+            return updatedDays.sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime()); // Re-sort after update
         });
 
         toast({
@@ -257,38 +409,172 @@ export default function Home() {
   }, [editingDayId, calculatedDays]);
 
   const handleAddNewDay = () => {
+     if (!employeeId || !payPeriodStart || !payPeriodEnd) {
+         toast({
+             title: 'Información Incompleta',
+             description: 'Selecciona un colaborador y período antes de agregar un turno.',
+             variant: 'destructive',
+         });
+         return;
+     }
     setEditingDayId(null); // Ensure we are adding a new day, not editing inputs
     setEditingResultsId(null); // Ensure we are not editing results
     setEditedHours(null);
     // WorkdayForm should reset due to key change or useEffect dependency on initialData
   };
 
+  // Determine if form or summary should be disabled
+  const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
+
+
   return (
     <main className="container mx-auto p-4 md:p-8 max-w-6xl">
       <h1 className="text-3xl font-bold text-center mb-8 text-primary">Calculadora de Nómina Quincenal</h1>
 
-      {/* Section for Adding/Editing a Single Day's Inputs */}
+      {/* Section for Employee ID and Pay Period Selection */}
       <Card className="mb-8 shadow-lg">
+          <CardHeader>
+              <CardTitle className="text-primary flex items-center gap-2">
+                  <User className="h-5 w-5" /> Selección de Colaborador y Período
+              </CardTitle>
+              <CardDescription>
+                  Ingresa el ID del colaborador y selecciona el período quincenal para cargar/guardar los turnos y calcular la nómina.
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              {/* Employee ID Input */}
+              <div className="space-y-2">
+                  <Label htmlFor="employeeId">ID Colaborador</Label>
+                  <Input
+                      id="employeeId"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      placeholder="Ej: 12345678"
+                  />
+              </div>
+
+              {/* Pay Period Start Date */}
+              <div className="space-y-2">
+                  <Label>Inicio Período</Label>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                              variant={'outline'}
+                              className={cn(
+                                  'w-full justify-start text-left font-normal',
+                                  !payPeriodStart && 'text-muted-foreground'
+                              )}
+                          >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {payPeriodStart ? format(payPeriodStart, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <Calendar
+                              mode="single"
+                              selected={payPeriodStart}
+                              onSelect={setPayPeriodStart}
+                              initialFocus
+                              locale={es}
+                          />
+                      </PopoverContent>
+                  </Popover>
+              </div>
+
+              {/* Pay Period End Date */}
+              <div className="space-y-2">
+                  <Label>Fin Período</Label>
+                   <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                              variant={'outline'}
+                              className={cn(
+                                  'w-full justify-start text-left font-normal',
+                                  !payPeriodEnd && 'text-muted-foreground'
+                              )}
+                          >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {payPeriodEnd ? format(payPeriodEnd, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <Calendar
+                              mode="single"
+                              selected={payPeriodEnd}
+                              onSelect={setPayPeriodEnd}
+                              initialFocus
+                              locale={es}
+                              disabled={(date) => payPeriodStart ? date < payPeriodStart : false} // Disable dates before start date
+                          />
+                      </PopoverContent>
+                  </Popover>
+              </div>
+
+                {/* Action Buttons for Load/Clear */}
+                <div className="md:col-span-3 flex flex-col sm:flex-row gap-2 mt-4">
+                   <Button onClick={handleLoadData} className="flex-1" disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
+                       <FolderSync className="mr-2 h-4 w-4" /> Cargar/Actualizar Turnos
+                   </Button>
+                   <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                             <Button variant="destructive" className="flex-1" disabled={isFormDisabled || calculatedDays.length === 0}>
+                                <Eraser className="mr-2 h-4 w-4" /> Limpiar Período Actual
+                            </Button>
+                        </AlertDialogTrigger>
+                       <AlertDialogContent>
+                         <AlertDialogHeader>
+                           <AlertDialogTitle>¿Limpiar Datos del Período?</AlertDialogTitle>
+                           <AlertDialogDescription>
+                              Esta acción eliminará todos los turnos guardados localmente para <strong>{employeeId || 'el colaborador seleccionado'}</strong> en el período del{' '}
+                              <strong>{payPeriodStart ? format(payPeriodStart, 'dd/MM/yy', {locale: es}) : '?'}</strong> al{' '}
+                              <strong>{payPeriodEnd ? format(payPeriodEnd, 'dd/MM/yy', {locale: es}) : '?'}</strong>. Esta acción no se puede deshacer.
+                           </AlertDialogDescription>
+                         </AlertDialogHeader>
+                         <AlertDialogFooter>
+                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                           <AlertDialogAction onClick={handleClearPeriodData} className="bg-destructive hover:bg-destructive/90">
+                              Limpiar Datos
+                           </AlertDialogAction>
+                         </AlertDialogFooter>
+                       </AlertDialogContent>
+                   </AlertDialog>
+
+               </div>
+          </CardContent>
+      </Card>
+
+
+      {/* Section for Adding/Editing a Single Day's Inputs */}
+      <Card className={`mb-8 shadow-lg ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
             {editingDayId ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
-            {editingDayId ? 'Editar Día Trabajado' : 'Agregar Día Trabajado'}
+            {editingDayId ? 'Editar Turno' : 'Agregar Turno'}
+             {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
           </CardTitle>
           <CardDescription>
-            {editingDayId
+            {isFormDisabled
+              ? 'Selecciona un colaborador y un período para habilitar esta sección.'
+              : editingDayId
               ? `Modifica la fecha y horas para el turno iniciado el ${format(editingDayData?.startDate ?? new Date(), 'PPP', { locale: es })} y guarda los cambios.`
               : 'Ingresa los detalles de un turno para incluirlo en el cálculo quincenal.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <WorkdayForm
-            key={editingDayId || 'new'} // Re-mount form when switching between add/edit or editing different days
-            onCalculationStart={handleDayCalculationStart}
-            onCalculationComplete={handleDayCalculationComplete}
-            isLoading={isLoadingDay}
-            initialData={editingDayData} // Pass initial data if editing inputs
-            existingId={editingDayId} // Pass the ID if editing inputs
-          />
+           {isFormDisabled ? (
+                <div className="text-center text-muted-foreground italic py-4">
+                    Selecciona colaborador y período arriba.
+                </div>
+           ) : (
+              <WorkdayForm
+                key={editingDayId || 'new'} // Re-mount form when switching between add/edit or editing different days
+                onCalculationStart={handleDayCalculationStart}
+                onCalculationComplete={handleDayCalculationComplete}
+                isLoading={isLoadingDay}
+                initialData={editingDayData} // Pass initial data if editing inputs
+                existingId={editingDayId} // Pass the ID if editing inputs
+              />
+           )}
           {errorDay && (
             <p className="text-sm font-medium text-destructive mt-4">{errorDay}</p>
           )}
@@ -301,13 +587,13 @@ export default function Home() {
           <CardHeader>
              <CardTitle className="text-primary flex items-center gap-2">
                <Clock className="h-5 w-5"/> Turnos Agregados ({calculatedDays.length})
+                 {employeeId && payPeriodStart && payPeriodEnd && ` para ${employeeId} (${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')})`}
              </CardTitle>
             <CardDescription>Lista de los turnos incluidos en el cálculo actual. Puedes editar las horas calculadas o eliminar el turno.</CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-4">
-              {calculatedDays
-                .sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime())
+              {calculatedDays // Already sorted by the update/add handler
                 .map((day, index) => (
                 <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-secondary/30'}`}>
                    <div className="flex items-start justify-between mb-3">
@@ -327,7 +613,7 @@ export default function Home() {
                          <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
                          <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
                             {/* Remove the explicit DollarSign icon here */}
-                            {/* <DollarSign className="h-4 w-4" /> */} {formatCurrency(day.pagoTotalRecargosExtras)}
+                            {formatCurrency(day.pagoTotalRecargosExtras)}
                          </div>
                         <div className="flex items-center justify-end gap-1 mt-2">
                            {/* Button to edit INPUTS (date/time) */}
@@ -423,7 +709,7 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-             <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={!!editingDayId || !!editingResultsId}>
+             <Button variant="outline" onClick={handleAddNewDay} className="mt-6 w-full md:w-auto" disabled={!!editingDayId || !!editingResultsId || isFormDisabled}>
                  <PlusCircle className="mr-2 h-4 w-4" /> Agregar Otro Turno
              </Button>
           </CardContent>
@@ -435,7 +721,7 @@ export default function Home() {
          <Card className="shadow-lg mt-8">
             <CardHeader>
                <CardTitle className="text-primary flex items-center gap-2"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-               <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados.</CardDescription>
+               <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
             </CardHeader>
             <CardContent>
                <ResultsDisplay results={quincenalSummary} error={null} isLoading={false} isSummary={true} />
@@ -444,11 +730,20 @@ export default function Home() {
       )}
 
       {/* Placeholder if no days are calculated yet */}
-      {calculatedDays.length === 0 && !editingDayId && (
+      {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
          <Card className="text-center p-8 border-dashed mt-8">
             <CardHeader>
                 <CardTitle>Comienza a Calcular</CardTitle>
-                <CardDescription>Agrega el primer turno trabajado para iniciar el cálculo de la nómina quincenal.</CardDescription>
+                <CardDescription>Agrega el primer turno trabajado para {employeeId} en este período para iniciar el cálculo de la nómina quincenal.</CardDescription>
+            </CardHeader>
+         </Card>
+      )}
+       {/* Placeholder if form is disabled */}
+       {isFormDisabled && (
+         <Card className="text-center p-8 border-dashed mt-8 bg-muted/50">
+            <CardHeader>
+                <CardTitle>Selección Pendiente</CardTitle>
+                <CardDescription>Por favor, ingresa un ID de colaborador y selecciona un período quincenal para empezar a calcular la nómina.</CardDescription>
             </CardHeader>
          </Card>
       )}
@@ -459,4 +754,5 @@ export default function Home() {
   );
 }
 
-    
+
+
