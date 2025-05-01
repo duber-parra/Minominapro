@@ -128,7 +128,7 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                       min="0.01" // Ensure positive
                       placeholder="0.00"
                       className={cn(
-                        type === 'deduccion' && 'focus-visible:ring-destructive border-border focus-visible:border-destructive'
+                        type === 'deduccion' && 'focus-visible:ring-destructive border-destructive focus-visible:border-destructive' // Keep red border for deduction input
                       )}
                       {...field}
                       // Handle undefined case for initial render if default is undefined
@@ -163,14 +163,12 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
-                 {/* Save button: green for income, red for deduction */}
+                 {/* Save button: always green based on latest request */}
                 <Button
                     type="submit"
-                    className={cn(
-                        type === 'deduccion'
-                            ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                            : 'bg-green-600 hover:bg-green-700 text-white' // Green for income
-                    )}
+                    // Apply green styles consistently for both income and deduction save buttons
+                    // based on the latest request.
+                    className="bg-green-600 hover:bg-green-700 text-white"
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
                 </Button>
