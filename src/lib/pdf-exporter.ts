@@ -1,3 +1,4 @@
+
 // src/lib/pdf-exporter.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -13,18 +14,20 @@ declare module 'jspdf' {
   }
 }
 
-interface SinglePayrollDataForPDF extends SavedPayrollData { // Use SavedPayrollData as it contains all needed info
-    // Redundant fields already in SavedPayrollData:
-    // employeeId: string;
-    // periodStart: Date;
-    // periodEnd: Date;
-    // summary: QuincenalCalculationSummary;
-    // otrosIngresosLista: AdjustmentItem[];
-    // otrasDeduccionesLista: AdjustmentItem[];
+// Interface representing all data needed for a single payroll page
+interface PayrollPageData {
+    employeeId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    summary: QuincenalCalculationSummary;
+    otrosIngresosLista: AdjustmentItem[];
+    otrasDeduccionesLista: AdjustmentItem[];
+    auxTransporteAplicado: number; // Amount of transport allowance applied
 }
 
+
 // Helper function to draw a single payroll report page
-function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
+function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     let currentY = 15; // Start position for content
@@ -42,14 +45,14 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
     doc.text(`Período: ${format(data.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(data.periodEnd, 'dd/MM/yyyy', { locale: es })}`, 14, currentY);
     currentY += 10;
 
-    // --- Summary Table (Devengado Bruto) ---
+    // --- Devengado Table (Base + Extras/Recargos) ---
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Devengado (Base + Extras/Recargos)', 14, currentY);
+    doc.text('Resumen Horas y Recargos/Extras', 14, currentY);
     currentY += 6;
 
     const head = [['Categoría', 'Horas', 'Pago (Recargo/Extra)']];
-    const body = displayOrder
+    const bodyHours = displayOrder
         .map(key => {
             const horasCategoria = data.summary.totalHorasDetalladas[key];
             const pagoCategoria = data.summary.totalPagoDetallado[key];
@@ -59,7 +62,7 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) return null;
 
 
-            const label = key === 'Ordinaria_Diurna_Base' ? labelMap[key] : (labelMap[key] || key);
+            const label = labelMap[key] || key; // Use labelMap
             const formattedHours = formatHours(horasCategoria);
             const formattedPayment = key === 'Ordinaria_Diurna_Base' ? '-' : formatCurrency(pagoCategoria);
 
@@ -67,8 +70,8 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
         })
         .filter(row => row !== null) as (string | number)[][]; // Filter out null rows and assert type
 
-    // Add Totals for Devengado Bruto section
-     body.push(
+    // Add Totals for Hours section
+     bodyHours.push(
          ['-', '-', '-'], // Separator line visually in the table
          [
               { content: 'Total Horas Trabajadas en Quincena:', styles: { fontStyle: 'bold' } },
@@ -79,24 +82,12 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
              { content: 'Total Recargos y Horas Extras Quincenales:', styles: { fontStyle: 'bold' } },
              '',
              { content: formatCurrency(data.summary.totalPagoRecargosExtrasQuincena), styles: { halign: 'right', fontStyle: 'bold', textColor: [0, 128, 128] } } // Teal color
-         ],
-          [
-             { content: '+ Salario Base Quincenal:', styles: { fontStyle: 'normal', textColor: [100, 100, 100] } }, // Gray color
-             '',
-             { content: formatCurrency(data.summary.salarioBaseQuincenal), styles: { halign: 'right', fontStyle: 'normal', textColor: [100, 100, 100] } }
-         ],
-         ['-', '-', '-'], // Separator line visually in the table
-         [
-             { content: 'Total Devengado Bruto Estimado:', styles: { fontStyle: 'bold', fontSize: 11 } },
-             '',
-             { content: formatCurrency(data.summary.pagoTotalConSalarioQuincena), styles: { halign: 'right', fontStyle: 'bold', fontSize: 11 } } // Normal color for this total
          ]
     );
 
-
     autoTable(doc, {
         head: head,
-        body: body,
+        body: bodyHours,
         startY: currentY,
         theme: 'grid',
         headStyles: { fillColor: [210, 221, 234], textColor: [40, 54, 123] }, // Light blue header, dark blue text
@@ -106,18 +97,76 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
             2: { halign: 'right' },
         },
         didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
-        willDrawCell: (hookData) => { /* Separator logic - keep as is */ },
-        didParseCell: (hookData) => { /* Parsing logic - keep as is */ }
+        didParseCell: (hookData) => {
+             // Style separator rows
+             if (hookData.cell.raw === '-') {
+                 hookData.cell.styles.fillColor = [230, 230, 230]; // Light gray fill
+                 hookData.cell.styles.minCellHeight = 1; // Make separator thin
+                 hookData.cell.styles.cellPadding = 0;
+                 hookData.cell.text = ''; // Clear the text
+            }
+         }
     });
 
     currentY += 5; // Add some space
 
+    // --- Otros Devengados Section ---
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Otros Devengados', 14, currentY);
+    currentY += 6;
+
+    const baseMasExtras = data.summary.pagoTotalConSalarioQuincena;
+    const totalOtrosIngresosManuales = (data.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+    const totalDevengadoBruto = baseMasExtras + data.auxTransporteAplicado + totalOtrosIngresosManuales;
+    const ibcEstimado = baseMasExtras + totalOtrosIngresosManuales; // IBC excludes transport allowance
+
+    const devengadoBody = [
+         ['Salario Base Quincenal', formatCurrency(data.summary.salarioBaseQuincenal)],
+         ['(+) Total Recargos/Extras', formatCurrency(data.summary.totalPagoRecargosExtrasQuincena)],
+    ];
+    if (data.auxTransporteAplicado > 0) {
+        devengadoBody.push(['(+) Auxilio de Transporte', formatCurrency(data.auxTransporteAplicado)]);
+    }
+    if ((data.otrosIngresosLista || []).length > 0) {
+        (data.otrosIngresosLista).forEach(item => {
+             devengadoBody.push([`(+) ${item.descripcion || 'Otro Ingreso'}`, formatCurrency(item.monto)]);
+        });
+    }
+    devengadoBody.push(
+         ['-', '-'], // Separator
+         [{ content: 'Total Devengado Bruto Estimado:', styles: { fontStyle: 'bold' } }, { content: formatCurrency(totalDevengadoBruto), styles: { fontStyle: 'bold' } }]
+    );
+
+
+    autoTable(doc, {
+        body: devengadoBody,
+        startY: currentY,
+        theme: 'plain',
+        columnStyles: { 1: { halign: 'right' } },
+        didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
+        didParseCell: (hookData) => {
+            // Style separator rows
+             if (hookData.cell.raw === '-') {
+                 hookData.cell.styles.fontStyle = 'normal'; // Ensure separator is not bold
+                 hookData.cell.styles.minCellHeight = 1;
+                 hookData.cell.styles.cellPadding = 0;
+                 // Draw a line instead of text for separator
+                 if (hookData.column.index === 0) {
+                    doc.setDrawColor(200, 200, 200); // Light gray line
+                    doc.line(hookData.cell.x, hookData.cell.y + hookData.cell.height / 2, hookData.cell.x + hookData.cell.width, hookData.cell.y + hookData.cell.height / 2);
+                 }
+                 hookData.cell.text = ''; // Clear text
+            }
+        }
+    });
+
+    currentY += 5; // Add space
+
+
     // --- Deducciones Legales ---
-    const devengadoBruto = data.summary.pagoTotalConSalarioQuincena;
-    // Placeholder for IBC - Needs proper calculation based on Colombian law (excluding Aux Transporte if applicable)
-    const ibcEstimadoQuincenal = devengadoBruto; // Simple estimation, NEEDS REFINEMENT
-    const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
-    const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
+    const deduccionSaludQuincenal = ibcEstimado * 0.04;
+    const deduccionPensionQuincenal = ibcEstimado * 0.04;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
 
     doc.setFontSize(12);
@@ -127,8 +176,8 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
 
     autoTable(doc, {
         body: [
-            ['Deducción Salud (4% s/IBC)', formatCurrency(deduccionSaludQuincenal)],
-            ['Deducción Pensión (4% s/IBC)', formatCurrency(deduccionPensionQuincenal)],
+            [`Deducción Salud (4% s/IBC: ${formatCurrency(ibcEstimado)})`, formatCurrency(deduccionSaludQuincenal)],
+            [`Deducción Pensión (4% s/IBC: ${formatCurrency(ibcEstimado)})`, formatCurrency(deduccionPensionQuincenal)],
             [{ content: 'Total Deducciones Legales:', styles: { fontStyle: 'bold' } }, { content: formatCurrency(totalDeduccionesLegales), styles: { fontStyle: 'bold' } }]
         ],
         startY: currentY,
@@ -140,59 +189,37 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
     currentY += 5; // Add space
 
     // --- Subtotal Neto Parcial ---
-    const subtotalNetoParcial = devengadoBruto - totalDeduccionesLegales;
+    const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Subtotal Neto Parcial:', 14, currentY);
+    doc.text('Subtotal (Dev. Bruto - Ded. Ley):', 14, currentY);
     doc.text(formatCurrency(subtotalNetoParcial), pageWidth - 14, currentY, { align: 'right' });
     currentY += 10;
 
 
-    // --- Otros Ingresos ---
-    const totalOtrosIngresos = (data.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
-    if ((data.otrosIngresosLista || []).length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Otros Ingresos / Ajustes a Favor', 14, currentY);
-        currentY += 6;
-        autoTable(doc, {
-            body: (data.otrosIngresosLista || []).map(item => [item.descripcion || 'Ingreso', `+ ${formatCurrency(item.monto)}`]),
-            startY: currentY,
-            theme: 'plain',
-            columnStyles: { 1: { halign: 'right', textColor: [0, 100, 0] } }, // Green color for income
-            didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
-        });
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Total Otros Ingresos:', 14, currentY + 5);
-        doc.text(formatCurrency(totalOtrosIngresos), pageWidth - 14, currentY + 5, { align: 'right' });
-        currentY += 10;
-    }
-
-
-    // --- Otras Deducciones ---
-    const totalOtrasDeducciones = (data.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+    // --- Otras Deducciones (Manuales) ---
+    const totalOtrasDeduccionesManuales = (data.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
      if ((data.otrasDeduccionesLista || []).length > 0) {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Otras Deducciones / Descuentos', 14, currentY);
         currentY += 6;
         autoTable(doc, {
-            body: (data.otrasDeduccionesLista || []).map(item => [item.descripcion || 'Deducción', `- ${formatCurrency(item.monto)}`]),
+            body: (data.otrasDeduccionesLista || []).map(item => [`(-) ${item.descripcion || 'Deducción'}`, formatCurrency(item.monto)]),
             startY: currentY,
             theme: 'plain',
-            columnStyles: { 1: { halign: 'right', textColor: [255, 0, 0] } }, // Red color for deductions
+            columnStyles: { 1: { halign: 'right', textColor: [200, 0, 0] } }, // Reddish color
             didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
         });
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Otras Deducciones:', 14, currentY + 5);
-        doc.text(formatCurrency(totalOtrasDeducciones), pageWidth - 14, currentY + 5, { align: 'right' });
+        doc.text(formatCurrency(totalOtrasDeduccionesManuales), pageWidth - 14, currentY + 5, { align: 'right' });
         currentY += 10;
     }
 
     // --- Neto a Pagar Final ---
-     const netoAPagar = subtotalNetoParcial + totalOtrosIngresos - totalOtrasDeducciones;
+     const netoAPagar = subtotalNetoParcial - totalOtrasDeduccionesManuales;
      doc.setFontSize(14);
      doc.setFont('helvetica', 'bold');
      doc.text('Neto a Pagar Estimado Quincenal:', 14, currentY);
@@ -201,7 +228,11 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
 
     // --- Signature Area ---
     let signatureY = currentY;
-    if (signatureY > pageHeight - 35) { signatureY = pageHeight - 35; }
+    // Check if signature area fits on the current page, add new page if necessary
+    if (signatureY > pageHeight - 35) {
+        doc.addPage();
+        signatureY = 15; // Reset Y for new page
+    }
     const signatureXMargin = 30;
     const signatureWidth = (pageWidth - signatureXMargin * 2) / 2 - 10;
     doc.setLineWidth(0.3);
@@ -211,12 +242,20 @@ function drawPayrollPage(doc: jsPDF, data: SinglePayrollDataForPDF): number {
     doc.setFont('helvetica', 'normal');
     doc.text('Firma Empleador', signatureXMargin + signatureWidth / 2, signatureY + 5, { align: 'center' });
     doc.text('Firma Colaborador', pageWidth - signatureXMargin - signatureWidth / 2, signatureY + 5, { align: 'center' });
+    currentY = signatureY + 15; // Update currentY after signatures
 
     // --- Footer Note ---
+    // Check if footer note fits, add new page if necessary BEFORE drawing
+     if (currentY > pageHeight - 10) {
+        doc.addPage();
+        currentY = pageHeight - 10; // Position at bottom of new page
+     } else {
+         currentY = pageHeight - 10; // Position at bottom of current page
+     }
     doc.setFontSize(8);
     doc.setTextColor(150);
-    const footerText = `Nota: Cálculo bruto estimado para ${data.summary.diasCalculados} días. IBC y deducciones legales son aproximadas. Incluye ajustes manuales.`;
-    doc.text(footerText, 14, pageHeight - 10);
+    const footerText = `Nota: Cálculo bruto estimado para ${data.summary.diasCalculados} días. IBC (*sin aux. transporte) y deducciones legales son aproximadas. Incluye ajustes manuales.`;
+    doc.text(footerText, 14, currentY);
 
     return currentY; // Return the Y position after drawing this page's content
 }
@@ -228,19 +267,19 @@ export function exportPayrollToPDF(
     periodStart: Date,
     periodEnd: Date,
     otrosIngresosLista: AdjustmentItem[], // Add income list parameter
-    otrasDeduccionesLista: AdjustmentItem[] // Add deduction list parameter
+    otrasDeduccionesLista: AdjustmentItem[], // Add deduction list parameter
+    auxTransporteAplicado: number // Add transport allowance parameter
 ): void {
     const doc = new jsPDF();
     // Construct the full data object needed by drawPayrollPage
-    const payrollData: SinglePayrollDataForPDF = {
-        key: `pdf_${employeeId}_${format(periodStart, 'yyyyMMdd')}`, // Dummy key for PDF generation context
+    const payrollData: PayrollPageData = {
         employeeId,
         periodStart,
         periodEnd,
         summary,
         otrosIngresosLista,
         otrasDeduccionesLista,
-        createdAt: new Date() // Dummy creation date
+        auxTransporteAplicado
     };
 
     drawPayrollPage(doc, payrollData);
@@ -251,7 +290,7 @@ export function exportPayrollToPDF(
 }
 
 // --- Bulk Payroll Export ---
-// exportAllPayrollsToPDF now directly uses SavedPayrollData which includes adjustments
+// exportAllPayrollsToPDF now directly uses SavedPayrollData which includes adjustments and transport flag
 export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void {
     if (!allPayrollData || allPayrollData.length === 0) {
         console.warn("No payroll data provided for bulk export.");
@@ -261,12 +300,26 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const doc = new jsPDF();
     let isFirstPage = true;
 
-    allPayrollData.forEach((payrollData) => { // payrollData is already SavedPayrollData
+    allPayrollData.forEach((savedData) => { // Use savedData which is SavedPayrollData
         if (!isFirstPage) {
             doc.addPage(); // Add a new page for each subsequent payroll report
         }
-        // Pass the complete SavedPayrollData object
-        drawPayrollPage(doc, payrollData);
+        // Determine transport allowance value based on the saved flag
+        const auxTransporteValorConfig = 100000; // Use the configured value
+        const auxTransporteAplicado = savedData.incluyeAuxTransporte ? auxTransporteValorConfig : 0;
+
+        // Construct the PayrollPageData object from SavedPayrollData
+        const payrollPageData: PayrollPageData = {
+            employeeId: savedData.employeeId,
+            periodStart: savedData.periodStart,
+            periodEnd: savedData.periodEnd,
+            summary: savedData.summary,
+            otrosIngresosLista: savedData.otrosIngresosLista,
+            otrasDeduccionesLista: savedData.otrasDeduccionesLista,
+            auxTransporteAplicado: auxTransporteAplicado // Pass the calculated value
+        };
+
+        drawPayrollPage(doc, payrollPageData); // Pass the constructed data
         isFirstPage = false;
     });
 
@@ -275,3 +328,6 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const filename = `Reporte_Nominas_${timestamp}.pdf`;
     doc.save(filename);
 }
+
+
+    

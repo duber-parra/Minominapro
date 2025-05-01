@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 import type { WorkdayFormValues } from '@/components/workday-form';
@@ -27,14 +28,13 @@ import type { WorkdayFormValues } from '@/components/workday-form';
    error: string; // Mensaje de error
  }
 
- // Represents the aggregated results for the entire pay period (quincena) BEFORE manual adjustments
+ // Represents the aggregated results for the entire pay period (quincena) BEFORE manual adjustments AND transport allowance
  export interface QuincenalCalculationSummary {
     totalHorasDetalladas: CalculationResults['horasDetalladas'];
     totalPagoDetallado: CalculationResults['pagoDetallado'];
     totalPagoRecargosExtrasQuincena: number;
     salarioBaseQuincenal: number; // Assuming this is fixed for the period
-    pagoTotalConSalarioQuincena: number; // Represents Devengado Bruto (Base + Extras/Recargos) - Does NOT include deductions or other income/deductions yet. This name might be confusing, consider renaming to `totalDevengadoBrutoEstimado`? For now, it's Base + Extras.
-    // Note: Legal deductions (Salud, Pension) and final Net Pay will be calculated based on this and adjustments.
+    pagoTotalConSalarioQuincena: number; // Represents Base + Extras/Recargos only. Transport, other income/deductions are handled separately.
     totalDuracionTrabajadaHorasQuincena: number;
     diasCalculados: number; // Number of days included in this summary
  }
@@ -59,8 +59,12 @@ import type { WorkdayFormValues } from '@/components/workday-form';
     employeeId: string;
     periodStart: Date;
     periodEnd: Date;
-    summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments
+    summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments and transport allowance
     otrosIngresosLista: AdjustmentItem[]; // List of other income items
     otrasDeduccionesLista: AdjustmentItem[]; // List of other deduction items
+    incluyeAuxTransporte: boolean; // Flag indicating if transport allowance was included for this saved period
     createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
  }
+
+
+    

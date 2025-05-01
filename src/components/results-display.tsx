@@ -21,10 +21,12 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus } from 'lucide-react'; // Added Bus icon
 // Removed unused import: CalculationError
 import type { CalculationResults, QuincenalCalculationSummary, AdjustmentItem } from '@/types';
 import { Button } from './ui/button'; // Import Button
+import { Switch } from './ui/switch'; // Import Switch
+import { Label } from './ui/label'; // Import Label
 
 interface ResultsDisplayProps {
   // Can receive either single day results or summary results
@@ -39,6 +41,10 @@ interface ResultsDisplayProps {
   onAddDeduccion?: () => void; // Handler to open deduction modal
   onDeleteIngreso?: (id: string) => void; // Handler to delete income item
   onDeleteDeduccion?: (id: string) => void; // Handler to delete deduction item
+  // Props for Transportation Allowance
+  incluyeAuxTransporte?: boolean;
+  onToggleTransporte?: () => void;
+  auxTransporteValor?: number;
   // Consider adding edit handlers if needed
 }
 
@@ -97,6 +103,9 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     onAddDeduccion,
     onDeleteIngreso,
     onDeleteDeduccion,
+    incluyeAuxTransporte = false, // Default value
+    onToggleTransporte,
+    auxTransporteValor = 0, // Default value
 }) => {
 
   const renderSkeletons = () => (
@@ -118,6 +127,8 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
         <Skeleton className="h-6 w-1/4" />
       </div>
        <Separator />
+       {isSummary && <Skeleton className="h-6 w-1/3 mb-2" />} {/* Skeleton for Transport */}
+       <Skeleton className="h-6 w-1/3 mb-2" /> {/* Skeleton for Base Salary */}
       <div className="flex justify-between font-bold text-lg">
         <Skeleton className="h-7 w-2/5" />
         <Skeleton className="h-7 w-1/3" />
@@ -165,7 +176,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
           <AlertTitle>Esperando Datos</AlertTitle>
           <AlertDescription>
              {isSummary
-                ? 'Agrega días trabajados para ver el resumen quincenal.'
+                ? 'Agrega días trabajados o carga una nómina guardada para ver el resumen quincenal.'
                 : 'Completa el formulario del día y presiona Calcular/Agregar para ver los resultados.'}
           </AlertDescription>
         </Alert>
@@ -177,30 +188,34 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     const horas = isSummary ? data.totalHorasDetalladas : data.horasDetalladas;
     const pagos = isSummary ? data.totalPagoDetallado : data.pagoDetallado;
     const totalRecargosExtras = isSummary ? data.totalPagoRecargosExtrasQuincena : data.pagoTotalRecargosExtras;
-    // Note: pagoTotalConSalario from single day is just extras.
-    // For summary, pagoTotalConSalarioQuincena IS Devengado Bruto (Base + Extras) before adjustments/deductions
-    const devengadoBruto = isSummary ? data.pagoTotalConSalarioQuincena : (data.pagoTotalRecargosExtras /* + implicit base pay not calc here */);
+    // pagoTotalConSalarioQuincena = Base + Extras (from summary calculation)
+    const baseMasExtras = isSummary ? data.pagoTotalConSalarioQuincena : (data.pagoTotalRecargosExtras /* + implicit base pay not calc here */);
     const totalHorasTrabajadas = isSummary ? data.totalDuracionTrabajadaHorasQuincena : data.duracionTotalTrabajadaHoras;
     const diasCalculados = isSummary ? data.diasCalculados : 1;
+    const salarioBaseQuincenal = isSummary ? data.salarioBaseQuincenal : 0;
 
     // Calculate Adjustment Totals (only for summary)
     const totalOtrosIngresos = isSummary ? (otrosIngresos || []).reduce((sum, item) => sum + item.monto, 0) : 0;
     const totalOtrasDeducciones = isSummary ? (otrasDeducciones || []).reduce((sum, item) => sum + item.monto, 0) : 0;
 
-    // TODO: Calculate Legal Deductions (Salud 4%, Pension 4%) based on IBC
-    // This requires defining IBC logic (Total Devengado Bruto excluding Aux Transporte if applicable)
-    const salarioBaseQuincenal = isSummary ? data.salarioBaseQuincenal : 0;
-    // Placeholder for IBC - Needs proper calculation based on Colombian law
-    const ibcEstimadoQuincenal = isSummary ? devengadoBruto : 0; // Simple estimation, NEEDS REFINEMENT
+    // Determine applied transport allowance
+    const auxTransporteAplicado = isSummary && incluyeAuxTransporte ? (auxTransporteValor || 0) : 0;
+
+    // Calculate Total Devengado Bruto (Base + Extras + Aux Transporte + Otros Ingresos)
+    const totalDevengadoBruto = isSummary ? baseMasExtras + auxTransporteAplicado + totalOtrosIngresos : baseMasExtras;
+
+    // Calculate Legal Deductions (Salud 4%, Pension 4%) based on IBC
+    // IBC = Total Devengado Bruto EXCLUDING Aux Transporte
+    const ibcEstimadoQuincenal = isSummary ? baseMasExtras + totalOtrosIngresos : 0; // Use devengado bruto *without* transport aux
     const deduccionSaludQuincenal = isSummary ? ibcEstimadoQuincenal * 0.04 : 0;
     const deduccionPensionQuincenal = isSummary ? ibcEstimadoQuincenal * 0.04 : 0;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
 
-    // Calculate Subtotal Neto Parcial (only for summary)
-    const subtotalNetoParcial = isSummary ? devengadoBruto - totalDeduccionesLegales : 0;
+    // Calculate Subtotal Neto Parcial (Total Devengado Bruto - Deducciones Ley)
+    const subtotalNetoParcial = isSummary ? totalDevengadoBruto - totalDeduccionesLegales : 0;
 
-    // Calculate Final Net Pay (only for summary)
-    const netoAPagar = isSummary ? subtotalNetoParcial + totalOtrosIngresos - totalOtrasDeducciones : 0;
+    // Calculate Final Net Pay (Subtotal Neto Parcial - Otras Deducciones)
+    const netoAPagar = isSummary ? subtotalNetoParcial - totalOtrasDeducciones : 0;
 
 
     return (
@@ -215,6 +230,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
            </Alert>
         )}
 
+        {/* --- Table for Hour Breakdown --- */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -229,25 +245,16 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
               const pagoCategoria = pagos[key];
 
               // Conditionally display rows based on whether they have values
-              // Show Ordinaria_Diurna_Base only if it has hours
-              if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) {
-                  return null;
-              }
-              // Hide other categories if both hours and payment are zero
-              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) {
-                  return null;
-              }
-
+              if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) return null;
+              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) return null;
 
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
-                    {/* Updated label with threshold */}
-                    {labelMap[key] || key} umbral de horario base diario 7,66 change
-                    </TableCell>
+                    {labelMap[key] || key}
+                  </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
                   <TableCell className="text-right">
-                    {/* For Ordinaria_Diurna_Base, show N/A or similar for payment as it's base salary */}
                     {key === 'Ordinaria_Diurna_Base' ? '-' : formatCurrency(pagoCategoria)}
                   </TableCell>
                 </TableRow>
@@ -255,6 +262,8 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
             })}
           </TableBody>
         </Table>
+
+        {/* --- Totals Section --- */}
         <Separator className="my-4" />
         <div className="space-y-2">
              <div className="flex justify-between font-semibold text-base">
@@ -272,29 +281,64 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                     <span>+ Salario Base Quincenal:</span>
                     <span>{formatCurrency(salarioBaseQuincenal)}</span>
                  </div>
+                  {/* Transportation Allowance Toggle */}
+                 <div className="flex justify-between items-center text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="transport-switch" className="flex items-center gap-1 cursor-pointer">
+                            <Bus className="h-4 w-4" />
+                            Incluir Auxilio de Transporte:
+                        </Label>
+                        <span>(+ {formatCurrency(auxTransporteValor || 0)})</span>
+                    </div>
+                    <Switch
+                        id="transport-switch"
+                        checked={incluyeAuxTransporte}
+                        onCheckedChange={onToggleTransporte}
+                        disabled={!onToggleTransporte} // Disable if handler not provided
+                    />
+                 </div>
+                 {/* Optional: Show applied transport allowance explicitly */}
+                 {/* {auxTransporteAplicado > 0 && (
+                     <div className="flex justify-between text-muted-foreground">
+                         <span>+ Auxilio de Transporte Aplicado:</span>
+                         <span>{formatCurrency(auxTransporteAplicado)}</span>
+                     </div>
+                 )} */}
+                 {/* Other Income (Placeholder - Actual items listed below) */}
+                 {totalOtrosIngresos > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                        <span>+ Total Otros Ingresos:</span>
+                        <span>{formatCurrency(totalOtrosIngresos)}</span>
+                    </div>
+                 )}
+
                  <Separator className="my-2 border-dashed" />
+                 {/* Total Devengado Bruto */}
                  <div className="flex justify-between font-semibold text-lg">
                    <span className="text-foreground">Total Devengado Bruto Estimado:</span>
-                   <span className="text-foreground">{formatCurrency(devengadoBruto)}</span>
+                   <span className="text-foreground">{formatCurrency(totalDevengadoBruto)}</span>
                  </div>
                  <Separator className="my-2" />
+
                  {/* Legal Deductions Section */}
                  <div className="flex justify-between text-muted-foreground">
-                    <span>- Deducción Salud (4% sobre IBC):</span>
+                    <span>- Deducción Salud (4% s/IBC*):</span>
                     <span>{formatCurrency(deduccionSaludQuincenal)}</span>
                  </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span>- Deducción Pensión (4% sobre IBC):</span>
+                    <span>- Deducción Pensión (4% s/IBC*):</span>
                     <span>{formatCurrency(deduccionPensionQuincenal)}</span>
                  </div>
                  <Separator className="my-2 border-dashed" />
+                 {/* Subtotal after Legal Deductions */}
                   <div className="flex justify-between font-medium text-base">
-                    <span className="text-foreground">Subtotal Neto Parcial (Devengado Bruto - Deducciones Ley):</span>
+                    <span className="text-foreground">Subtotal (Dev. Bruto - Ded. Ley):</span>
                     <span className="text-foreground">{formatCurrency(subtotalNetoParcial)}</span>
                   </div>
                 </>
              )}
         </div>
+
         {/* --- Adjustment Sections (Only in Summary View) --- */}
         {isSummary && (
             <>
@@ -303,7 +347,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 <div className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-semibold text-foreground">Otros Ingresos / Ajustes a Favor</h4>
-                        <Button variant="outline" size="sm" onClick={onAddIngreso}>
+                        <Button variant="outline" size="sm" onClick={onAddIngreso} disabled={!onAddIngreso}>
                            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ingreso
                         </Button>
                     </div>
@@ -311,23 +355,29 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                         <ul className="space-y-1 text-sm">
                            {otrosIngresos.map(item => (
                               <li key={item.id} className="flex justify-between items-center text-muted-foreground">
-                                 <span>{item.descripcion || 'Ingreso sin descripción'}</span>
-                                 <div className="flex items-center gap-2">
+                                 <span className='truncate pr-2'>{item.descripcion || 'Ingreso sin descripción'}</span>
+                                 <div className="flex items-center gap-2 flex-shrink-0">
                                      <span>+ {formatCurrency(item.monto)}</span>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteIngreso && onDeleteIngreso(item.id)}>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteIngreso && onDeleteIngreso(item.id)} disabled={!onDeleteIngreso}>
                                         <Trash2 className="h-4 w-4" />
                                      </Button>
                                  </div>
                               </li>
                            ))}
-                           <Separator className="my-1 border-dashed"/>
-                           <li className="flex justify-between items-center font-medium text-foreground">
-                              <span>Total Otros Ingresos:</span>
-                              <span>{formatCurrency(totalOtrosIngresos)}</span>
-                           </li>
+                           {/* Separator removed from inside list */}
                         </ul>
                     ) : (
                         <p className="text-sm text-muted-foreground italic">No hay otros ingresos registrados.</p>
+                    )}
+                     {/* Show Total Otros Ingresos only if list has items */}
+                    {(otrosIngresos || []).length > 0 && (
+                        <>
+                          <Separator className="my-2 border-dashed"/>
+                           <div className="flex justify-between items-center font-medium text-foreground text-sm">
+                              <span>Total Otros Ingresos (Manuales):</span>
+                              <span>{formatCurrency(totalOtrosIngresos)}</span>
+                           </div>
+                        </>
                     )}
                 </div>
 
@@ -336,7 +386,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 <div className="mb-4">
                    <div className="flex justify-between items-center mb-2">
                        <h4 className="font-semibold text-foreground">Otras Deducciones / Descuentos</h4>
-                       <Button variant="outline" size="sm" onClick={onAddDeduccion}>
+                       <Button variant="outline" size="sm" onClick={onAddDeduccion} disabled={!onAddDeduccion}>
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
                     </div>
@@ -344,24 +394,30 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                          <ul className="space-y-1 text-sm">
                            {otrasDeducciones.map(item => (
                               <li key={item.id} className="flex justify-between items-center text-muted-foreground">
-                                 <span>{item.descripcion || 'Deducción sin descripción'}</span>
-                                 <div className="flex items-center gap-2">
+                                 <span className='truncate pr-2'>{item.descripcion || 'Deducción sin descripción'}</span>
+                                 <div className="flex items-center gap-2 flex-shrink-0">
                                     <span>- {formatCurrency(item.monto)}</span>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteDeduccion && onDeleteDeduccion(item.id)}>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteDeduccion && onDeleteDeduccion(item.id)} disabled={!onDeleteDeduccion}>
                                          <Trash2 className="h-4 w-4" />
                                       </Button>
                                  </div>
                               </li>
                            ))}
-                           <Separator className="my-1 border-dashed"/>
-                           <li className="flex justify-between items-center font-medium text-foreground">
-                              <span>Total Otras Deducciones:</span>
-                              <span>{formatCurrency(totalOtrasDeducciones)}</span>
-                           </li>
+                           {/* Separator removed from inside list */}
                         </ul>
                     ) : (
                          <p className="text-sm text-muted-foreground italic">No hay otras deducciones registradas.</p>
                     )}
+                    {/* Show Total Otras Deducciones only if list has items */}
+                     {(otrasDeducciones || []).length > 0 && (
+                         <>
+                            <Separator className="my-2 border-dashed"/>
+                            <div className="flex justify-between items-center font-medium text-foreground text-sm">
+                               <span>Total Otras Deducciones (Manuales):</span>
+                               <span>{formatCurrency(totalOtrasDeducciones)}</span>
+                            </div>
+                         </>
+                     )}
                 </div>
 
                 {/* Final Net Pay Section */}
@@ -373,12 +429,17 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
              </>
         )}
 
+         {/* Footer Notes */}
          <CardDescription className="mt-4 text-xs text-muted-foreground">
+              {isSummary
+                 ? `*IBC (Ingreso Base de Cotización) estimado como Devengado Bruto sin Auxilio de Transporte. Las deducciones legales son aproximadas.`
+                 : `Nota: Este es el cálculo solo para este día.`
+              }
+              <br/>
              {isSummary
-                ? `Nota: Este es un cálculo bruto estimado para ${diasCalculados} días. El IBC y las deducciones legales son aproximaciones. El pago final puede variar según políticas específicas.`
-                : `Nota: Este es el cálculo solo para este día. El total quincenal incluirá el salario base, resultados de otros días, deducciones y ajustes.`
+                ? `Cálculo para ${diasCalculados} días. Base: ${formatCurrency(salarioBaseQuincenal)}. Pago final puede variar.`
+                : `Total quincenal incluirá base, otros días, deducciones y ajustes.`
              }
-             {isSummary && ` El salario base quincenal considerado es ${formatCurrency(salarioBaseQuincenal)}.`}
         </CardDescription>
       </>
     );
@@ -391,3 +452,5 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
 
   );
 }
+
+    

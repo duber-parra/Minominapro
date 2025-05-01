@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle } from 'lucide-react'; // Added Library for bulk export, FileSearch, MinusCircle
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus } from 'lucide-react'; // Added Bus icon
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -36,11 +36,11 @@ import { VALORES } from '@/config/payroll-values'; // Import VALORES from new lo
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
-// Removed duplicate SavedPayrollData import
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 
-// Example fixed salary for demonstration
-const SALARIO_BASE_QUINCENAL_FIJO = 711750;
+// Constants
+const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
+const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance
 
 // --- LocalStorage Key Generation ---
 const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
@@ -60,12 +60,17 @@ const getStorageKey = (employeeId: string, periodStart: Date | undefined, period
 };
 
 
-// --- Helper to parse stored data (revives dates) ---
-const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[] } => {
-    if (!jsonData) return { days: [], income: [], deductions: [] };
+// --- Helper to parse stored data (revives dates and includes transport flag) ---
+const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[], includeTransport: boolean } => {
+    if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false };
     try {
-        // Assuming stored data now includes adjustments
-        const storedObject = JSON.parse(jsonData) as { calculatedDays: CalculationResults[], otrosIngresosLista?: AdjustmentItem[], otrasDeduccionesLista?: AdjustmentItem[] };
+        // Assuming stored data now includes adjustments and transport flag
+        const storedObject = JSON.parse(jsonData) as {
+             calculatedDays: CalculationResults[],
+             otrosIngresosLista?: AdjustmentItem[],
+             otrasDeduccionesLista?: AdjustmentItem[],
+             incluyeAuxTransporte?: boolean // Load the flag
+        };
 
         // Revive date objects in calculatedDays
         const revivedDays = (storedObject.calculatedDays || []).map(day => ({
@@ -81,12 +86,13 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
         // Ensure adjustment lists are arrays, even if missing in old data
         const incomeList = Array.isArray(storedObject.otrosIngresosLista) ? storedObject.otrosIngresosLista : [];
         const deductionList = Array.isArray(storedObject.otrasDeduccionesLista) ? storedObject.otrasDeduccionesLista : [];
+        const includeTransport = typeof storedObject.incluyeAuxTransporte === 'boolean' ? storedObject.incluyeAuxTransporte : false; // Default to false if missing
 
-        return { days: revivedDays, income: incomeList, deductions: deductionList };
+        return { days: revivedDays, income: incomeList, deductions: deductionList, includeTransport };
 
     } catch (error) {
         console.error("Error parseando datos de localStorage:", error);
-        return { days: [], income: [], deductions: [] }; // Return empty object on error
+        return { days: [], income: [], deductions: [], includeTransport: false }; // Return default object on error
     }
 };
 
@@ -117,31 +123,38 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                     }
 
                     const storedData = localStorage.getItem(key);
-                    const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions } = parseStoredData(storedData); // Get adjustments too
+                     // Get adjustments and transport flag too
+                    const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport } = parseStoredData(storedData);
 
-                    if (parsedDays.length > 0) {
+                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0) { // Check if there's any data
                         // Calculate summary for the loaded days
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
-                        if (summary) {
-                             const savedPayrollItem: SavedPayrollData = {
-                                key: key,
-                                employeeId: employeeId,
-                                periodStart: startDate,
-                                periodEnd: endDate,
-                                summary: summary, // Summary before adjustments
-                                otrosIngresosLista: parsedIncome, // Store loaded income adjustments
-                                otrasDeduccionesLista: parsedDeductions, // Store loaded deduction adjustments
-                                createdAt: parsedDays[0]?.inputData?.startDate ? new Date(parsedDays[0].inputData.startDate) : new Date()
-                            };
-                             // Add calculated final pay to the item for display in the list (optional)
-                             // const totalOtrosIngresos = parsedIncome.reduce((sum, item) => sum + item.monto, 0);
-                             // const totalOtrasDeducciones = parsedDeductions.reduce((sum, item) => sum + item.monto, 0);
-                             // TODO: Recalculate legal deductions properly if needed for list display
-                             // const netoAPagar = summary.pagoTotalConSalarioQuincena - totalDeduccionesLegales + totalOtrosIngresos - totalOtrasDeducciones;
-                             // savedPayrollItem.netoAPagarFinal = netoAPagar; // Add if needed
+                        // Summary can be null if parsedDays is empty, handle this case
+                        // We still might want to save/load if only adjustments exist
 
-                            savedPayrolls.push(savedPayrollItem);
-                        }
+                         const savedPayrollItem: SavedPayrollData = {
+                            key: key,
+                            employeeId: employeeId,
+                            periodStart: startDate,
+                            periodEnd: endDate,
+                            // Handle case where summary might be null if only adjustments were saved
+                            summary: summary || { // Provide a default empty summary if null
+                                totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+                                totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+                                totalPagoRecargosExtrasQuincena: 0,
+                                salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
+                                pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO,
+                                totalDuracionTrabajadaHorasQuincena: 0,
+                                diasCalculados: 0,
+                            },
+                            otrosIngresosLista: parsedIncome, // Store loaded income adjustments
+                            otrasDeduccionesLista: parsedDeductions, // Store loaded deduction adjustments
+                            incluyeAuxTransporte: parsedIncludeTransport, // Store transport flag
+                            createdAt: parsedDays[0]?.inputData?.startDate ? new Date(parsedDays[0].inputData.startDate) : new Date()
+                         };
+
+                        savedPayrolls.push(savedPayrollItem);
+
                     }
                 }
             }
@@ -193,6 +206,9 @@ export default function Home() {
     // State for editing an adjustment (optional)
     // const [editingAdjustment, setEditingAdjustment] = useState<{ type: 'ingreso' | 'deduccion', item: AdjustmentItem } | null>(null);
 
+    // State for Transportation Allowance
+    const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
+
 
     const { toast } = useToast();
 
@@ -210,24 +226,27 @@ export default function Home() {
             if (storageKey) {
                 console.log(`Intentando cargar datos para la clave: ${storageKey}`);
                 const storedData = localStorage.getItem(storageKey);
-                const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions } = parseStoredData(storedData);
+                // Load transport flag along with other data
+                const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport } = parseStoredData(storedData);
                 setCalculatedDays(parsedDays);
                 setOtrosIngresos(parsedIncome); // Load income adjustments
                 setOtrasDeducciones(parsedDeductions); // Load deduction adjustments
+                setIncluyeAuxTransporte(parsedIncludeTransport); // Load transport allowance flag
                 setIsDataLoaded(true); // Mark data as loaded (or attempted)
                  // Only toast if user explicitly selected employee/period
                  if (employeeId && payPeriodStart && payPeriodEnd) {
                      toast({
                          title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
-                         description: storedData ? `Se cargaron ${parsedDays.length} turnos y ajustes para ${employeeId}.` : `No se encontraron turnos guardados para ${employeeId} en este período.`,
+                         description: storedData ? `Se cargaron turnos, ajustes y estado de auxilio para ${employeeId}.` : `No se encontraron datos guardados para ${employeeId} en este período.`,
                          variant: 'default',
                      });
                  }
             } else {
-                // Clear days and adjustments if key is invalid
+                // Clear days, adjustments, and transport flag if key is invalid
                 setCalculatedDays([]);
                 setOtrosIngresos([]);
                 setOtrasDeducciones([]);
+                setIncluyeAuxTransporte(false); // Reset transport flag
                 setIsDataLoaded(true); // Still considered 'loaded' (with empty data)
                  if (employeeId || payPeriodStart || payPeriodEnd) { // Only show 'not found' if some info was provided
                     // Optionally clear toast if selection becomes incomplete
@@ -242,17 +261,19 @@ export default function Home() {
         }
     }, [employeeId, payPeriodStart, payPeriodEnd, toast]); // Add toast to dependency array
 
-    // Save current employee/period data to localStorage whenever calculatedDays, otrosIngresos, or otrasDeducciones changes (after initial load)
+    // Save current employee/period data to localStorage whenever calculatedDays, otrosIngresos, otrasDeducciones, or incluyeAuxTransporte changes (after initial load)
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) { // Ensure running on client and after initial load
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
-            if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0)) { // Only save if there's something to save
+             // Save if there's data OR if the transport flag is true (even if other lists are empty)
+            if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte)) {
                 try {
-                     console.log(`Intentando guardar ${calculatedDays.length} días y ajustes en la clave: ${storageKey}`);
+                     console.log(`Intentando guardar datos (incluye transporte: ${incluyeAuxTransporte}) en la clave: ${storageKey}`);
                      const dataToSave = {
                          calculatedDays: calculatedDays,
                          otrosIngresosLista: otrosIngresos,
                          otrasDeduccionesLista: otrasDeducciones,
+                         incluyeAuxTransporte: incluyeAuxTransporte, // Save the transport flag
                      };
                     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
                      // After saving, refresh the list of saved payrolls
@@ -265,15 +286,15 @@ export default function Home() {
                         variant: 'destructive',
                     });
                 }
-            } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0) {
-                // If all data is cleared, remove the item from localStorage
+            // Remove from storage only if ALL data is cleared AND transport flag is false
+            } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte) {
                 localStorage.removeItem(storageKey);
-                console.log(`Clave ${storageKey} eliminada porque no hay datos.`);
+                console.log(`Clave ${storageKey} eliminada porque no hay datos ni auxilio de transporte activo.`);
                 // Refresh saved list after deletion
                 setSavedPayrolls(loadAllSavedPayrolls());
             }
         }
-    }, [calculatedDays, otrosIngresos, otrasDeducciones, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add adjustment states to dependencies
+    }, [calculatedDays, otrosIngresos, otrasDeducciones, incluyeAuxTransporte, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add incluyeAuxTransporte to dependencies
 
 
   // --- Event Handlers ---
@@ -312,13 +333,14 @@ export default function Home() {
          setCalculatedDays([]); // Clear state immediately
          setOtrosIngresos([]); // Clear adjustments
          setOtrasDeducciones([]);
+         setIncluyeAuxTransporte(false); // Reset transport flag
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
          setSavedPayrolls(loadAllSavedPayrolls()); // Refresh saved list
          toast({
             title: 'Datos del Período Eliminados',
-            description: `Se han borrado los turnos y ajustes guardados localmente para ${employeeId} en este período.`,
+            description: `Se han borrado los turnos, ajustes y estado de auxilio de transporte guardados localmente para ${employeeId} en este período.`,
             variant: 'destructive',
          });
     };
@@ -536,13 +558,59 @@ export default function Home() {
         toast({ title: 'Deducción Eliminada', variant: 'destructive' });
    };
 
+    // --- Transportation Allowance Handler ---
+    const handleToggleTransporte = () => {
+        setIncluyeAuxTransporte(prev => !prev);
+        toast({
+            title: `Auxilio de Transporte ${!incluyeAuxTransporte ? 'Activado' : 'Desactivado'}`,
+            description: !incluyeAuxTransporte
+                         ? `Se sumará ${formatCurrency(AUXILIO_TRANSPORTE_VALOR)} al total devengado.`
+                         : 'El auxilio de transporte no se incluirá en el cálculo.',
+        });
+    };
+
 
   // Memoized calculation for the quincenal summary using the utility function
   const quincenalSummary = useMemo(() => {
-      // Only calculate if there are days to summarize
-       if (calculatedDays.length === 0) return null;
-      return calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
-  }, [calculatedDays]);
+       // Only calculate if there are days to summarize, even if transport is on
+        if (calculatedDays.length === 0 && !incluyeAuxTransporte && otrosIngresos.length === 0 && otrasDeducciones.length === 0) return null;
+        // Calculate base summary from days, potentially null if no days
+       const baseSummary = calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
+
+        // Create a structure even if baseSummary is null, to handle adjustments/transport
+       const finalSummary: QuincenalCalculationSummary = baseSummary || {
+           totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+           totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+           totalPagoRecargosExtrasQuincena: 0,
+           salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
+           pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO, // Start with base
+           totalDuracionTrabajadaHorasQuincena: 0,
+           diasCalculados: 0,
+       };
+
+       // Add extras if they exist (from baseSummary)
+       if (baseSummary) {
+          finalSummary.pagoTotalConSalarioQuincena = baseSummary.pagoTotalConSalarioQuincena; // Base + Extras
+       }
+
+
+       // Conditionally add transport allowance to the final displayed 'Devengado Bruto'
+       // IMPORTANT: This happens *after* the initial summary calculation which might be used for IBC base.
+       // We will adjust the displayed bruto, but IBC calculation in ResultsDisplay needs care.
+       // Let's pass the separate auxTransporteAplicado value to ResultsDisplay.
+       const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
+
+       // Add other income to the 'devengado bruto' concept
+       const totalOtrosIngresos = otrosIngresos.reduce((sum, item) => sum + item.monto, 0);
+
+       // Update the final 'total Devengado Bruto' shown in the summary - this is BEFORE deductions
+       // finalSummary.pagoTotalConSalarioQuincena += auxTransporteAplicado + totalOtrosIngresos;
+       // Let's keep pagoTotalConSalarioQuincena as Base + Extras for potential IBC use,
+       // and calculate the displayed total devengado in ResultsDisplay
+
+       return finalSummary; // Return the summary (potentially just base salary if no days)
+
+  }, [calculatedDays, incluyeAuxTransporte, otrosIngresos]); // Update when transport or income changes
 
 
   // Find the data for the day being edited (for WorkdayForm)
@@ -568,10 +636,14 @@ export default function Home() {
 
   // Determine if form or summary should be disabled
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
+  // Determine if summary section should be visible
+  const showSummary = quincenalSummary !== null;
+
 
   // --- PDF Export Handler ---
   const handleExportPDF = () => {
-     if (!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
+      const currentSummary = quincenalSummary; // Capture current state
+     if (!currentSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
          toast({
              title: 'Datos Incompletos para Exportar',
              description: 'Asegúrate de tener un colaborador, período, cálculo quincenal y ajustes completados.',
@@ -580,14 +652,16 @@ export default function Home() {
          return;
      }
      try {
-         // Pass adjustments to the export function
+          const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
+         // Pass adjustments and transport flag/value to the export function
         exportPayrollToPDF(
-            quincenalSummary,
+            currentSummary,
             employeeId,
             payPeriodStart,
             payPeriodEnd,
             otrosIngresos, // Pass income list
-            otrasDeducciones // Pass deduction list
+            otrasDeducciones, // Pass deduction list
+            auxTransporteAplicado // Pass the applied transport allowance value
         );
         toast({
             title: 'PDF Exportado',
@@ -617,7 +691,7 @@ export default function Home() {
     }
 
     try {
-        // Pass the full SavedPayrollData array which now includes adjustments
+        // Pass the full SavedPayrollData array which now includes adjustments and transport flag
         exportAllPayrollsToPDF(allPayrollDataToExport);
         toast({
             title: 'Exportación Masiva Completa',
@@ -642,9 +716,9 @@ export default function Home() {
      setEmployeeId(payrollToLoad.employeeId);
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
-     // Adjustment lists will be loaded by the useEffect hook triggered by the above state changes
+     // Adjustment lists and transport flag will be loaded by the useEffect hook triggered by the above state changes
 
-     // The useEffect for loading data will automatically trigger and load the days AND adjustments
+     // The useEffect for loading data will automatically trigger and load the days, adjustments, and transport flag
      setIsDataLoaded(false); // Ensure the effect runs
 
      toast({
@@ -675,6 +749,7 @@ export default function Home() {
             setCalculatedDays([]);
             setOtrosIngresos([]); // Clear adjustments too
             setOtrasDeducciones([]);
+            setIncluyeAuxTransporte(false); // Reset transport flag
             setEmployeeId(''); // Optionally clear selection
             setPayPeriodStart(undefined);
             setPayPeriodEnd(undefined);
@@ -783,7 +858,8 @@ export default function Home() {
                    </Button>
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="w-full" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0) }> {/* Disable if nothing to clear */}
+                             {/* Disable clear if form disabled OR if all data is already clear */}
+                             <Button variant="destructive" className="w-full" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte) }>
                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Período Actual
                             </Button>
                         </AlertDialogTrigger>
@@ -791,7 +867,7 @@ export default function Home() {
                          <AlertDialogHeader>
                            <AlertDialogTitle>¿Limpiar Datos del Período?</AlertDialogTitle>
                            <AlertDialogDescription>
-                              Esta acción eliminará todos los turnos y ajustes guardados localmente para <strong>{employeeId || 'el colaborador seleccionado'}</strong> en el período del{' '}
+                              Esta acción eliminará todos los turnos y ajustes (incluido el estado de aux. transporte) guardados localmente para <strong>{employeeId || 'el colaborador seleccionado'}</strong> en el período del{' '}
                               <strong>{payPeriodStart ? format(payPeriodStart, 'dd/MM/yy', {locale: es}) : '?'}</strong> al{' '}
                               <strong>{payPeriodEnd ? format(payPeriodEnd, 'dd/MM/yy', {locale: es}) : '?'}</strong>. Esta acción no se puede deshacer.
                            </AlertDialogDescription>
@@ -813,8 +889,8 @@ export default function Home() {
           </CardContent>
       </Card>
 
-      {/* Main content area with 3 columns on large screens - Adjusted layout to 7 parts */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8"> {/* Changed to grid-cols-7 */}
+      {/* Main content area with 7 columns on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8">
 
           {/* Column 1: Add/Edit Day Form - Takes 2 parts */}
           <div className="lg:col-span-2">
@@ -1055,12 +1131,12 @@ export default function Home() {
       </div> {/* End of 7-column grid */}
 
        {/* Section for Quincenal Summary - Moved outside grid, takes full width */}
-       {quincenalSummary && (
+       {showSummary && (
          <Card className="shadow-lg mt-8 bg-card"> {/* Full width */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
                  <CardTitle className="flex items-center gap-2 text-xl text-foreground"><Calculator className="h-5 w-5" /> Resumen Quincenal</CardTitle>
-                 <CardDescription>Resultados agregados para los {quincenalSummary.diasCalculados} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+                 <CardDescription>Resultados agregados para los {quincenalSummary?.diasCalculados ?? 0} turnos calculados de {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
                     <FileDown className="mr-2 h-4 w-4" /> Exportar PDF
@@ -1068,7 +1144,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
                <ResultsDisplay
-                   results={quincenalSummary}
+                   results={quincenalSummary} // Pass the potentially adjusted summary
                    error={null}
                    isLoading={false}
                    isSummary={true}
@@ -1079,6 +1155,10 @@ export default function Home() {
                    onAddDeduccion={() => setIsDeductionModalOpen(true)}
                    onDeleteIngreso={handleDeleteIngreso}
                    onDeleteDeduccion={handleDeleteDeduccion}
+                   // Pass transportation allowance state and handler
+                   incluyeAuxTransporte={incluyeAuxTransporte}
+                   onToggleTransporte={handleToggleTransporte}
+                   auxTransporteValor={AUXILIO_TRANSPORTE_VALOR} // Pass the value
                 />
             </CardContent>
          </Card>
@@ -1107,3 +1187,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

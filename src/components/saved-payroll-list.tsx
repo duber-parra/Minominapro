@@ -1,3 +1,4 @@
+
 // src/components/saved-payroll-list.tsx
 'use client';
 
@@ -22,17 +23,26 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
 
     // Helper function to calculate final net pay for display
     const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
-        const devengadoBruto = payroll.summary.pagoTotalConSalarioQuincena;
-        // Estimate legal deductions (same logic as in ResultsDisplay - NEEDS REFINEMENT)
-        const ibcEstimadoQuincenal = devengadoBruto;
+        const baseMasExtras = payroll.summary.pagoTotalConSalarioQuincena;
+        const auxTransporteValorConfig = 100000; // Assuming this value, ideally get from config
+        const auxTransporteAplicado = payroll.incluyeAuxTransporte ? auxTransporteValorConfig : 0;
+        const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+        const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+
+        // Calculate Total Devengado Bruto
+        const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
+
+        // Estimate legal deductions (IBC excludes transport allowance)
+        const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
         const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
         const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
         const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
-        // Calculate adjustment totals
-        const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
-        const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+
+        // Calculate Subtotal Neto Parcial
+        const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
+
         // Calculate final net pay
-        return devengadoBruto - totalDeduccionesLegales + totalOtrosIngresos - totalOtrasDeducciones;
+        return subtotalNetoParcial - totalOtrasDeducciones;
     };
 
 
@@ -68,7 +78,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                           Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
                         </p>
                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena)}</span>
+                            <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena + (payroll.incluyeAuxTransporte ? 100000 : 0) + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) )}</span>
                             <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-accent text-right">{formatCurrency(netoFinal)}</span>
                          </div>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -82,7 +92,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                         <AlertDialog>
                            {/* Ensure AlertDialogTrigger is inside AlertDialog */}
                           <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" /* onClick={() => onDelete(payroll.key)} */ title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                              <Button variant="ghost" size="icon" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </AlertDialogTrigger>
@@ -100,3 +110,5 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
     </Card>
   );
 };
+
+    
