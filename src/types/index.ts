@@ -65,6 +65,3 @@ import type { WorkdayFormValues } from '@/components/workday-form';
     incluyeAuxTransporte: boolean; // Flag indicating if transport allowance was included for this saved period
     createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
  }
-
-
-    
