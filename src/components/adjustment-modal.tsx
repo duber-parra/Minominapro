@@ -73,14 +73,8 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                     monto: initialData.monto,
                     descripcion: initialData.descripcion || '',
                 };
-            } else if (type === 'ingreso') {
-                // Adding NEW income - set defaults
-                resetValues = {
-                    monto: 100000, // Default amount
-                    descripcion: 'Aux de Transporte', // Default description
-                };
             } else {
-                // Adding NEW deduction or other cases
+                // Adding NEW item (income or deduction) - no defaults
                 resetValues = {
                     monto: undefined, // Use undefined to clear number input properly
                     descripcion: '',
@@ -121,14 +115,15 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                   <FormLabel>{amountLabel}</FormLabel>
                   <FormControl>
                      {/* Use type="number", step="any" for decimals */}
-                     {/* Add conditional styling for deduction */}
+                     {/* Apply destructive ring color only on focus for deduction */}
                     <Input
                       type="number"
                       step="any"
                       min="0.01" // Ensure positive
                       placeholder="0.00"
                       className={cn(
-                        type === 'deduccion' && 'focus-visible:ring-destructive border-destructive focus-visible:border-destructive' // Keep red border for deduction input
+                        // Apply focus ring color, not border by default
+                        type === 'deduccion' && 'focus-visible:ring-destructive'
                       )}
                       {...field}
                       // Handle undefined case for initial render if default is undefined
@@ -158,17 +153,16 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
             />
              <DialogFooter className="mt-4">
                  <DialogClose asChild>
-                     {/* Cancel button: red background */}
-                    <Button type="button" className="bg-red-600 hover:bg-red-700 text-white border-transparent">
+                     {/* Cancel button: outline variant, red on hover */}
+                    <Button type="button" variant="outline" className="hover:bg-red-600 hover:text-white">
                       <X className="mr-2 h-4 w-4" /> Cancelar
                     </Button>
                   </DialogClose>
-                 {/* Save button: always green based on latest request */}
+                 {/* Save button: default variant, green on hover */}
                 <Button
                     type="submit"
-                    // Apply green styles consistently for both income and deduction save buttons
-                    // based on the latest request.
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    variant="default" // Use default variant
+                    className="hover:bg-green-600 hover:text-white" // Green only on hover
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
                 </Button>
