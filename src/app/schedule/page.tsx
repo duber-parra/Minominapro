@@ -17,6 +17,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"; // Import AlertDialog components
 import { Calendar as CalendarIcon, Plus, Save, Copy, Users, Building, Briefcase, Warehouse, ChevronLeft, ChevronRight, Edit, Trash2, Settings } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays, addWeeks, subWeeks, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -245,6 +256,7 @@ export default function SchedulePage() {
              setScheduleData(prevData => {
                  const updatedAssignments = { ...prevData.assignments };
                  updatedAssignments[departmentId] = [...(updatedAssignments[departmentId] || []), newAssignment];
+                 // Update available employees after assigning
                  return { ...prevData, assignments: updatedAssignments };
              });
 
@@ -266,6 +278,7 @@ export default function SchedulePage() {
          setScheduleData(prevData => {
              const updatedAssignments = { ...prevData.assignments };
              updatedAssignments[departmentId] = (updatedAssignments[departmentId] || []).filter(a => a.id !== assignmentId);
+              // Update available employees after removing assignment
              return { ...prevData, assignments: updatedAssignments };
          });
          toast({
@@ -841,4 +854,3 @@ export default function SchedulePage() {
 
   );
 }
-
