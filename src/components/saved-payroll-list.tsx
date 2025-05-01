@@ -1,4 +1,3 @@
-
 // src/components/saved-payroll-list.tsx
 'use client';
 
@@ -45,7 +44,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
           <ul className="space-y-4 max-h-[70vh] lg:max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
             {payrolls.map((payroll) => (
               <li key={payroll.key} className="relative p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col justify-between gap-3">
-                <div className="flex-grow min-w-0 pr-16">
+                <div className="flex-grow min-w-0 pr-16"> {/* Add right padding here too */}
                   <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeId}</p>
                   <p className="text-sm text-muted-foreground">
                     Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
@@ -58,7 +57,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                     Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
                   </p>
                 </div>
-                <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0">
+                <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0"> {/* Changed to flex-row */}
                   <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
                     <FileSearch className="h-4 w-4" />
                   </Button>
