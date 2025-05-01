@@ -31,7 +31,7 @@ interface ResultsDisplayProps {
 
 // Mapeo de claves a etiquetas legibles en español
 const labelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'Horas Ordinarias Diurnas (Base)',
+    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)', // Updated label
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
     Recargo_Dom_Diurno_Base: 'Recargo Dominical/Festivo Diurno (Base)',
     Recargo_Dom_Noct_Base: 'Recargo Dominical/Festivo Nocturno (Base)',
