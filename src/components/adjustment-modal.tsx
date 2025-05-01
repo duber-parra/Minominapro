@@ -74,10 +74,10 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                     descripcion: initialData.descripcion || '',
                 };
             } else {
-                // Adding NEW item (income or deduction) - no defaults
+                // Adding NEW item (income or deduction) - clear defaults
                 resetValues = {
                     monto: undefined, // Use undefined to clear number input properly
-                    descripcion: '',
+                    descripcion: '', // Clear description
                 };
             }
             form.reset(resetValues);
@@ -163,10 +163,10 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                     type="submit"
                     variant="default" // Use default variant
                     className={cn(
-                        "text-white", // Ensure text is visible on gradient
+                        "text-foreground", // Use foreground for better contrast on light gradient
                         type === 'deduccion'
-                            ? "bg-destructive hover:bg-gradient-to-b hover:from-red-400 hover:to-red-600" // Red gradient for deduction
-                            : "hover:bg-gradient-to-b hover:from-lime-100 hover:to-green-500" // Green gradient for income
+                            ? "bg-destructive hover:bg-gradient-to-b hover:from-red-400 hover:to-red-600 hover:text-white" // Red gradient for deduction hover
+                            : "bg-primary hover:bg-gradient-to-b hover:from-lime-100 hover:to-green-500" // Apply gradient on hover for income
                     )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
