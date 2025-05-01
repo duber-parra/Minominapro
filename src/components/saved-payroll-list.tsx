@@ -47,13 +47,14 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
         {payrolls.length > 0 ? (
           <ul className="space-y-4 max-h-[70vh] lg:max-h-[calc(100vh-250px)] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
             {payrolls.map((payroll) => (
-              <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex-grow">
-                  <p className="font-semibold text-lg text-primary">{payroll.employeeId}</p>
+              <li key={payroll.key} className="p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"> {/* Adjusted gap */}
+                <div className="flex-grow min-w-0"> {/* Added min-w-0 to allow shrinking/wrapping */}
+                  <p className="font-semibold text-lg text-primary truncate">{payroll.employeeId}</p> {/* Added truncate */}
                   <p className="text-sm text-muted-foreground">
                     Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })}
                   </p>
                    {/* Displaying key summary figures */}
+                   {/* Use flex-wrap for smaller screens if needed */}
                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <span>Devengado:</span><span className="font-medium text-right">{formatCurrency(payroll.summary.totalPagoRecargosExtrasQuincena)}</span> {/* Show only extras/surcharges */}
                       {/* Simplified Deductions display - Placeholder */}
@@ -64,7 +65,8 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                     Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })} {/* Display creation/save time */}
                   </p>
                 </div>
-                <div className="flex gap-2 flex-shrink-0 mt-2 sm:mt-0">
+                {/* Button container: allow wrapping on small screens if needed */}
+                <div className="flex flex-wrap sm:flex-nowrap gap-2 flex-shrink-0 mt-2 sm:mt-0 self-start sm:self-center"> {/* Adjusted alignment */}
                   <Button variant="outline" size="sm" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina">
                     <FileSearch className="mr-2 h-4 w-4" /> Cargar
                   </Button>
