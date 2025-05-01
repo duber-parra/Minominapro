@@ -47,14 +47,14 @@ async function getFestivosSet(year: number): Promise<Set<string>> {
         return festivosSet;
     } catch (error) {
         console.error("Error al obtener festivos:", error);
-        // Devolver Set vacío en caso de error para no bloquear el cálculo
-        return new Set();
+        // Re-lanzar el error para que sea capturado por el try-catch principal
+        throw new Error(`Error al obtener festivos para ${year}: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
 async function esFestivo(fecha: Date): Promise<boolean> {
     const year = getYear(fecha);
-    const festivos = await getFestivosSet(year);
+    const festivos = await getFestivosSet(year); // Puede lanzar error si getFestivosSet falla
     const fechaStr = format(fecha, 'yyyy-MM-dd');
     return festivos.has(fechaStr);
 }
@@ -78,171 +78,189 @@ export async function calculateSingleWorkday(
     id: string // Pass the unique ID for this calculation
 ): Promise<CalculationResults | CalculationError> {
 
-    const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
+    try { // <--- Start of main try block
+        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
 
-    // --- Parseo y Validación Inicial ---
-    const inicioDtStr = `${format(startDate, 'yyyy-MM-dd')} ${startTime}`;
-    const inicioDt = parse(inicioDtStr, 'yyyy-MM-dd HH:mm', new Date());
+        // --- Parseo y Validación Inicial ---
+        const inicioDtStr = `${format(startDate, 'yyyy-MM-dd')} ${startTime}`;
+        const inicioDt = parse(inicioDtStr, 'yyyy-MM-dd HH:mm', new Date());
 
-    if (!isValid(inicioDt)) {
-        return { error: `ID ${id}: Fecha u hora de inicio inválida.` };
-    }
-
-    let finDt: Date;
-    let finDtStr = `${format(startDate, 'yyyy-MM-dd')} ${endTime}`;
-    if (endsNextDay) {
-        finDtStr = `${format(addDays(startDate, 1), 'yyyy-MM-dd')} ${endTime}`;
-    }
-    finDt = parse(finDtStr, 'yyyy-MM-dd HH:mm', new Date());
-
-
-    if (!isValid(finDt)) {
-        return { error: `ID ${id}: Fecha u hora de fin inválida.` };
-    }
-
-    if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
-        return { error: `ID ${id}: La hora de fin debe ser posterior a la hora de inicio.` };
-    }
-
-    // --- Validar y parsear horas de descanso si aplica ---
-    let parsedBreakStart: { hours: number; minutes: number } | null = null;
-    let parsedBreakEnd: { hours: number; minutes: number } | null = null;
-    let breakDurationSeconds = 0; // Initialize break duration
-
-    if (includeBreak) {
-        parsedBreakStart = parseTimeString(breakStartTime);
-        parsedBreakEnd = parseTimeString(breakEndTime);
-
-        if (!parsedBreakStart || !parsedBreakEnd) {
-             return { error: `ID ${id}: Formato de hora de descanso inválido (HH:mm).` };
-        }
-        if (parsedBreakEnd.hours < parsedBreakStart.hours || (parsedBreakEnd.hours === parsedBreakStart.hours && parsedBreakEnd.minutes <= parsedBreakStart.minutes)) {
-             return { error: `ID ${id}: La hora de fin del descanso debe ser posterior a la hora de inicio.` };
+        if (!isValid(inicioDt)) {
+            return { error: `ID ${id}: Fecha u hora de inicio inválida.` };
         }
 
-         // Calculate break duration in seconds
-         const breakStartTotalMinutes = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
-         const breakEndTotalMinutes = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
-         breakDurationSeconds = (breakEndTotalMinutes - breakStartTotalMinutes) * 60;
-
-    }
-
-
-    // --- Obtener Festivos para los años involucrados ---
-    await getFestivosSet(getYear(inicioDt));
-    if (!isSameDay(inicioDt, finDt)) {
-        await getFestivosSet(getYear(finDt));
-    }
+        let finDt: Date;
+        let finDtStr = `${format(startDate, 'yyyy-MM-dd')} ${endTime}`;
+        if (endsNextDay) {
+            finDtStr = `${format(addDays(startDate, 1), 'yyyy-MM-dd')} ${endTime}`;
+        }
+        finDt = parse(finDtStr, 'yyyy-MM-dd HH:mm', new Date());
 
 
-    // --- Inicializar contadores ---
-    let horasClasificadas: CalculationResults['horasDetalladas'] = {
-        "Ordinaria_Diurna_Base": 0.0,
-        "Recargo_Noct_Base": 0.0,
-        "Recargo_Dom_Diurno_Base": 0.0,
-        "Recargo_Dom_Noct_Base": 0.0,
-        "HED": 0.0,
-        "HEN": 0.0,
-        "HEDD_F": 0.0,
-        "HEND_F": 0.0
-    };
-    let duracionTotalSegundosBrutos = differenceInSeconds(finDt, inicioDt);
-    let duracionTotalTrabajadaSegundos = duracionTotalSegundosBrutos - (includeBreak ? breakDurationSeconds : 0);
-
-    if (duracionTotalTrabajadaSegundos < 0) duracionTotalTrabajadaSegundos = 0; // Ensure it doesn't go negative
-
-    let segundosTrabajadosAcumulados = 0; // To track the extra hours threshold
-
-    // --- Iterar minuto a minuto sobre el tiempo BRUTO (antes de descontar descanso) ---
-    let cursorDt = inicioDt;
-
-    while (isBefore(cursorDt, finDt)) {
-        const cursorPlusOneMin = addHours(cursorDt, 1 / 60); // Siguiente minuto
-
-        // Punto medio del intervalo de 1 minuto para evaluar condiciones
-        const puntoEvaluacion = addHours(cursorDt, 1 / 120); // +30 segundos
-        const horaEval = getHours(puntoEvaluacion);
-        const minutoEval = getMinutes(puntoEvaluacion); // Necesario para descansos precisos
-
-        // Verificar si es Descanso usando los tiempos parseados si includeBreak es true
-        let esDescanso = false;
-        if (includeBreak && parsedBreakStart && parsedBreakEnd) {
-             const horaActualTotalMinutos = horaEval * 60 + minutoEval;
-             const inicioDescansoTotalMinutos = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
-             const finDescansoTotalMinutos = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
-
-             // El descanso es inclusivo en el inicio y exclusivo en el fin
-             esDescanso = horaActualTotalMinutos >= inicioDescansoTotalMinutos && horaActualTotalMinutos < finDescansoTotalMinutos;
+        if (!isValid(finDt)) {
+            return { error: `ID ${id}: Fecha u hora de fin inválida.` };
         }
 
-        if (!esDescanso) {
-            // Solo clasificar si NO es descanso
-            segundosTrabajadosAcumulados += 60; // Sumar un minuto efectivamente trabajado
-            const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
-            const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
-            const esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
-            const esNocturna = horaEval >= HORA_NOCTURNA_INICIO || horaEval < HORA_NOCTURNA_FIN;
+        if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
+            return { error: `ID ${id}: La hora de fin debe ser posterior a la hora de inicio.` };
+        }
 
-            // --- Clasificación del minuto ---
-            let categoria: keyof typeof horasClasificadas | null = null;
+        // --- Validar y parsear horas de descanso si aplica ---
+        let parsedBreakStart: { hours: number; minutes: number } | null = null;
+        let parsedBreakEnd: { hours: number; minutes: number } | null = null;
+        let breakDurationSeconds = 0; // Initialize break duration
 
-            if (esHoraExtra) {
-                if (esFestivoDominical) {
-                    categoria = esNocturna ? "HEND_F" : "HEDD_F";
-                } else {
-                    categoria = esNocturna ? "HEN" : "HED";
-                }
-            } else { // Dentro de la jornada base
-                if (esFestivoDominical) {
-                    categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
-                } else { // Día laboral
-                    if (esNocturna) {
-                        categoria = "Recargo_Noct_Base";
+        if (includeBreak) {
+            parsedBreakStart = parseTimeString(breakStartTime);
+            parsedBreakEnd = parseTimeString(breakEndTime);
+
+            if (!parsedBreakStart || !parsedBreakEnd) {
+                 return { error: `ID ${id}: Formato de hora de descanso inválido (HH:mm).` };
+            }
+            if (parsedBreakEnd.hours < parsedBreakStart.hours || (parsedBreakEnd.hours === parsedBreakStart.hours && parsedBreakEnd.minutes <= parsedBreakStart.minutes)) {
+                 return { error: `ID ${id}: La hora de fin del descanso debe ser posterior a la hora de inicio.` };
+            }
+
+             // Calculate break duration in seconds
+             const breakStartTotalMinutes = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
+             const breakEndTotalMinutes = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
+             breakDurationSeconds = (breakEndTotalMinutes - breakStartTotalMinutes) * 60;
+
+        }
+
+
+        // --- Obtener Festivos para los años involucrados ---
+        // La llamada a getFestivosSet está dentro del try-catch, si falla, será capturado.
+        await getFestivosSet(getYear(inicioDt));
+        if (!isSameDay(inicioDt, finDt)) {
+            await getFestivosSet(getYear(finDt));
+        }
+
+
+        // --- Inicializar contadores ---
+        let horasClasificadas: CalculationResults['horasDetalladas'] = {
+            "Ordinaria_Diurna_Base": 0.0,
+            "Recargo_Noct_Base": 0.0,
+            "Recargo_Dom_Diurno_Base": 0.0,
+            "Recargo_Dom_Noct_Base": 0.0,
+            "HED": 0.0,
+            "HEN": 0.0,
+            "HEDD_F": 0.0,
+            "HEND_F": 0.0
+        };
+        let duracionTotalSegundosBrutos = differenceInSeconds(finDt, inicioDt);
+        let duracionTotalTrabajadaSegundos = duracionTotalSegundosBrutos - (includeBreak ? breakDurationSeconds : 0);
+
+        if (duracionTotalTrabajadaSegundos < 0) duracionTotalTrabajadaSegundos = 0; // Ensure it doesn't go negative
+
+        let segundosTrabajadosAcumulados = 0; // To track the extra hours threshold
+
+        // --- Iterar minuto a minuto sobre el tiempo BRUTO (antes de descontar descanso) ---
+        let cursorDt = inicioDt;
+
+        while (isBefore(cursorDt, finDt)) {
+            const cursorPlusOneMin = addHours(cursorDt, 1 / 60); // Siguiente minuto
+
+            // Punto medio del intervalo de 1 minuto para evaluar condiciones
+            const puntoEvaluacion = addHours(cursorDt, 1 / 120); // +30 segundos
+            const horaEval = getHours(puntoEvaluacion);
+            const minutoEval = getMinutes(puntoEvaluacion); // Necesario para descansos precisos
+
+            // Verificar si es Descanso usando los tiempos parseados si includeBreak es true
+            let esDescanso = false;
+            if (includeBreak && parsedBreakStart && parsedBreakEnd) {
+                 const horaActualTotalMinutos = horaEval * 60 + minutoEval;
+                 const inicioDescansoTotalMinutos = parsedBreakStart.hours * 60 + parsedBreakStart.minutes;
+                 const finDescansoTotalMinutos = parsedBreakEnd.hours * 60 + parsedBreakEnd.minutes;
+
+                 // El descanso es inclusivo en el inicio y exclusivo en el fin
+                 esDescanso = horaActualTotalMinutos >= inicioDescansoTotalMinutos && horaActualTotalMinutos < finDescansoTotalMinutos;
+            }
+
+            if (!esDescanso) {
+                // Solo clasificar si NO es descanso
+                segundosTrabajadosAcumulados += 60; // Sumar un minuto efectivamente trabajado
+                const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
+                const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
+                // La llamada a esFestivo está dentro del try-catch, si falla, será capturado.
+                const esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
+                const esNocturna = horaEval >= HORA_NOCTURNA_INICIO || horaEval < HORA_NOCTURNA_FIN;
+
+                // --- Clasificación del minuto ---
+                let categoria: keyof typeof horasClasificadas | null = null;
+
+                if (esHoraExtra) {
+                    if (esFestivoDominical) {
+                        categoria = esNocturna ? "HEND_F" : "HEDD_F";
                     } else {
-                         // Para las horas base diurnas, no sumamos recargo, pero sí contamos las horas.
-                         horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
-                         // No asignamos categoría para no sumar recargo de VALORES["Ordinaria_Diurna_Base"] que es 0
+                        categoria = esNocturna ? "HEN" : "HED";
+                    }
+                } else { // Dentro de la jornada base
+                    if (esFestivoDominical) {
+                        categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
+                    } else { // Día laboral
+                        if (esNocturna) {
+                            categoria = "Recargo_Noct_Base";
+                        } else {
+                             // Para las horas base diurnas, no sumamos recargo, pero sí contamos las horas.
+                             horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
+                             // No asignamos categoría para no sumar recargo de VALORES["Ordinaria_Diurna_Base"] que es 0
+                        }
                     }
                 }
+
+                // Sumar el minuto a la categoría correspondiente (si no es Ordinaria_Diurna_Base)
+                if (categoria && categoria !== "Ordinaria_Diurna_Base") {
+                    horasClasificadas[categoria] += 1 / 60;
+                }
             }
 
-            // Sumar el minuto a la categoría correspondiente (si no es Ordinaria_Diurna_Base)
-            if (categoria && categoria !== "Ordinaria_Diurna_Base") {
-                horasClasificadas[categoria] += 1 / 60;
-            }
+            cursorDt = cursorPlusOneMin; // Avanzar al siguiente minuto
         }
 
-        cursorDt = cursorPlusOneMin; // Avanzar al siguiente minuto
-    }
+         // --- Calcular Pagos ---
+         let pagoTotalRecargosExtras = 0;
+         const pagoDetallado: { [key: string]: number } = {};
 
-     // --- Calcular Pagos ---
-     let pagoTotalRecargosExtras = 0;
-     const pagoDetallado: { [key: string]: number } = {};
-
-     for (const key in horasClasificadas) {
-         const horas = horasClasificadas[key as keyof typeof horasClasificadas];
-         if (horas > 0) {
-              const valorHora = VALORES[key as keyof typeof VALORES] ?? 0; // Usar VALORES directos
-              const pagoCategoria = horas * valorHora;
-              pagoTotalRecargosExtras += pagoCategoria;
-              pagoDetallado[key] = pagoCategoria;
-         } else {
-            pagoDetallado[key] = 0; // Asegurar que todas las claves existan en el resultado
+         for (const key in horasClasificadas) {
+             const horas = horasClasificadas[key as keyof typeof horasClasificadas];
+             if (horas > 0) {
+                  const valorHora = VALORES[key as keyof typeof VALORES] ?? 0; // Usar VALORES directos
+                  // Agregar validación por si acaso VALORES no tuviera una clave esperada
+                  if (valorHora === undefined && key !== "Ordinaria_Diurna_Base") {
+                       console.warn(`ID ${id}: No se encontró valor para la categoría '${key}' en VALORES.`);
+                       // Podrías lanzar un error aquí si es crítico
+                       // throw new Error(`ID ${id}: Configuración de VALORES incompleta. Falta '${key}'.`);
+                  }
+                  const pagoCategoria = horas * (valorHora ?? 0);
+                  pagoTotalRecargosExtras += pagoCategoria;
+                  pagoDetallado[key] = pagoCategoria;
+             } else {
+                pagoDetallado[key] = 0; // Asegurar que todas las claves existan en el resultado
+             }
          }
-     }
 
 
-    // No sumar el salario base aquí, se hará en el resumen quincenal
-    // const pagoTotalConSalario = pagoTotalRecargosExtras + SALARIO_BASE_QUINCENAL;
+        // No sumar el salario base aquí, se hará en el resumen quincenal
+        // const pagoTotalConSalario = pagoTotalRecargosExtras + SALARIO_BASE_QUINCENAL;
 
-    // --- Retornar Resultados ---
-    return {
-        id: id, // Include the ID in the result
-        inputData: values, // Store the input data used
-        horasDetalladas: horasClasificadas,
-        pagoDetallado: pagoDetallado,
-        pagoTotalRecargosExtras: pagoTotalRecargosExtras, // Only extras/surcharges for this day
-        pagoTotalConSalario: pagoTotalRecargosExtras, // Temporarily set this, might remove later as it's not quincenal total
-        duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Include actual worked duration for the day
-    };
+        // --- Retornar Resultados ---
+        return {
+            id: id, // Include the ID in the result
+            inputData: values, // Store the input data used
+            horasDetalladas: horasClasificadas,
+            pagoDetallado: pagoDetallado,
+            pagoTotalRecargosExtras: pagoTotalRecargosExtras, // Only extras/surcharges for this day
+            pagoTotalConSalario: pagoTotalRecargosExtras, // Temporarily set this, might remove later as it's not quincenal total
+            duracionTotalTrabajadaHoras: duracionTotalTrabajadaSegundos / 3600.0, // Include actual worked duration for the day
+        };
+
+    } catch (error) { // <--- Catch block for the main try
+        console.error(`ID ${id}: Error inesperado durante el cálculo:`, error);
+        // Retorna un objeto CalculationError con un mensaje específico o genérico
+        return {
+            error: `ID ${id}: Error inesperado - ${error instanceof Error ? error.message : String(error)}`
+        };
+    }
 }
+

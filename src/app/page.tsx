@@ -48,11 +48,13 @@ export default function Home() {
   const handleDayCalculationComplete = (data: CalculationResults | CalculationError) => {
     setIsLoadingDay(false);
     if (isCalculationError(data)) {
-      setErrorDay(data.error);
+      const errorMessage = data.error || 'Hubo un error inesperado al procesar la solicitud.';
+      setErrorDay(errorMessage);
       toast({
         // Use the user-requested title and description for errors
         title: 'Error en el Cálculo',
-        description: data.error || 'Hubo un error en el servidor al calcular.', // Use specific error or fallback
+        // Use the specific error from the action or a generic fallback
+        description: errorMessage,
         variant: 'destructive',
       });
     } else {
@@ -223,7 +225,7 @@ export default function Home() {
                           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
                              Esta acción no se puede deshacer. Esto eliminará permanentemente el cálculo para el día{' '}
-                             {format(day.inputData.startDate, 'PPP', { locale: es })} de la quincena.
+                             {day?.inputData?.startDate ? format(day.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'} de la quincena.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -278,3 +280,4 @@ export default function Home() {
     </main>
   );
 }
+
