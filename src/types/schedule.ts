@@ -1,4 +1,3 @@
-
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -16,7 +15,7 @@ export interface Department {
 }
 
 export interface Employee {
-  id: string;
+  id: string; // User-defined or managed Employee ID (e.g., payroll ID)
   name: string;
   primaryLocationId: string; // Link to primary Location
   // Add other relevant employee details if needed (e.g., role, skills)
@@ -31,8 +30,8 @@ export interface ShiftDetails {
 }
 
 export interface ShiftAssignment extends ShiftDetails {
-  id: string; // Unique ID for the assignment instance
-  employee: Employee; // Assigned employee details
+  id: string; // Unique ID for the assignment instance (e.g., uuid)
+  employee: Employee; // Assigned employee details (includes the user-defined employee.id)
   // departmentId is implicit from the column it's in (or could be added explicitly)
 }
 
@@ -45,6 +44,7 @@ export interface ScheduleData {
 }
 
 // Represents assignments for a single day, keyed by department ID
+// Omits the assignment instance ID, keeps the employee object (with its ID)
 type DailyAssignments = {
     [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
 };
@@ -57,7 +57,7 @@ type WeeklyAssignments = {
 
 // Interface for shift templates
 export interface ShiftTemplate {
-  id: string;
+  id: string; // Template's own unique ID (e.g., uuid)
   name: string;
   locationId: string;
   type: 'daily' | 'weekly'; // Differentiates template scope
@@ -69,7 +69,7 @@ export interface ShiftTemplate {
 // Interface for data sent to Payroll Calculator
 // TODO: Update this interface if the payroll calculator needs the break start/end times
 export interface PayrollCalculationInput {
-  employeeId: string;
+  employeeId: string; // This should be the user-defined Employee ID
   periodoInicio: string; // Format "YYYY-MM-DD"
   periodoFin: string;    // Format "YYYY-MM-DD"
   salarioBasePeriodo: number;
@@ -79,6 +79,9 @@ export interface PayrollCalculationInput {
     horaSalida: string;     // Format "HH:MM"
     // Consider how break information should be passed. Duration might still be useful.
     duracionDescansoMinutos: number; // Keeping this for now, calculate from start/end times if provided
+    // Include break start/end times if needed by calculator
+    inicioDescanso?: string; // Optional "HH:MM"
+    finDescanso?: string;   // Optional "HH:MM"
   }[];
 }
 

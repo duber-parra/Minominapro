@@ -45,7 +45,8 @@ import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal'; // Import EmployeeSelectionModal
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate, DailyAssignments, WeeklyAssignments } from '@/types/schedule'; // Added ShiftTemplate, DailyAssignments, WeeklyAssignments
-import { v4 as uuidv4 } from 'uuid';
+// Removed v4 import as we'll let the user define the ID
+// import { v4 as uuidv4 } from 'uuid';
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns'; // Added differenceInMinutes, parseDateFnsInternal, endOfWeek
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -120,13 +121,14 @@ const initialDepartments: Department[] = [
   { id: 'dep-6', name: 'Salón', locationId: 'loc-3', icon: Users },
 ];
 
+// Example employees with user-defined IDs
 const initialEmployees: Employee[] = [
-  { id: 'emp-1', name: 'Carlos Pérez', primaryLocationId: 'loc-1' },
-  { id: 'emp-2', name: 'Ana Rodriguez', primaryLocationId: 'loc-1' },
-  { id: 'emp-3', name: 'Luis Gómez', primaryLocationId: 'loc-2' },
-  { id: 'emp-4', name: 'Sofía Vargas', primaryLocationId: 'loc-2' },
-  { id: 'emp-5', name: 'Diego Torres', primaryLocationId: 'loc-3' },
-  { id: 'emp-6', name: 'Isabel Castro', primaryLocationId: 'loc-3' },
+  { id: '101', name: 'Carlos Pérez', primaryLocationId: 'loc-1' },
+  { id: '102', name: 'Ana Rodriguez', primaryLocationId: 'loc-1' },
+  { id: '201', name: 'Luis Gómez', primaryLocationId: 'loc-2' },
+  { id: '202', name: 'Sofía Vargas', primaryLocationId: 'loc-2' },
+  { id: '301', name: 'Diego Torres', primaryLocationId: 'loc-3' },
+  { id: '302', name: 'Isabel Castro', primaryLocationId: 'loc-3' },
 ];
 
 // Default notes text
@@ -220,7 +222,8 @@ export default function SchedulePage() {
     const [departmentFormData, setDepartmentFormData] = useState({ name: '', locationId: selectedLocationId });
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [employeeFormData, setEmployeeFormData] = useState({ name: '', primaryLocationId: selectedLocationId });
+    // Add 'id' field to employee form data
+    const [employeeFormData, setEmployeeFormData] = useState({ id: '', name: '', primaryLocationId: selectedLocationId });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null); // Added 'template' type
 
@@ -415,9 +418,12 @@ export default function SchedulePage() {
         const dateKey = format(date, 'yyyy-MM-dd');
 
         // Create or update the assignment
+         // Generate a new assignment ID using the employee ID and date/time to make it more deterministic if needed
+        const newAssignmentId = `shift_${employeeForShift.id}_${dateKey}_${details.startTime.replace(':', '')}`;
+
         const assignmentPayload: ShiftAssignment = {
-            // If editing, use existing ID, otherwise generate new one
-            id: editingShift?.assignment.id || uuidv4(),
+            // If editing, use existing ID, otherwise use the generated one
+            id: editingShift?.assignment.id || newAssignmentId,
             employee: employeeForShift,
             startTime: details.startTime,
             endTime: details.endTime,
@@ -563,7 +569,8 @@ export default function SchedulePage() {
              toast({ title: 'Sede Actualizada', description: `Sede "${name}" actualizada.` });
         } else {
             // Add new location
-            const newLocation = { id: uuidv4(), name };
+            // Generate a simple ID based on name for location
+             const newLocation = { id: `loc-${name.toLowerCase().replace(/\s+/g, '-')}`, name };
             setLocations([...locations, newLocation]);
             toast({ title: 'Sede Agregada', description: `Sede "${name}" agregada.` });
         }
@@ -588,7 +595,8 @@ export default function SchedulePage() {
             setDepartments(departments.map(dep => dep.id === editingDepartment.id ? { ...dep, name, locationId } : dep));
              toast({ title: 'Departamento Actualizado', description: `Departamento "${name}" actualizado.` });
         } else {
-            const newDepartment = { id: uuidv4(), name, locationId, icon: Building }; // Assign default icon
+            // Generate simple ID for department
+            const newDepartment = { id: `dep-${name.toLowerCase().replace(/\s+/g, '-')}-${locationId}`, name, locationId, icon: Building }; // Assign default icon
             setDepartments([...departments, newDepartment]);
             toast({ title: 'Departamento Agregado', description: `Departamento "${name}" agregado.` });
         }
@@ -598,24 +606,36 @@ export default function SchedulePage() {
 
     const handleOpenEmployeeModal = (employee: Employee | null) => {
         setEditingEmployee(employee);
-        setEmployeeFormData({ name: employee?.name || '', primaryLocationId: employee?.primaryLocationId || selectedLocationId });
+        // Set form data including the ID
+        setEmployeeFormData({ id: employee?.id || '', name: employee?.name || '', primaryLocationId: employee?.primaryLocationId || selectedLocationId });
         setIsEmployeeModalOpen(true);
     };
 
     const handleSaveEmployee = () => {
+         const id = employeeFormData.id.trim(); // Get ID from form
          const name = employeeFormData.name.trim();
          const primaryLocationId = employeeFormData.primaryLocationId;
-         if (!name || !primaryLocationId) {
-            toast({ title: 'Datos Incompletos', description: 'El nombre y la sede principal del colaborador son requeridos.', variant: 'destructive' });
-            return;
+          if (!id || !name || !primaryLocationId) {
+             toast({ title: 'Datos Incompletos', description: 'El ID, nombre y la sede principal del colaborador son requeridos.', variant: 'destructive' });
+             return;
+          }
+
+          // Check for duplicate ID before adding/updating
+         const isDuplicateId = employees.some(emp => emp.id === id && emp.id !== editingEmployee?.id);
+         if (isDuplicateId) {
+             toast({ title: 'ID Duplicado', description: `El ID "${id}" ya está en uso por otro colaborador.`, variant: 'destructive' });
+             return;
          }
+
         if (editingEmployee) {
-            setEmployees(employees.map(emp => emp.id === editingEmployee.id ? { ...emp, name, primaryLocationId } : emp));
-             toast({ title: 'Colaborador Actualizado', description: `Colaborador "${name}" actualizado.` });
+            // Update existing employee (ID should not be editable in update mode ideally, but handle if it is)
+            setEmployees(employees.map(emp => emp.id === editingEmployee.id ? { ...emp, id, name, primaryLocationId } : emp));
+             toast({ title: 'Colaborador Actualizado', description: `Colaborador "${name}" (ID: ${id}) actualizado.` });
         } else {
-            const newEmployee = { id: uuidv4(), name, primaryLocationId };
+            // Add new employee using the provided ID
+            const newEmployee = { id, name, primaryLocationId };
             setEmployees([...employees, newEmployee]);
-             toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" agregado.` });
+             toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" (ID: ${id}) agregado.` });
         }
         setIsEmployeeModalOpen(false);
         setEditingEmployee(null); // Clear editing state
@@ -664,7 +684,9 @@ export default function SchedulePage() {
                              delete (newAssignments as { [deptId: string]: any })[itemToDelete.id];
                          } else if (t.type === 'weekly') {
                              Object.keys(newAssignments).forEach(dateKey => {
-                                 delete (newAssignments as { [dateKey: string]: { [deptId: string]: any } })[dateKey][itemToDelete.id];
+                                  if (newAssignments[dateKey]?.[itemToDelete.id]) {
+                                     delete (newAssignments as { [dateKey: string]: { [deptId: string]: any } })[dateKey][itemToDelete.id];
+                                  }
                              });
                          }
                          return { ...t, assignments: newAssignments };
@@ -689,15 +711,32 @@ export default function SchedulePage() {
                           let newAssignments = JSON.parse(JSON.stringify(t.assignments)); // Deep copy
                           if (t.type === 'daily') {
                               Object.keys(newAssignments).forEach(deptId => {
-                                  newAssignments[deptId] = newAssignments[deptId].filter((a: any) => (typeof a.employee === 'object' ? a.employee.id : a.employee) !== itemToDelete.id);
+                                  newAssignments[deptId] = (newAssignments[deptId] || []).filter((a: any) => (typeof a.employee === 'object' ? a.employee.id : a.employee) !== itemToDelete.id);
                               });
                           } else if (t.type === 'weekly') {
                               Object.keys(newAssignments).forEach(dateKey => {
-                                  Object.keys(newAssignments[dateKey]).forEach(deptId => {
-                                      newAssignments[dateKey][deptId] = newAssignments[dateKey][deptId].filter((a: any) => (typeof a.employee === 'object' ? a.employee.id : a.employee) !== itemToDelete.id);
+                                  Object.keys(newAssignments[dateKey] || {}).forEach(deptId => {
+                                      newAssignments[dateKey][deptId] = (newAssignments[dateKey][deptId] || []).filter((a: any) => (typeof a.employee === 'object' ? a.employee.id : a.employee) !== itemToDelete.id);
                                   });
                               });
                           }
+                           // Clean up assignments by removing empty structures
+                          Object.keys(newAssignments).forEach(key => {
+                              if (t.type === 'weekly') { // For weekly, check nested structure
+                                  Object.keys(newAssignments[key] || {}).forEach(deptId => {
+                                      if (!newAssignments[key][deptId] || newAssignments[key][deptId].length === 0) {
+                                          delete newAssignments[key][deptId];
+                                      }
+                                  });
+                                  if (Object.keys(newAssignments[key]).length === 0) {
+                                      delete newAssignments[key];
+                                  }
+                              } else { // For daily
+                                  if (!newAssignments[key] || newAssignments[key].length === 0) {
+                                      delete newAssignments[key];
+                                  }
+                              }
+                          });
                           return { ...t, assignments: newAssignments };
                       });
                      setSavedTemplates(updatedTemplatesEmp);
@@ -752,7 +791,7 @@ export default function SchedulePage() {
          const nextDayKey = format(nextDayDate, 'yyyy-MM-dd');
          const sourceSchedule = scheduleData[sourceDayKey];
 
-         if (!sourceSchedule || Object.keys(sourceSchedule.assignments).length === 0) {
+         if (!sourceSchedule || Object.keys(sourceSchedule.assignments).length === 0 || Object.values(sourceSchedule.assignments).every(dept => dept.length === 0)) {
              toast({ title: 'Nada que Duplicar', description: `No hay turnos asignados para el ${format(sourceDate, 'PPP', { locale: es })}.`, variant: 'destructive' });
              return;
          }
@@ -762,7 +801,8 @@ export default function SchedulePage() {
          // Regenerate unique IDs for duplicated assignments
          Object.keys(duplicatedAssignments).forEach(deptId => {
              duplicatedAssignments[deptId].forEach((assign: ShiftAssignment) => {
-                 assign.id = uuidv4();
+                // Regenerate assignment ID using the *new* date key
+                 assign.id = `shift_${assign.employee.id}_${nextDayKey}_${assign.startTime.replace(':', '')}`;
              });
          });
 
@@ -846,10 +886,10 @@ export default function SchedulePage() {
              const sourceDate = targetDate;
              const currentDayKey = format(sourceDate, 'yyyy-MM-dd');
              const currentAssignmentsRaw = scheduleData[currentDayKey]?.assignments || {};
-             // Remove IDs when saving daily template
+             // Remove assignment instance IDs when saving daily template
              const cleanedAssignments: { [deptId: string]: Omit<ShiftAssignment, 'id'>[] } = {};
              Object.keys(currentAssignmentsRaw).forEach(deptId => {
-                 cleanedAssignments[deptId] = currentAssignmentsRaw[deptId].map(({ id, ...rest }) => rest);
+                 cleanedAssignments[deptId] = currentAssignmentsRaw[deptId].map(({ id, ...rest }) => rest); // Remove 'id'
              });
              templateAssignments = cleanedAssignments;
 
@@ -867,7 +907,7 @@ export default function SchedulePage() {
                  const cleanedDailyAssignments: { [deptId: string]: Omit<ShiftAssignment, 'id'>[] } = {};
                  Object.keys(dailyAssignmentsRaw).forEach(deptId => {
                      if (dailyAssignmentsRaw[deptId].length > 0) {
-                         cleanedDailyAssignments[deptId] = dailyAssignmentsRaw[deptId].map(({ id, ...rest }) => rest);
+                         cleanedDailyAssignments[deptId] = dailyAssignmentsRaw[deptId].map(({ id, ...rest }) => rest); // Remove 'id'
                          weekHasAssignments = true; // Mark if any assignment found
                      }
                  });
@@ -886,7 +926,7 @@ export default function SchedulePage() {
 
 
          const newTemplate: ShiftTemplate = {
-             id: uuidv4(),
+             id: `tpl-${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`, // More robust ID
              name: templateName.trim(),
              locationId: selectedLocationId,
              type: templateType, // Save the type
@@ -946,20 +986,28 @@ export default function SchedulePage() {
                  const loadTargetDate = targetDate;
                  const dateKey = format(loadTargetDate, 'yyyy-MM-dd');
 
-                 // Regenerate assignment IDs and find employee objects
+                 // Regenerate assignment instance IDs and find employee objects
                  const loadedAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                  Object.keys(templateToLoad.assignments).forEach(deptId => {
                      loadedAssignments[deptId] = (templateToLoad.assignments as DailyAssignments)[deptId]
                          .map((assignTemplate: Omit<ShiftAssignment, 'id'>) => {
-                             const employee = employees.find(emp => emp.id === (typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee.id));
+                              // Ensure the employee object from the template has an ID
+                              const employeeId = typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee?.id;
+                              if (!employeeId) {
+                                console.warn(`Employee ID missing in daily template assignment. Skipping.`);
+                                return null;
+                              }
+                             const employee = employees.find(emp => emp.id === employeeId);
                              if (employee) {
+                                 // Generate a new assignment instance ID
+                                const newAssignId = `shift_${employee.id}_${dateKey}_${assignTemplate.startTime.replace(':', '')}`;
                                  return {
                                      ...assignTemplate,
-                                     id: uuidv4(),
+                                     id: newAssignId, // Use the newly generated ID
                                      employee: employee, // Assign full employee object
                                  };
                              }
-                             console.warn(`Employee ID ${typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee.id} not found while loading daily template. Skipping assignment.`);
+                             console.warn(`Employee ID ${employeeId} not found while loading daily template. Skipping assignment.`);
                              return null; // Mark for removal
                          })
                          .filter((a): a is ShiftAssignment => a !== null); // Filter out nulls and assert type
@@ -980,15 +1028,21 @@ export default function SchedulePage() {
                      Object.keys(dailyAssignmentsFromTemplate).forEach(deptId => {
                          loadedDailyAssignments[deptId] = dailyAssignmentsFromTemplate[deptId]
                              .map((assignTemplate: Omit<ShiftAssignment, 'id'>) => {
-                                 const employee = employees.find(emp => emp.id === (typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee.id));
+                                  const employeeId = typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee?.id;
+                                   if (!employeeId) {
+                                     console.warn(`Employee ID missing in weekly template assignment for ${dateKey}. Skipping.`);
+                                     return null;
+                                   }
+                                 const employee = employees.find(emp => emp.id === employeeId);
                                  if (employee) {
+                                     const newAssignId = `shift_${employee.id}_${dateKey}_${assignTemplate.startTime.replace(':', '')}`;
                                      return {
                                          ...assignTemplate,
-                                         id: uuidv4(),
+                                         id: newAssignId,
                                          employee: employee,
                                      };
                                  }
-                                 console.warn(`Employee ID ${typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee.id} not found while loading weekly template for ${dateKey}. Skipping assignment.`);
+                                 console.warn(`Employee ID ${employeeId} not found while loading weekly template for ${dateKey}. Skipping assignment.`);
                                  return null;
                              })
                              .filter((a): a is ShiftAssignment => a !== null);
@@ -1310,7 +1364,7 @@ export default function SchedulePage() {
                                               <ul className="space-y-2 text-sm">
                                                   {employees.map((emp) => (
                                                       <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                          <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">({locations.find(l => l.id === emp.primaryLocationId)?.name || 'Sede inválida'})</span></span>
+                                                          <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
                                                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
                                                                <AlertDialog>
@@ -1587,6 +1641,18 @@ export default function SchedulePage() {
                         <DialogTitle>{editingEmployee ? 'Editar Colaborador' : 'Agregar Colaborador'}</DialogTitle>
                     </DialogHeader>
                      <div className="space-y-4 py-4">
+                           {/* Employee ID Input - Conditionally disable if editing */}
+                           <div>
+                               <Label htmlFor="employee-id">ID Colaborador</Label>
+                               <Input
+                                   id="employee-id"
+                                   value={employeeFormData.id}
+                                   onChange={(e) => setEmployeeFormData(prev => ({ ...prev, id: e.target.value }))}
+                                   placeholder="Ej: 101, CEDULA123"
+                                   disabled={!!editingEmployee} // Disable ID field when editing
+                               />
+                               {!!editingEmployee && <p className="text-xs text-muted-foreground mt-1">El ID no se puede cambiar al editar.</p>}
+                           </div>
                           <div>
                              <Label htmlFor="employee-name">Nombre</Label>
                              <Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} />
