@@ -1,8 +1,8 @@
 // src/components/schedule/DepartmentColumn.tsx
+'use client'; // Ensure client component
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Import useState and useEffect
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
@@ -10,6 +10,7 @@ import type { Department, ShiftAssignment, Employee } from '@/types/schedule'; /
 import { ShiftCard } from './ShiftCard'; // Assuming ShiftCard component exists
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils'; // Added cn
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for placeholder
 
 interface DepartmentColumnProps {
   department: Department;
@@ -30,6 +31,12 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   onShiftClick, // Destructure shift click handler
   isWeekView = false,
 }) => {
+  const [isClient, setIsClient] = useState(false); // State for client-side rendering
+
+  useEffect(() => {
+    setIsClient(true); // Set true after initial mount
+  }, []);
+
   const dateKey = format(date, 'yyyy-MM-dd');
   const { setNodeRef, isOver } = useDroppable({
     id: `${department.id}_${dateKey}`, // Make ID unique per department and date
@@ -41,86 +48,110 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   });
 
   const style = {
-    // Highlight when dragging over
     backgroundColor: isOver ? 'hsl(var(--accent)/0.1)' : undefined,
     borderColor: isOver ? 'hsl(var(--accent))' : (isWeekView ? 'hsl(var(--border) / 0.3)' : undefined), // Lighter border in week view normal state
-    borderWidth: '1px', // Use 1px border always
+    borderWidth: '1px',
     borderStyle: isOver ? 'dashed' : 'solid',
-    minHeight: isWeekView ? '60px' : '200px', // Shorter min-height for week view
-    transition: 'background-color 0.2s ease, border-color 0.2s ease', // Smooth transition
-    borderRadius: isWeekView ? '0.375rem' : undefined, // Add rounding in week view
+    minHeight: isWeekView ? '60px' : '200px',
+    transition: 'background-color 0.2s ease, border-color 0.2s ease',
+    borderRadius: isWeekView ? '0.375rem' : undefined,
   };
 
-  // Simplified rendering for week view
-  if (isWeekView) {
-    return ( // Start of return statement for week view
-      // Ensure this div correctly wraps the content
-      <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
-          {assignments.length > 0 ? (
-              assignments.map((assignment) => (
-                  <ShiftCard
-                      key={assignment.id}
-                      assignment={assignment}
-                      onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }} // Stop propagation
-                      isCompact // Use compact rendering
-                      onClick={() => onShiftClick(assignment, date, department.id)} // Pass assignment, date, and deptId to handler
-                  />
-              ))
-          ) : (
-              <p className="text-[11px] text-muted-foreground text-center py-1 italic">Vacío</p> // Slightly larger text, increased from 10px
-          )}
-           {/* Add + Button for Mobile/Tablet - Always visible at the bottom in week view */}
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1 md:hidden" // Center button, show only on mobile/tablet
-                onClick={() => onAddShiftRequest(department.id, date)} // Call new handler
-                title="Añadir Colaborador"
-            >
-                <Plus className="h-3 w-3" />
-            </Button>
+  // Render placeholder on server and initial client render
+  const renderPlaceholder = () => {
+    if (isWeekView) {
+      return <Skeleton className="h-6 w-full" />; // Simple skeleton for week view
+    }
+    return (
+      <div className="p-3 space-y-2">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-5 w-3/4" />
       </div>
-    ); // End of return statement for week view
-  }
+    );
+  };
 
-  // Full rendering for day view
-  return ( // Start of return for day view
-    <Card ref={setNodeRef} style={style} className="flex flex-col h-full shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 border-b">
-         <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground"> {/* Adjusted size */}
-             {department.icon && <department.icon className="h-3.5 w-3.5 text-muted-foreground" />}
-             {department.name} ({assignments.length})
-         </CardTitle>
-        {/* Add shift button - Now enabled also for Day View */}
-        <Button
+  // Actual content rendering logic
+  const renderContent = () => {
+    if (isWeekView) {
+      return (
+        <>
+          {assignments.length > 0 ? (
+            assignments.map((assignment) => (
+              <ShiftCard
+                key={assignment.id}
+                assignment={assignment}
+                onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }}
+                isCompact
+                onClick={() => onShiftClick(assignment, date, department.id)}
+              />
+            ))
+          ) : (
+            <p className="text-[11px] text-muted-foreground text-center py-1 italic">Vacío</p>
+          )}
+          <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
-            onClick={() => onAddShiftRequest(department.id, date)} // Call new handler
+            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1 md:hidden"
+            onClick={() => onAddShiftRequest(department.id, date)}
             title="Añadir Colaborador"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-      <CardContent className="flex-grow p-3 space-y-2 overflow-y-auto"> {/* Adjusted padding */}
-        {/* Use SortableContext if items within the column need to be sortable */}
-        {/* <SortableContext items={assignments.map(a => a.id)} strategy={verticalListSortingStrategy}> */}
-        {assignments.length > 0 ? (
-          assignments.map((assignment) => (
-             <ShiftCard
-                 key={assignment.id}
-                 assignment={assignment}
-                 onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }} // Stop propagation
-                 onClick={() => onShiftClick(assignment, date, department.id)} // Pass assignment, date, and deptId to handler
-             />
-          ))
-        ) : (
-          <p className="text-xs text-muted-foreground text-center pt-4 italic">
-            Arrastra o usa '+'
-          </p> // Updated placeholder text
-        )}
-        {/* </SortableContext> */}
-      </CardContent>
-    </Card>
-  ); // End of return for day view
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </>
+      );
+    } else {
+      // Full rendering for day view
+      return (
+        <>
+          {assignments.length > 0 ? (
+            assignments.map((assignment) => (
+              <ShiftCard
+                key={assignment.id}
+                assignment={assignment}
+                onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }}
+                onClick={() => onShiftClick(assignment, date, department.id)}
+              />
+            ))
+          ) : (
+            <p className="text-xs text-muted-foreground text-center pt-4 italic">
+              Arrastra o usa '+'
+            </p>
+          )}
+        </>
+      );
+    }
+  };
+
+  // Main return logic
+  if (isWeekView) {
+    return (
+      <div ref={setNodeRef} style={style} className="p-1 space-y-0.5">
+        {isClient ? renderContent() : renderPlaceholder()}
+      </div>
+    );
+  } else {
+    // Day view with Card structure
+    return (
+      <Card ref={setNodeRef} style={style} className="flex flex-col h-full shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 border-b">
+           <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
+               {department.icon && <department.icon className="h-3.5 w-3.5 text-muted-foreground" />}
+               {department.name} ({isClient ? assignments.length : '...'}) {/* Show count only on client */}
+           </CardTitle>
+          <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => onAddShiftRequest(department.id, date)}
+              title="Añadir Colaborador"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="flex-grow p-3 space-y-2 overflow-y-auto">
+          {isClient ? renderContent() : renderPlaceholder()}
+        </CardContent>
+      </Card>
+    );
+  }
 };
