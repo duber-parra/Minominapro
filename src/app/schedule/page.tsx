@@ -661,7 +661,7 @@ export default function SchedulePage() {
                      if (typeof window !== 'undefined') {
                          localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
                      }
-                     message = `Formación "${itemToDelete.name}" eliminada.`;
+                     message = `Template "${itemToDelete.name}" eliminado.`; // Changed from Formación
                     break;
             }
             toast({ title: 'Elemento Eliminado', description: message, variant: 'destructive' });
@@ -758,27 +758,31 @@ export default function SchedulePage() {
 
 
      const handleOpenTemplateModal = () => {
-        const currentDayKey = format(targetDate, 'yyyy-MM-dd');
-        const currentSchedule = scheduleData[currentDayKey];
+         // Determine the source date based on view mode
+         const sourceDate = viewMode === 'day' ? targetDate : weekDates[0]; // Use targetDate for day, first day of week for week
+         const currentDayKey = format(sourceDate, 'yyyy-MM-dd');
+         const currentSchedule = scheduleData[currentDayKey];
 
-        if (!currentSchedule || Object.keys(currentSchedule.assignments).length === 0) {
-            toast({ title: 'Formación Vacía', description: `No hay turnos asignados hoy para guardar como formación.`, variant: 'destructive' });
-            return;
-        }
-        setTemplateName(''); // Reset template name
-        setIsTemplateModalOpen(true);
+         if (!currentSchedule || Object.keys(currentSchedule.assignments).length === 0) {
+             toast({ title: 'Template Vacío', description: `No hay turnos asignados el ${format(sourceDate, 'PPP', { locale: es })} para guardar como template.`, variant: 'destructive' });
+             return;
+         }
+         setTemplateName(''); // Reset template name
+         setIsTemplateModalOpen(true);
      };
 
      const handleSaveTemplate = () => {
          if (!templateName.trim()) {
-             toast({ title: 'Nombre Inválido', description: 'Por favor ingresa un nombre para la formación.', variant: 'destructive' });
+             toast({ title: 'Nombre Inválido', description: 'Por favor ingresa un nombre para el template.', variant: 'destructive' });
              return;
          }
-         const currentDayKey = format(targetDate, 'yyyy-MM-dd');
+         // Determine the source date based on view mode
+         const sourceDate = viewMode === 'day' ? targetDate : weekDates[0]; // Use targetDate for day, first day of week for week
+         const currentDayKey = format(sourceDate, 'yyyy-MM-dd');
          const currentAssignments = scheduleData[currentDayKey]?.assignments || {};
 
          if (Object.keys(currentAssignments).length === 0) {
-             toast({ title: 'Formación Vacía', description: 'No hay turnos para guardar.', variant: 'destructive' });
+             toast({ title: 'Template Vacío', description: 'No hay turnos para guardar.', variant: 'destructive' });
              setIsTemplateModalOpen(false);
              return;
          }
@@ -796,12 +800,12 @@ export default function SchedulePage() {
                 const updatedTemplates = [...savedTemplates, newTemplate];
                 setSavedTemplates(updatedTemplates); // Update state
                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-                toast({ title: 'Formación Guardada', description: `La formación "${newTemplate.name}" se ha guardado.` });
+                toast({ title: 'Template Guardado', description: `El template "${newTemplate.name}" se ha guardado.` });
                 setIsTemplateModalOpen(false);
                 setTemplateName('');
             } catch (error) {
                  console.error("Error saving template to localStorage:", error);
-                 toast({ title: 'Error al Guardar', description: 'No se pudo guardar la formación.', variant: 'destructive' });
+                 toast({ title: 'Error al Guardar', description: 'No se pudo guardar el template.', variant: 'destructive' });
             }
          }
 
@@ -811,24 +815,26 @@ export default function SchedulePage() {
      const handleLoadTemplate = (templateId: string) => {
          if (typeof window !== 'undefined') {
              const templateToLoad = savedTemplates.find((t: any) => t.id === templateId);
+             // Determine the target date based on view mode
+             const loadTargetDate = viewMode === 'day' ? targetDate : weekDates[0]; // Use targetDate for day, first day of week for week
 
              if (!templateToLoad) {
-                 toast({ title: 'Formación no encontrada', variant: 'destructive' });
+                 toast({ title: 'Template no encontrado', variant: 'destructive' });
                  return;
              }
              // Check if template matches current location
              if (templateToLoad.locationId !== selectedLocationId) {
                  toast({
                      title: 'Sede Incorrecta',
-                     description: `La formación "${templateToLoad.name}" pertenece a otra sede. Cambia de sede para cargarla.`,
+                     description: `El template "${templateToLoad.name}" pertenece a otra sede. Cambia de sede para cargarlo.`,
                      variant: 'destructive',
                  });
                  return;
              }
 
 
-             // Apply template to the current targetDate
-             const dateKey = format(targetDate, 'yyyy-MM-dd');
+             // Apply template to the determined targetDate
+             const dateKey = format(loadTargetDate, 'yyyy-MM-dd');
              // Regenerate assignment IDs when loading a template
              const loadedAssignments = JSON.parse(JSON.stringify(templateToLoad.assignments));
              Object.keys(loadedAssignments).forEach(deptId => {
@@ -853,11 +859,11 @@ export default function SchedulePage() {
              setScheduleData(prev => ({
                  ...prev,
                  [dateKey]: {
-                     date: targetDate,
+                     date: loadTargetDate,
                      assignments: loadedAssignments,
                  }
              }));
-             toast({ title: 'Formación Cargada', description: `Se cargó la formación "${templateToLoad.name}" para ${format(targetDate, 'PPP', { locale: es })}.` });
+             toast({ title: 'Template Cargado', description: `Se cargó el template "${templateToLoad.name}" para ${format(loadTargetDate, 'PPP', { locale: es })}.` });
              setIsConfigModalOpen(false); // Close config modal after loading
          }
      };
@@ -1038,7 +1044,7 @@ export default function SchedulePage() {
                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Even Wider modal, scrollable */}
                               <DialogHeader>
                                   <DialogTitle>Configuración General</DialogTitle>
-                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y formaciones guardadas.</DialogDescription>
+                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
                               </DialogHeader>
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
                                   {/* Locations Column */}
@@ -1116,10 +1122,10 @@ export default function SchedulePage() {
                                            ))}
                                        </ul>
                                   </div>
-                                  {/* Saved Templates (Formaciones) Column */}
+                                  {/* Saved Templates Column */}
                                   <div className="space-y-4">
                                       <div className="flex justify-between items-center">
-                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Library className="h-4 w-4 text-muted-foreground"/>Formaciones Guardadas ({filteredTemplates.length})</h4>
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Library className="h-4 w-4 text-muted-foreground"/>Templates Guardados ({filteredTemplates.length})</h4>
                                           {/* Add Template button moved to Actions Row */}
                                       </div>
                                        <ul className="space-y-2 text-sm">
@@ -1133,20 +1139,20 @@ export default function SchedulePage() {
                                                             size="icon"
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                                             onClick={() => handleLoadTemplate(template.id)}
-                                                            title="Cargar Formación (Aplicar a fecha actual)"
+                                                            title="Cargar Template (Aplicar a fecha actual)" // Changed from Formación
                                                         >
                                                             <Upload className="h-4 w-4" />
                                                         </Button>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Formación"><Trash2 className="h-4 w-4" /></Button>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button> {/* Changed from Formación */}
                                                             </AlertDialogTrigger>
                                                             {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                         </AlertDialog>
                                                     </div>
                                                 </li>
                                             )) : (
-                                                <p className="text-xs text-muted-foreground italic text-center pt-2">No hay formaciones guardadas para esta sede.</p>
+                                                <p className="text-xs text-muted-foreground italic text-center pt-2">No hay templates guardados para esta sede.</p>
                                             )}
                                        </ul>
                                   </div>
@@ -1194,17 +1200,18 @@ export default function SchedulePage() {
                  )}
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline" onClick={handleOpenTemplateModal} disabled={viewMode !== 'day'}>
-                            <Download className="mr-2 h-4 w-4" /> Guardar como Formación {/* Changed icon */}
+                         {/* Button enabled in both views */}
+                        <Button variant="outline" onClick={handleOpenTemplateModal}>
+                            <Download className="mr-2 h-4 w-4" /> Guardar como Template {/* Changed from Formación */}
                         </Button>
                     </DialogTrigger>
                      <DialogContent>
                          <DialogHeader>
-                             <DialogTitle>Guardar Formación</DialogTitle>
-                             <DialogDescription>Ingresa un nombre para esta formación (basada en el horario de hoy para {locations.find(l => l.id === selectedLocationId)?.name}).</DialogDescription>
+                             <DialogTitle>Guardar Template</DialogTitle> {/* Changed from Formación */}
+                             <DialogDescription>Ingresa un nombre para este template (basado en el horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', {locale: es})}` : 'del primer día de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}).</DialogDescription> {/* Changed from Formación */}
                          </DialogHeader>
                          <div className="py-4">
-                             <Label htmlFor="template-name">Nombre Formación</Label>
+                             <Label htmlFor="template-name">Nombre Template</Label> {/* Changed from Formación */}
                              <Input
                                 id="template-name"
                                 value={templateName}
@@ -1216,7 +1223,7 @@ export default function SchedulePage() {
                             <DialogClose asChild>
                               <Button variant="outline">Cancelar</Button>
                             </DialogClose>
-                             <Button onClick={handleSaveTemplate}>Guardar Formación</Button>
+                             <Button onClick={handleSaveTemplate}>Guardar Template</Button> {/* Changed from Formación */}
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
@@ -1384,11 +1391,11 @@ export default function SchedulePage() {
                      <AlertDialogHeader>
                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                          <AlertDialogDescription>
-                             ¿Eliminar {itemToDelete?.type === 'location' ? 'Sede' : itemToDelete?.type === 'department' ? 'Departamento' : itemToDelete?.type === 'employee' ? 'Colaborador' : 'Formación'} "{itemToDelete?.name}"?
-                             {itemToDelete?.type === 'location' && " Se eliminarán los departamentos, colaboradores y formaciones asociados."}
-                             {itemToDelete?.type === 'department' && " Se eliminarán los turnos asociados en los horarios y formaciones."}
-                             {itemToDelete?.type === 'employee' && " Se eliminarán los turnos asociados en los horarios y formaciones."}
-                             {itemToDelete?.type === 'template' && " Se eliminará esta formación guardada."}
+                             ¿Eliminar {itemToDelete?.type === 'location' ? 'Sede' : itemToDelete?.type === 'department' ? 'Departamento' : itemToDelete?.type === 'employee' ? 'Colaborador' : 'Template'} "{itemToDelete?.name}"?
+                             {itemToDelete?.type === 'location' && " Se eliminarán los departamentos, colaboradores y templates asociados."}
+                             {itemToDelete?.type === 'department' && " Se eliminarán los turnos asociados en los horarios y templates."}
+                             {itemToDelete?.type === 'employee' && " Se eliminarán los turnos asociados en los horarios y templates."}
+                             {itemToDelete?.type === 'template' && " Se eliminará este template guardado."}
                              <br/>Esta acción no se puede deshacer.
                          </AlertDialogDescription>
                      </AlertDialogHeader>
