@@ -44,17 +44,24 @@ export interface ScheduleData {
     };
 }
 
+// Represents assignments for a single day, keyed by department ID
+type DailyAssignments = {
+    [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
+};
+
+// Represents assignments for a week, keyed by date string ('yyyy-MM-dd')
+type WeeklyAssignments = {
+    [dateKey: string]: DailyAssignments; // Date string maps to daily assignments structure
+};
+
+
 // Interface for shift templates
 export interface ShiftTemplate {
   id: string;
   name: string;
   locationId: string;
-  assignments: {
-    // Use Omit to exclude 'id' from the saved assignment structure in the template
-    [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
-    // Alternatively, if you want to save employee ID but not the full object:
-    // [departmentId: string]: (Omit<ShiftAssignment, 'id' | 'employee'> & { employeeId: string })[];
-  };
+  type: 'daily' | 'weekly'; // Differentiates template scope
+  assignments: DailyAssignments | WeeklyAssignments; // Union type based on 'type'
    createdAt: string; // ISO Date string when the template was created
 }
 
