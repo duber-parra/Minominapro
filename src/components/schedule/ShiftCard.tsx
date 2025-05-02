@@ -21,7 +21,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
         // ref={setNodeRef} // For sortable
         // style={style} // For sortable
         className={cn(
-            "bg-background border shadow-sm",
+            "group bg-background border shadow-sm", // Add 'group' class
             isCompact ? "border-none shadow-none bg-transparent p-0" : "" // Remove borders/padding if compact
         )}
         // {...attributes} // For sortable
@@ -52,7 +52,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
              variant="ghost"
              size="icon"
              className={cn(
-                 "text-destructive flex-shrink-0", // Use ml-1 instead of ml-2
+                 "text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity", // Hide by default, show on group hover, add transition
                  isCompact ? "h-4 w-4" : "h-7 w-7" // Smaller button if compact
              )}
              onClick={onRemove}
