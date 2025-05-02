@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import type { Department, ScheduleData } from '@/types/schedule'; // Assuming types exist
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
@@ -9,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { Button } from '../ui/button';
 import { Plus, Copy, Eraser } from 'lucide-react'; // Added Copy icon, Eraser
 import type { Employee } from '@/types/schedule';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface ScheduleViewProps {
   departments: Department[];
@@ -21,6 +20,7 @@ interface ScheduleViewProps {
   getScheduleForDate: (date: Date) => ScheduleData; // Function to get schedule for a specific date
   onDuplicateDay: (sourceDate: Date) => void; // Add prop for duplicating a day's schedule
   onClearDay: (dateToClear: Date) => void; // Add prop for clearing a day's schedule
+  isHoliday: (date: Date | null | undefined) => boolean; // Function to check if a date is a holiday
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
@@ -34,6 +34,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     getScheduleForDate, // Receive helper function
     onDuplicateDay, // Receive duplicate handler
     onClearDay, // Receive clear handler
+    isHoliday, // Receive holiday check function
 }) => {
 
     if (viewMode === 'day') {
@@ -46,6 +47,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 <CardHeader className="border-b">
                     <CardTitle className="text-lg font-medium text-foreground">
                         Horario para el {format(currentDate, 'EEEE, d MMMM yyyy', { locale: es })}
+                        {isHoliday(currentDate) && <span className="text-xs text-destructive font-semibold ml-2">(Festivo)</span>}
                     </CardTitle>
                     {/* Add description or other info if needed */}
                 </CardHeader>
@@ -79,16 +81,27 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             const dateKey = format(date, 'yyyy-MM-dd');
             const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
             const isLastDayOfWeek = index === weekDates.length - 1; // Check if it's the last day
+            const isCurrentHoliday = isHoliday(date); // Check if this specific date is a holiday
 
             // Card represents a single day column in the week view
             return (
-                <Card key={dateKey} className="shadow-sm bg-card border border-border/50 flex flex-col min-w-[140px]"> {/* Adjusted min-width */}
-                    <CardHeader className="pb-2 pt-3 px-3 border-b relative"> {/* Added relative positioning */}
-                        <CardTitle className="text-sm font-medium text-foreground text-center whitespace-nowrap"> {/* Reduced size, nowrap */}
+                <Card key={dateKey} className={cn(
+                    "shadow-sm bg-card border flex flex-col min-w-[140px]", // Adjusted min-width
+                    isCurrentHoliday ? "border-destructive border-2" : "border-border/50" // Add destructive border for holidays
+                )}>
+                    <CardHeader className={cn(
+                        "pb-2 pt-3 px-3 border-b relative",
+                        isCurrentHoliday ? "border-destructive" : "border-border/50" // Match border color
+                    )}>
+                        <CardTitle className={cn(
+                            "text-sm font-medium text-foreground text-center whitespace-nowrap", // Reduced size, nowrap
+                             isCurrentHoliday && "text-destructive" // Highlight title if holiday
+                        )}>
                             {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
                         </CardTitle>
                         <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Smaller description */}
                             {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
+                            {isCurrentHoliday && <span className="text-destructive block text-[9px]">Festivo</span>}
                         </CardDescription>
                          {/* Action Buttons: Duplicate and Clear */}
                         <div className="absolute top-1 right-1 flex flex-col gap-0.5">
@@ -159,5 +172,3 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     }
 };
-
-    

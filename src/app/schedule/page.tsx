@@ -1,4 +1,3 @@
-
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -30,6 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Import Popover
+import { Calendar } from '@/components/ui/calendar'; // Import Calendar
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
@@ -40,9 +41,10 @@ import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
-import { startOfWeek, addDays, format, addWeeks, subWeeks, parseISO } from 'date-fns'; // Added parseISO
+import { startOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid } from 'date-fns'; // Added parseISO, getYear, isValid
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -54,6 +56,45 @@ const getWeekDates = (currentDate: Date): Date[] => {
 const SCHEDULE_DATA_KEY = 'schedulePlannerData';
 const SCHEDULE_TEMPLATES_KEY = 'scheduleTemplates';
 
+// Cache for holidays
+let holidaysCache: { [year: number]: Set<string> } = {};
+
+async function fetchAndCacheHolidays(year: number): Promise<Set<string>> {
+    if (holidaysCache[year]) {
+        return holidaysCache[year];
+    }
+    try {
+        const holidays = await getColombianHolidays(year);
+        if (!Array.isArray(holidays)) {
+            console.error(`Error: getColombianHolidays(${year}) did not return an array.`);
+            throw new Error(`Formato de respuesta inválido para festivos de ${year}.`);
+        }
+        // Ensure holidays have correct structure before formatting
+        const holidaySet = new Set(holidays.map(h => {
+            if (!h || typeof h.year !== 'number' || typeof h.month !== 'number' || typeof h.day !== 'number') {
+                console.error(`Error: Invalid holiday object structure for year ${year}:`, h);
+                return ''; // Skip invalid entry
+            }
+             try {
+                 const dateToFormat = new Date(h.year, h.month - 1, h.day);
+                 if (!isValid(dateToFormat) || getYear(dateToFormat) !== h.year) {
+                     console.error(`Error: Invalid date components for holiday in year ${year}:`, h);
+                     return ''; // Skip invalid date
+                 }
+                 return format(dateToFormat, 'yyyy-MM-dd');
+             } catch (formatError) {
+                 console.error(`Error formatting holiday date for year ${year}:`, h, formatError);
+                 return ''; // Skip on formatting error
+             }
+        }).filter(dateStr => dateStr !== '')); // Filter out empty strings from errors
+
+        holidaysCache[year] = holidaySet;
+        return holidaySet;
+    } catch (error) {
+        console.error(`Error fetching or caching holidays for ${year}:`, error);
+        return new Set(); // Return empty set on error
+    }
+}
 
 const initialLocations: Location[] = [
   { id: 'loc-1', name: 'Sede Principal' },
@@ -83,7 +124,7 @@ export default function SchedulePage() {
     const [locations, setLocations] = useState<Location[]>(initialLocations);
     const [departments, setDepartments] = useState<Department[]>(initialDepartments);
     const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-    const [currentDate, setCurrentDate] = useState(new Date()); // Track current date for week view
+    const [currentDate, setCurrentDate] = useState(new Date()); // Track current date for week/day view navigation
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({}); // Store data per date key "yyyy-MM-dd"
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week'); // Default to week view
     const [selectedLocationId, setSelectedLocationId] = useState<string>(initialLocations[0].id);
@@ -91,7 +132,8 @@ export default function SchedulePage() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
     const [editingShiftDetails, setEditingShiftDetails] = useState<{ assignmentId: string; details: any } | null>(null); // For edit workflow
-    const [targetDate, setTargetDate] = useState<Date>(new Date()); // Track the date for shift assignment
+    // Target date: Used specifically for DAY VIEW and for MODALS (shift add/edit, template load)
+    const [targetDate, setTargetDate] = useState<Date>(new Date());
 
     // State for managing Location, Department, and Employee CRUD modals
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -118,8 +160,35 @@ export default function SchedulePage() {
     // State for clear day confirmation
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
 
+    // State for holidays
+    const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
+    const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
+
 
     const { toast } = useToast(); // Get toast function
+
+    // Fetch holidays whenever the year of the current week changes
+    useEffect(() => {
+        const startYear = getYear(startOfWeek(currentDate, { weekStartsOn: 1 }));
+        const endYear = getYear(endOfWeek(currentDate, { weekStartsOn: 1 }));
+        const yearsToFetch = new Set([startYear, endYear]);
+
+        setIsCheckingHoliday(true);
+        Promise.all(Array.from(yearsToFetch).map(year => fetchAndCacheHolidays(year)))
+            .then(results => {
+                // Combine results from potentially multiple years
+                const combinedSet = new Set<string>();
+                results.forEach(set => set.forEach(date => combinedSet.add(date)));
+                setHolidaySet(combinedSet);
+            })
+            .catch(error => {
+                console.error("Error fetching holidays for week view:", error);
+                setHolidaySet(new Set()); // Reset on error
+            })
+            .finally(() => {
+                setIsCheckingHoliday(false);
+            });
+    }, [currentDate]); // Re-run when the navigated date changes
 
     // Load schedule data and templates from localStorage on mount
     useEffect(() => {
@@ -162,7 +231,7 @@ export default function SchedulePage() {
 
 
     const weekDates = getWeekDates(currentDate);
-    const currentDayKey = format(targetDate, 'yyyy-MM-dd'); // Date key for current schedule
+    // const currentDayKey = format(targetDate, 'yyyy-MM-dd'); // Date key for current schedule (Removed as it's used less directly now)
 
     // Helper to get schedule for a specific date, handling potential undefined
     const getScheduleForDate = (date: Date): ScheduleData => {
@@ -176,37 +245,28 @@ export default function SchedulePage() {
     const filteredTemplates = useMemo(() => savedTemplates.filter(temp => temp.locationId === selectedLocationId), [savedTemplates, selectedLocationId]); // Filter templates by location
 
     // Derived state for available employees (considering view mode)
-    const assignedEmployeeIds = useMemo(() => {
+    const assignedEmployeeIdsForTargetDate = useMemo(() => {
         const ids = new Set<string>();
-        let dateKeysToCheck: string[] = [];
-
-        if (viewMode === 'day') {
-            dateKeysToCheck.push(format(targetDate, 'yyyy-MM-dd'));
+        const dateKey = format(targetDate, 'yyyy-MM-dd');
+        const daySchedule = scheduleData[dateKey];
+        if (daySchedule) {
+            Object.values(daySchedule.assignments).forEach(deptAssignments => {
+                deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
+            });
         }
-        // In week view, we don't filter based on assignment for the available list
-        // Filtering happens on drop
-
-        dateKeysToCheck.forEach(dateKey => {
-            const daySchedule = scheduleData[dateKey];
-            if (daySchedule) {
-                Object.values(daySchedule.assignments).forEach(deptAssignments => {
-                    deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
-                });
-            }
-        });
         return ids;
-    }, [scheduleData, targetDate, viewMode]); // Removed weekDates dependency as week view doesn't filter
+    }, [scheduleData, targetDate]); // Depends only on schedule and the specific target date
 
 
     const availableEmployees = useMemo(() => {
         // Only filter out assigned employees in 'day' view
         if (viewMode === 'day') {
-            return filteredEmployees.filter(emp => !assignedEmployeeIds.has(emp.id));
+            return filteredEmployees.filter(emp => !assignedEmployeeIdsForTargetDate.has(emp.id));
         } else {
             // In 'week' view, the available list shows all employees for the location
             return filteredEmployees;
         }
-    }, [filteredEmployees, assignedEmployeeIds, viewMode]);
+    }, [filteredEmployees, assignedEmployeeIdsForTargetDate, viewMode]);
 
 
     useEffect(() => {
@@ -613,19 +673,62 @@ export default function SchedulePage() {
          }
      };
 
+    // --- Holiday Check Helper ---
+    const isHoliday = useCallback((date: Date | null | undefined): boolean => {
+        if (!date || !isValid(date)) return false;
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return holidaySet.has(dateStr);
+    }, [holidaySet]);
+
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
              <div className="flex justify-between items-center mb-6 gap-4 flex-wrap"> {/* Added flex-wrap */}
                  <h1 className="text-2xl font-bold text-foreground flex-shrink-0 mr-auto">Planificador de Horarios</h1>
-                 <div className="flex items-center gap-4 order-1 md:order-none"> {/* Center navigation */}
-                     <WeekNavigator
-                         currentDate={currentDate}
-                         onPreviousWeek={handlePreviousWeek}
-                         onNextWeek={handleNextWeek}
-                     />
-                 </div>
-                 <div className="flex items-center gap-2 flex-shrink-0 order-2 md:order-last">
+                 {/* --- Day View Date Selector --- */}
+                 {viewMode === 'day' && (
+                    <div className="order-1 md:order-none">
+                         <Popover>
+                             <PopoverTrigger asChild>
+                                 <Button
+                                     variant={'outline'}
+                                     className={cn(
+                                         'w-[280px] justify-start text-left font-normal',
+                                         !targetDate && 'text-muted-foreground'
+                                     )}
+                                 >
+                                     <CalendarIcon className="mr-2 h-4 w-4" />
+                                     {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                 </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-0">
+                                 <Calendar
+                                     mode="single"
+                                     selected={targetDate}
+                                     onSelect={(date) => { if (date) setTargetDate(date) }} // Update targetDate for day view
+                                     initialFocus
+                                     locale={es}
+                                     modifiers={{ holiday: (date) => isHoliday(date) }}
+                                     modifiersClassNames={{
+                                         holiday: 'ring-2 ring-offset-1 ring-destructive font-bold', // Use destructive color ring for holidays
+                                     }}
+                                 />
+                             </PopoverContent>
+                         </Popover>
+                    </div>
+                 )}
+                 {/* --- Week View Navigator --- */}
+                 {viewMode === 'week' && (
+                     <div className="flex items-center gap-4 order-1 md:order-none"> {/* Center navigation */}
+                         <WeekNavigator
+                             currentDate={currentDate}
+                             onPreviousWeek={handlePreviousWeek}
+                             onNextWeek={handleNextWeek}
+                         />
+                     </div>
+                 )}
+
+                 <div className="flex items-center gap-2 flex-shrink-0 order-last"> {/* Ensure controls are on the right */}
                      {/* Configuration Button */}
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
@@ -655,7 +758,7 @@ export default function SchedulePage() {
                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
                                                       <AlertDialog>
                                                           <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                           </AlertDialogTrigger>
                                                           {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                       </AlertDialog>
@@ -851,11 +954,12 @@ export default function SchedulePage() {
                             onRemoveShift={handleRemoveShift}
                             viewMode={viewMode}
                             weekDates={weekDates} // Pass week dates
-                            currentDate={targetDate} // Pass target date for single day view or start of week
+                            currentDate={targetDate} // Pass target date for single day view
                             onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
                             getScheduleForDate={getScheduleForDate} // Pass helper function
                             onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
                             onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
+                            isHoliday={isHoliday} // Pass the holiday check function
                         />
                      </div>
                  </div>
@@ -1004,5 +1108,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-
