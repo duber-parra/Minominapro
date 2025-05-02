@@ -1,3 +1,4 @@
+
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -205,27 +206,27 @@ export default function SchedulePage() {
     const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
 
     const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-    const [locationFormData, setLocationFormData = useState({ name: '' });
+    const [locationFormData, setLocationFormData] = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-    const [departmentFormData, setDepartmentFormData = useState({ name: '', locationId: selectedLocationId });
+    const [departmentFormData, setDepartmentFormData] = useState({ name: '', locationId: selectedLocationId });
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [employeeFormData, setEmployeeFormData = useState({ name: '', primaryLocationId: selectedLocationId });
+    const [employeeFormData, setEmployeeFormData] = useState({ name: '', primaryLocationId: selectedLocationId });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null); // Added 'template' type
 
     // State for template saving dialog
-    const [isTemplateModalOpen, setIsTemplateModalOpen = useState(false);
-    const [templateName, setTemplateName = useState('');
-    const [savedTemplates, setSavedTemplates = useState<ShiftTemplate[]>([]); // State for saved templates
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [templateName, setTemplateName] = useState('');
+    const [savedTemplates, setSavedTemplates] = useState<ShiftTemplate[]>([]); // State for saved templates
 
     // State for clear day confirmation
-    const [clearingDate, setClearingDate = useState<Date | null>(null);
+    const [clearingDate, setClearingDate] = useState<Date | null>(null);
 
     // State for holidays
-    const [holidaySet, setHolidaySet = useState<Set<string>>(new Set());
-    const [isCheckingHoliday, setIsCheckingHoliday = useState<boolean>(false);
+    const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
+    const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
     const isMobile = useIsMobile(); // Hook to detect mobile/tablet view
     const { toast } = useToast(); // Get toast function
@@ -993,7 +994,7 @@ export default function SchedulePage() {
                                      locale={es}
                                      modifiers={{ holiday: (date) => isHoliday(date) }}
                                      modifiersClassNames={{
-                                         holiday: 'border-primary text-primary', // Apply primary border and text for holiday
+                                         holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
                                      }}
                                  />
                              </PopoverContent>
@@ -1410,3 +1411,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
