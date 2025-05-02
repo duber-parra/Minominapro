@@ -73,7 +73,11 @@ function Calendar({
       }}
       locale={locale} // Pass locale to DayPicker
       modifiers={modifiers} // Pass modifiers
-      modifiersClassNames={modifiersClassNames} // Pass modifier class names
+      modifiersClassNames={{
+          // Adjusted holiday style: use accent text color, medium font weight
+          holiday: 'text-accent font-medium',
+          ...modifiersClassNames // Merge with any passed modifier classes
+      }}
       {...props}
     />
   )
@@ -81,4 +85,3 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
-

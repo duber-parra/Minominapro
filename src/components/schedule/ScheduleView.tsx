@@ -45,9 +45,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return (
             <Card className="shadow-md bg-card border border-border">
                 <CardHeader className="border-b">
-                    <CardTitle className="text-lg font-medium text-foreground">
+                    <CardTitle className={cn(
+                        "text-lg font-medium text-foreground",
+                        isHoliday(currentDate) && "text-accent" // Use accent color for holiday title
+                    )}>
                         Horario para el {format(currentDate, 'EEEE, d MMMM yyyy', { locale: es })}
-                        {isHoliday(currentDate) && <span className="text-xs text-destructive font-semibold ml-2">(Festivo)</span>}
+                        {isHoliday(currentDate) && <span className="text-xs font-normal ml-2">(Festivo)</span>}
                     </CardTitle>
                     {/* Add description or other info if needed */}
                 </CardHeader>
@@ -87,21 +90,24 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             return (
                 <Card key={dateKey} className={cn(
                     "shadow-sm bg-card border flex flex-col min-w-[140px]", // Adjusted min-width
-                    isCurrentHoliday ? "border-destructive border-2" : "border-border/50" // Add destructive border for holidays
+                    // Use a subtle border accent for holidays instead of strong destructive color
+                    isCurrentHoliday ? "border-accent" : "border-border/50"
                 )}>
                     <CardHeader className={cn(
                         "pb-2 pt-3 px-3 border-b relative",
-                        isCurrentHoliday ? "border-destructive" : "border-border/50" // Match border color
+                        // Match border color to card's border
+                        isCurrentHoliday ? "border-accent" : "border-border/50"
                     )}>
                         <CardTitle className={cn(
                             "text-sm font-medium text-foreground text-center whitespace-nowrap", // Reduced size, nowrap
-                             isCurrentHoliday && "text-destructive" // Highlight title if holiday
+                            // Use accent color for holiday title text
+                             isCurrentHoliday && "text-accent font-semibold"
                         )}>
                             {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
                         </CardTitle>
                         <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Smaller description */}
                             {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
-                            {isCurrentHoliday && <span className="text-destructive block text-[9px]">Festivo</span>}
+                            {isCurrentHoliday && <span className="text-accent block text-[9px] font-medium">Festivo</span>}
                         </CardDescription>
                          {/* Action Buttons: Duplicate and Clear */}
                         <div className="absolute top-1 right-1 flex flex-col gap-0.5">

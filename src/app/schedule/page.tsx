@@ -712,7 +712,8 @@ export default function SchedulePage() {
                                      locale={es}
                                      modifiers={{ holiday: (date) => isHoliday(date) }}
                                      modifiersClassNames={{
-                                         holiday: 'ring-2 ring-offset-1 ring-destructive font-bold', // Use destructive color ring for holidays
+                                         // Use accent color for text, normal font weight
+                                         holiday: 'text-accent font-medium',
                                      }}
                                  />
                              </PopoverContent>
@@ -1110,4 +1111,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
