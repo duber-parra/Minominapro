@@ -16,9 +16,8 @@ interface DepartmentColumnProps {
   assignments: ShiftAssignment[];
   onRemoveShift: (departmentId: string, assignmentId: string) => void;
   date: Date; // Date for this column
-  // Removed onAssign, replaced with onAddShiftRequest
-  // onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for '+' button assignment
-  onAddShiftRequest: (departmentId: string, date: Date) => void; // New handler for '+' button click to open modal
+  onAddShiftRequest: (departmentId: string, date: Date) => void; // New handler for '+' button click
+  onShiftClick: (assignment: ShiftAssignment, date: Date, departmentId: string) => void; // Handler for clicking a shift card
   isWeekView?: boolean; // Flag for potentially different rendering in week view
 }
 
@@ -27,8 +26,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   assignments,
   onRemoveShift,
   date,
-  // Removed onAssign from destructuring
   onAddShiftRequest, // Destructure new handler
+  onShiftClick, // Destructure shift click handler
   isWeekView = false,
 }) => {
   const dateKey = format(date, 'yyyy-MM-dd');
@@ -62,8 +61,9 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
                   <ShiftCard
                       key={assignment.id}
                       assignment={assignment}
-                      onRemove={() => onRemoveShift(department.id, assignment.id)}
+                      onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }} // Stop propagation
                       isCompact // Use compact rendering
+                      onClick={() => onShiftClick(assignment, date, department.id)} // Pass assignment, date, and deptId to handler
                   />
               ))
           ) : (
@@ -110,7 +110,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
              <ShiftCard
                  key={assignment.id}
                  assignment={assignment}
-                 onRemove={() => onRemoveShift(department.id, assignment.id)}
+                 onRemove={(e) => { e.stopPropagation(); onRemoveShift(department.id, assignment.id); }} // Stop propagation
+                 onClick={() => onShiftClick(assignment, date, department.id)} // Pass assignment, date, and deptId to handler
              />
           ))
         ) : (

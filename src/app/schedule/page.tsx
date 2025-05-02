@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown } from 'lucide-react'; // Added FileDown icon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine } from 'lucide-react'; // Added FileDown icon, PencilLine
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -193,8 +193,8 @@ export default function SchedulePage() {
     const [isEmployeeSelectionModalOpen, setIsEmployeeSelectionModalOpen] = useState(false);
     const [shiftRequestContext, setShiftRequestContext] = useState<{ departmentId: string; date: Date } | null>(null);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null); // Employee selected for the shift being added/edited
-    // const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null); // No longer needed, use shiftRequestContext
-    const [editingShiftDetails, setEditingShiftDetails] = useState<{ assignmentId: string; details: any } | null>(null); // For edit workflow
+    // State for tracking the shift being edited
+    const [editingShift, setEditingShift] = useState<{ assignment: ShiftAssignment; date: Date; departmentId: string } | null>(null);
     // Target date: Used specifically for DAY VIEW and for MODALS (shift add/edit, template load)
     const [targetDate, setTargetDate] = useState<Date>(new Date());
 
@@ -205,27 +205,27 @@ export default function SchedulePage() {
     const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
 
     const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-    const [locationFormData, setLocationFormData] = useState({ name: '' });
+    const [locationFormData, setLocationFormData = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-    const [departmentFormData, setDepartmentFormData] = useState({ name: '', locationId: selectedLocationId });
+    const [departmentFormData, setDepartmentFormData = useState({ name: '', locationId: selectedLocationId });
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [employeeFormData, setEmployeeFormData] = useState({ name: '', primaryLocationId: selectedLocationId });
+    const [employeeFormData, setEmployeeFormData = useState({ name: '', primaryLocationId: selectedLocationId });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null); // Added 'template' type
 
     // State for template saving dialog
-    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-    const [templateName, setTemplateName] = useState('');
-    const [savedTemplates, setSavedTemplates] = useState<ShiftTemplate[]>([]); // State for saved templates
+    const [isTemplateModalOpen, setIsTemplateModalOpen = useState(false);
+    const [templateName, setTemplateName = useState('');
+    const [savedTemplates, setSavedTemplates = useState<ShiftTemplate[]>([]); // State for saved templates
 
     // State for clear day confirmation
-    const [clearingDate, setClearingDate] = useState<Date | null>(null);
+    const [clearingDate, setClearingDate = useState<Date | null>(null);
 
     // State for holidays
-    const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
-    const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
+    const [holidaySet, setHolidaySet = useState<Set<string>>(new Set());
+    const [isCheckingHoliday, setIsCheckingHoliday = useState<boolean>(false);
 
     const isMobile = useIsMobile(); // Hook to detect mobile/tablet view
     const { toast } = useToast(); // Get toast function
@@ -348,6 +348,7 @@ export default function SchedulePage() {
 
     // Handler to open Employee Selection Modal when '+' is clicked
     const handleOpenEmployeeSelectionModal = (departmentId: string, date: Date) => {
+         setEditingShift(null); // Ensure we are not in edit mode
          setShiftRequestContext({ departmentId, date }); // Store the context
          setIsEmployeeSelectionModalOpen(true); // Open the selection modal
     };
@@ -357,28 +358,42 @@ export default function SchedulePage() {
         if (!shiftRequestContext) return;
         setSelectedEmployee(employee); // Set the selected employee
         setIsEmployeeSelectionModalOpen(false); // Close selection modal
-        setIsShiftModalOpen(true); // Open the shift detail modal
+        setIsShiftModalOpen(true); // Open the shift detail modal for ADDING
     };
 
     // Handler for Drag & Drop assignment
     const handleOpenShiftModalForDrop = (employee: Employee, departmentId: string, date: Date) => {
+        setEditingShift(null); // Ensure not in edit mode
         setSelectedEmployee(employee);
         // Set context for consistency, even though we already have the employee
         setShiftRequestContext({ departmentId, date });
-        setIsShiftModalOpen(true);
+        setIsShiftModalOpen(true); // Open the shift detail modal for ADDING
+    };
+
+    // --- Handler for clicking an existing shift card ---
+    const handleShiftClick = (assignment: ShiftAssignment, date: Date, departmentId: string) => {
+        setEditingShift({ assignment, date, departmentId }); // Set the shift to be edited
+        setSelectedEmployee(assignment.employee); // Employee is already known
+        setShiftRequestContext({ departmentId, date }); // Set context
+        setIsShiftModalOpen(true); // Open the shift detail modal for EDITING
     };
 
 
-    const handleAddShift = (details: any) => {
-        // Use selectedEmployee and shiftRequestContext instead of selectedDepartmentId/targetDate
-        if (!selectedEmployee || !shiftRequestContext) return;
+    const handleAddOrUpdateShift = (details: any) => {
+        // Use editingShift context if available, otherwise use selectedEmployee and shiftRequestContext
+        const context = editingShift || shiftRequestContext;
+        const employeeForShift = editingShift?.assignment.employee || selectedEmployee;
 
-        const { departmentId, date } = shiftRequestContext;
+        if (!employeeForShift || !context) return;
+
+        const { departmentId, date } = context;
         const dateKey = format(date, 'yyyy-MM-dd');
 
-        const newAssignment: ShiftAssignment = {
-            id: uuidv4(),
-            employee: selectedEmployee,
+        // Create or update the assignment
+        const assignmentPayload: ShiftAssignment = {
+            // If editing, use existing ID, otherwise generate new one
+            id: editingShift?.assignment.id || uuidv4(),
+            employee: employeeForShift,
             startTime: details.startTime,
             endTime: details.endTime,
             includeBreak: details.includeBreak || false,
@@ -389,13 +404,25 @@ export default function SchedulePage() {
         setScheduleData(prevData => {
             const dayData = prevData[dateKey] || { date: date, assignments: {} };
             const departmentAssignments = dayData.assignments[departmentId] || [];
+
+            let updatedAssignments;
+            if (editingShift) {
+                // Update existing assignment
+                updatedAssignments = departmentAssignments.map(a =>
+                    a.id === editingShift.assignment.id ? assignmentPayload : a
+                );
+            } else {
+                // Add new assignment
+                updatedAssignments = [...departmentAssignments, assignmentPayload];
+            }
+
             return {
                 ...prevData,
                 [dateKey]: {
                     ...dayData,
                     assignments: {
                         ...dayData.assignments,
-                        [departmentId]: [...departmentAssignments, newAssignment],
+                        [departmentId]: updatedAssignments,
                     },
                 },
             };
@@ -404,6 +431,11 @@ export default function SchedulePage() {
         setIsShiftModalOpen(false);
         setSelectedEmployee(null);
         setShiftRequestContext(null);
+        setEditingShift(null); // Clear editing state
+         toast({
+            title: editingShift ? 'Turno Actualizado' : 'Turno Agregado',
+            description: `Turno para ${employeeForShift.name} el ${format(date, 'PPP', { locale: es })} ${editingShift ? 'actualizado.' : 'agregado.'}`,
+        });
     };
 
     const handleRemoveShift = (dateKey: string, departmentId: string, assignmentId: string) => {
@@ -429,6 +461,7 @@ export default function SchedulePage() {
                 },
             };
         });
+         toast({ title: 'Turno Eliminado', variant: 'destructive' });
     };
 
 
@@ -481,13 +514,20 @@ export default function SchedulePage() {
     };
 
     const handleSaveLocation = () => {
+        const name = locationFormData.name.trim();
+        if (!name) {
+            toast({ title: 'Nombre Inválido', description: 'El nombre de la sede no puede estar vacío.', variant: 'destructive' });
+            return;
+        }
         if (editingLocation) {
             // Update existing location
-            setLocations(locations.map(loc => loc.id === editingLocation.id ? { ...loc, ...locationFormData } : loc));
+            setLocations(locations.map(loc => loc.id === editingLocation.id ? { ...loc, name } : loc));
+             toast({ title: 'Sede Actualizada', description: `Sede "${name}" actualizada.` });
         } else {
             // Add new location
-            const newLocation = { id: uuidv4(), ...locationFormData };
+            const newLocation = { id: uuidv4(), name };
             setLocations([...locations, newLocation]);
+            toast({ title: 'Sede Agregada', description: `Sede "${name}" agregada.` });
         }
         setIsLocationModalOpen(false);
         setEditingLocation(null); // Clear editing state
@@ -500,11 +540,19 @@ export default function SchedulePage() {
     };
 
     const handleSaveDepartment = () => {
+         const name = departmentFormData.name.trim();
+         const locationId = departmentFormData.locationId;
+        if (!name || !locationId) {
+            toast({ title: 'Datos Incompletos', description: 'El nombre y la sede del departamento son requeridos.', variant: 'destructive' });
+            return;
+        }
         if (editingDepartment) {
-            setDepartments(departments.map(dep => dep.id === editingDepartment.id ? { ...dep, ...departmentFormData } : dep));
+            setDepartments(departments.map(dep => dep.id === editingDepartment.id ? { ...dep, name, locationId } : dep));
+             toast({ title: 'Departamento Actualizado', description: `Departamento "${name}" actualizado.` });
         } else {
-            const newDepartment = { id: uuidv4(), ...departmentFormData, icon: Plus }; // Assign default icon
+            const newDepartment = { id: uuidv4(), name, locationId, icon: Building }; // Assign default icon
             setDepartments([...departments, newDepartment]);
+            toast({ title: 'Departamento Agregado', description: `Departamento "${name}" agregado.` });
         }
         setIsDepartmentModalOpen(false);
         setEditingDepartment(null); // Clear editing state
@@ -517,11 +565,19 @@ export default function SchedulePage() {
     };
 
     const handleSaveEmployee = () => {
+         const name = employeeFormData.name.trim();
+         const primaryLocationId = employeeFormData.primaryLocationId;
+         if (!name || !primaryLocationId) {
+            toast({ title: 'Datos Incompletos', description: 'El nombre y la sede principal del colaborador son requeridos.', variant: 'destructive' });
+            return;
+         }
         if (editingEmployee) {
-            setEmployees(employees.map(emp => emp.id === editingEmployee.id ? { ...emp, ...employeeFormData } : emp));
+            setEmployees(employees.map(emp => emp.id === editingEmployee.id ? { ...emp, name, primaryLocationId } : emp));
+             toast({ title: 'Colaborador Actualizado', description: `Colaborador "${name}" actualizado.` });
         } else {
-            const newEmployee = { id: uuidv4(), ...employeeFormData };
+            const newEmployee = { id: uuidv4(), name, primaryLocationId };
             setEmployees([...employees, newEmployee]);
+             toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" agregado.` });
         }
         setIsEmployeeModalOpen(false);
         setEditingEmployee(null); // Clear editing state
@@ -538,14 +594,22 @@ export default function SchedulePage() {
         if (!itemToDelete) return;
 
         try {
+            let message = '';
             switch (itemToDelete.type) {
                 case 'location':
                     setLocations(locations.filter(loc => loc.id !== itemToDelete.id));
                     setDepartments(departments.filter(dep => dep.locationId !== itemToDelete.id));
                     setEmployees(emps => emps.map(emp => emp.primaryLocationId === itemToDelete.id ? {...emp, primaryLocationId: '' } : emp));
+                    // Remove templates associated with this location
+                    const remainingTemplatesLocation = savedTemplates.filter(t => t.locationId !== itemToDelete.id);
+                    setSavedTemplates(remainingTemplatesLocation);
+                    if (typeof window !== 'undefined') {
+                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(remainingTemplatesLocation));
+                    }
                     if (selectedLocationId === itemToDelete.id) {
                         setSelectedLocationId(locations.length > 1 ? locations.find(loc => loc.id !== itemToDelete.id)!.id : '');
                     }
+                    message = `Sede "${itemToDelete.name}" y sus datos asociados eliminados.`;
                     break;
                 case 'department':
                     setDepartments(departments.filter(dep => dep.id !== itemToDelete.id));
@@ -554,6 +618,17 @@ export default function SchedulePage() {
                          delete updatedSchedule[dateKey].assignments[itemToDelete.id];
                      });
                      setScheduleData(updatedSchedule);
+                      // Remove assignments from templates
+                     const updatedTemplatesDept = savedTemplates.map(t => {
+                         const newAssignments = { ...t.assignments };
+                         delete newAssignments[itemToDelete.id];
+                         return { ...t, assignments: newAssignments };
+                     });
+                     setSavedTemplates(updatedTemplatesDept);
+                     if (typeof window !== 'undefined') {
+                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplatesDept));
+                     }
+                    message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
                 case 'employee':
                     setEmployees(employees.filter(emp => emp.id !== itemToDelete.id));
@@ -564,6 +639,19 @@ export default function SchedulePage() {
                           });
                      });
                      setScheduleData(updatedScheduleEmp);
+                     // Remove assignments from templates
+                      const updatedTemplatesEmp = savedTemplates.map(t => {
+                         const newAssignments = { ...t.assignments };
+                         Object.keys(newAssignments).forEach(deptId => {
+                             newAssignments[deptId] = newAssignments[deptId].filter(a => (typeof a.employee === 'object' ? a.employee.id : a.employee) !== itemToDelete.id);
+                         });
+                         return { ...t, assignments: newAssignments };
+                     });
+                     setSavedTemplates(updatedTemplatesEmp);
+                     if (typeof window !== 'undefined') {
+                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplatesEmp));
+                     }
+                    message = `Colaborador "${itemToDelete.name}" eliminado.`;
                     break;
                  case 'template':
                      const updatedTemplates = savedTemplates.filter(t => t.id !== itemToDelete.id);
@@ -571,9 +659,10 @@ export default function SchedulePage() {
                      if (typeof window !== 'undefined') {
                          localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
                      }
-                     toast({ title: 'Formación Eliminada', description: `La formación "${itemToDelete.name}" ha sido eliminada.` });
+                     message = `Formación "${itemToDelete.name}" eliminada.`;
                     break;
             }
+            toast({ title: 'Elemento Eliminado', description: message, variant: 'destructive' });
         } catch (error) {
              console.error(`Error deleting item type ${itemToDelete.type}:`, error);
              toast({ title: 'Error al Eliminar', description: 'No se pudo completar la eliminación.', variant: 'destructive' });
@@ -662,7 +751,7 @@ export default function SchedulePage() {
              return updatedData;
          });
          setClearingDate(null); // Close dialog
-         toast({ title: 'Horario Limpiado', description: `Se eliminaron todos los turnos para el ${format(clearingDate, 'PPP', { locale: es })}.` });
+         toast({ title: 'Horario Limpiado', description: `Se eliminaron todos los turnos para el ${format(clearingDate, 'PPP', { locale: es })}.`, variant: 'destructive' });
      };
 
 
@@ -1152,6 +1241,7 @@ export default function SchedulePage() {
                             weekDates={weekDates} // Pass week dates
                             currentDate={targetDate} // Pass target date for single day view
                             onAddShiftRequest={handleOpenEmployeeSelectionModal} // Pass the handler to open employee selection
+                            onShiftClick={handleShiftClick} // Pass the handler for clicking a shift
                             getScheduleForDate={getScheduleForDate} // Pass helper function
                             onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
                             onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
@@ -1269,11 +1359,13 @@ export default function SchedulePage() {
                      setIsShiftModalOpen(false);
                      setSelectedEmployee(null); // Clear selected employee when closing detail modal
                      setShiftRequestContext(null); // Clear context
+                     setEditingShift(null); // Clear editing state
                  }}
-                 onSave={handleAddShift}
+                 onSave={handleAddOrUpdateShift}
                  employeeName={selectedEmployee?.name || ''}
                  departmentName={departments.find(d => d.id === shiftRequestContext?.departmentId)?.name || ''}
-                 initialDetails={editingShiftDetails?.details}
+                 initialDetails={editingShift?.assignment} // Pass the assignment for initial values
+                 isEditing={!!editingShift} // Pass flag indicating if it's an edit
              />
 
              {/* Universal Delete Confirmation */}

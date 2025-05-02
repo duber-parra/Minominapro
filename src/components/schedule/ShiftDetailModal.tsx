@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch'; // Import Switch
-import { Save, X } from 'lucide-react';
+import { Save, X, PencilLine } from 'lucide-react'; // Added PencilLine
 import type { ShiftDetails } from '@/types/schedule'; // Assuming type exists
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // Import cn
@@ -26,6 +26,7 @@ interface ShiftDetailModalProps {
   employeeName: string;
   departmentName: string;
   initialDetails?: Partial<ShiftDetails>; // For editing existing shifts
+  isEditing?: boolean; // Flag to indicate if editing
 }
 
 // Basic time validation (HH:MM format)
@@ -39,6 +40,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   employeeName,
   departmentName,
   initialDetails,
+  isEditing = false, // Default to false (adding)
 }) => {
   const { toast } = useToast();
   const [startTime, setStartTime] = useState(initialDetails?.startTime || '08:00');
@@ -55,17 +57,25 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   // Reset state when modal opens or initial details change
   useEffect(() => {
     if (isOpen) {
-      setStartTime(initialDetails?.startTime || '08:00');
-      setEndTime(initialDetails?.endTime || '17:00');
-      setIncludeBreak(initialDetails?.includeBreak || false);
-      setBreakStartTime(initialDetails?.breakStartTime || '15:00');
-      setBreakEndTime(initialDetails?.breakEndTime || '18:00');
-      setStartTimeError(null);
-      setEndTimeError(null);
-      setBreakStartTimeError(null);
-      setBreakEndTimeError(null);
+        const defaultStartTime = '08:00';
+        const defaultEndTime = '17:00';
+        const defaultBreakStartTime = '15:00';
+        const defaultBreakEndTime = '18:00';
+
+        setStartTime(initialDetails?.startTime || defaultStartTime);
+        setEndTime(initialDetails?.endTime || defaultEndTime);
+        setIncludeBreak(initialDetails?.includeBreak || false);
+        setBreakStartTime(initialDetails?.breakStartTime || defaultBreakStartTime);
+        setBreakEndTime(initialDetails?.breakEndTime || defaultBreakEndTime);
+        setStartTimeError(null);
+        setEndTimeError(null);
+        setBreakStartTimeError(null);
+        setBreakEndTimeError(null);
     }
-  }, [isOpen, initialDetails]);
+   // Dependency includes initialDetails to reset when editing a different shift
+   // isEditing is included to ensure reset happens correctly when switching between add/edit modes
+  }, [isOpen, initialDetails, isEditing]);
+
 
   const handleSaveClick = () => {
     let isValid = true;
@@ -129,13 +139,17 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
     }
   };
 
+  const title = isEditing ? 'Editar Detalles del Turno' : 'Detalles del Turno';
+  const saveButtonText = isEditing ? 'Guardar Cambios' : 'Guardar Turno';
+  const SaveIcon = isEditing ? PencilLine : Save; // Use different icon for editing
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Detalles del Turno</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Asignando a <strong>{employeeName}</strong> en <strong>{departmentName}</strong>.
+            {isEditing ? 'Modificando' : 'Asignando'} a <strong>{employeeName}</strong> en <strong>{departmentName}</strong>.
             Ingresa las horas y el descanso.
           </DialogDescription>
         </DialogHeader>
@@ -222,7 +236,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
             </Button>
           </DialogClose>
           <Button type="button" onClick={handleSaveClick} variant="default">
-            <Save className="mr-2 h-4 w-4" /> Guardar Turno
+            <SaveIcon className="mr-2 h-4 w-4" /> {saveButtonText}
           </Button>
         </DialogFooter>
       </DialogContent>
