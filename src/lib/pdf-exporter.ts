@@ -1,4 +1,3 @@
-
 // src/lib/pdf-exporter.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -27,11 +26,14 @@ interface PayrollPageData {
 }
 
 
-// Helper function to draw a single payroll report page (Kept for single export, but not used in modified bulk export)
+// Helper function to draw a single payroll report page (Kept for single export)
 function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     let currentY = 15; // Start position for content
+    const leftMargin = 14;
+    const rightMargin = 14;
+
 
     // --- Header ---
     doc.setFontSize(16);
@@ -41,15 +43,16 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Colaborador: ${data.employeeId}`, 14, currentY);
+    // TODO: Get Employee Name based on ID if possible
+    doc.text(`Colaborador: ${data.employeeId}`, leftMargin, currentY); // Using ID for now
     currentY += 6;
-    doc.text(`Período: ${format(data.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(data.periodEnd, 'dd/MM/yyyy', { locale: es })}`, 14, currentY);
+    doc.text(`Período: ${format(data.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(data.periodEnd, 'dd/MM/yyyy', { locale: es })}`, leftMargin, currentY);
     currentY += 10;
 
     // --- Devengado Table (Base + Extras/Recargos) ---
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Horas y Recargos/Extras', 14, currentY);
+    doc.text('Resumen Horas y Recargos/Extras', leftMargin, currentY);
     currentY += 6;
 
     const head = [['Categoría', 'Horas', 'Pago (Recargo/Extra)']];
@@ -114,7 +117,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     // --- Otros Devengados Section ---
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Otros Devengados', 14, currentY);
+    doc.text('Otros Devengados', leftMargin, currentY);
     currentY += 6;
 
     const baseMasExtras = data.summary.pagoTotalConSalarioQuincena;
@@ -172,7 +175,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Deducciones Legales (Estimadas)', 14, currentY);
+    doc.text('Deducciones Legales (Estimadas)', leftMargin, currentY);
     currentY += 6;
 
     autoTable(doc, {
@@ -193,8 +196,8 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Subtotal (Dev. Bruto - Ded. Ley):', 14, currentY);
-    doc.text(formatCurrency(subtotalNetoParcial), pageWidth - 14, currentY, { align: 'right' });
+    doc.text('Subtotal (Dev. Bruto - Ded. Ley):', leftMargin, currentY);
+    doc.text(formatCurrency(subtotalNetoParcial), pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 10;
 
 
@@ -203,7 +206,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
      if ((data.otrasDeduccionesLista || []).length > 0) {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Otras Deducciones / Descuentos', 14, currentY);
+        doc.text('Otras Deducciones / Descuentos', leftMargin, currentY);
         currentY += 6;
         autoTable(doc, {
             body: (data.otrasDeduccionesLista || []).map(item => [`(-) ${item.descripcion || 'Deducción'}`, formatCurrency(item.monto)]),
@@ -214,8 +217,8 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
         });
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.text('Total Otras Deducciones:', 14, currentY + 5);
-        doc.text(formatCurrency(totalOtrasDeduccionesManuales), pageWidth - 14, currentY + 5, { align: 'right' });
+        doc.text('Total Otras Deducciones:', leftMargin, currentY + 5);
+        doc.text(formatCurrency(totalOtrasDeduccionesManuales), pageWidth - rightMargin, currentY + 5, { align: 'right' });
         currentY += 10;
     }
 
@@ -223,8 +226,8 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
      const netoAPagar = subtotalNetoParcial - totalOtrasDeduccionesManuales;
      doc.setFontSize(14);
      doc.setFont('helvetica', 'bold');
-     doc.text('Neto a Pagar Estimado Quincenal:', 14, currentY);
-     doc.text(formatCurrency(netoAPagar), pageWidth - 14, currentY, { align: 'right', textColor: [76, 67, 223] }); // Use primary color #4C43DF
+     doc.text('Neto a Pagar Estimado Quincenal:', leftMargin, currentY);
+     doc.text(formatCurrency(netoAPagar), pageWidth - rightMargin, currentY, { align: 'right', textColor: [76, 67, 223] }); // Use primary color #4C43DF
      currentY += 15;
 
     // --- Signature Area ---
@@ -256,7 +259,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     doc.setFontSize(8);
     doc.setTextColor(150);
     const footerText = `Nota: Cálculo bruto estimado para ${data.summary.diasCalculados} días. IBC (*sin aux. transporte) y deducciones legales son aproximadas. Incluye ajustes manuales.`;
-    doc.text(footerText, 14, currentY);
+    doc.text(footerText, leftMargin, currentY);
 
     return currentY; // Return the Y position after drawing this page's content
 }
@@ -315,7 +318,7 @@ const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
 };
 
 
-// --- Bulk Payroll Export (Modified for List Format) ---
+// --- Bulk Payroll Export (List Format) ---
 export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void {
     if (!allPayrollData || allPayrollData.length === 0) {
         console.warn("No payroll data provided for bulk export.");
@@ -328,36 +331,50 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const pageHeight = doc.internal.pageSize.height;
     const leftMargin = 14;
     const rightMargin = 14;
-    const signatureColumnWidth = 80; // Width for the signature column
-    const dataColumnWidth = pageWidth - leftMargin - rightMargin - signatureColumnWidth - 10; // Width for data column (-10 for margin)
+    const signatureColumnWidth = 40; // Adjust width for signature column
+    const firmaHeight = 15; // Height reserved for signature line/space
 
     // --- Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Listado de Pago de Nómina Quincenal', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 10;
+    doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')}`, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 15;
 
-    // Use the period from the first payroll entry as the header period (assuming all are for the same period)
-    if (allPayrollData.length > 0) {
-        const firstPayroll = allPayrollData[0];
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Período: ${format(firstPayroll.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(firstPayroll.periodEnd, 'dd/MM/yyyy', { locale: es })}`, pageWidth / 2, currentY, { align: 'center' });
-        currentY += 15;
-    }
+    // --- Table Setup ---
+    const head = [['Empleado', 'Sucursal', 'Periodo', 'Base', 'Recargos', 'Total', 'Firma']]; // Added Sucursal (Placeholder)
 
-    // --- Table Header ---
-    const head = [['ID Colaborador', 'Nombre', 'Neto a Pagar', 'Firma']]; // Simplified header
+    let totalBase = 0;
+    let totalRecargos = 0;
+    let totalGeneral = 0;
 
-    // --- Table Body ---
     const body = allPayrollData.map(payroll => {
         const netoFinal = calculateNetoAPagar(payroll);
-        // Placeholder for name - ideally, you'd fetch the name based on ID
-        const employeeName = `Colaborador ${payroll.employeeId}`; // Replace with actual name lookup if possible
+        // Placeholders - Need to fetch actual Employee Name and Sucursal (Location Name)
+        const employeeName = `Colab. ${payroll.employeeId}`; // Placeholder name
+        // TODO: Fetch location name based on employee's primary location or shift data if available
+        const sucursalName = "Sede Principal"; // Placeholder sucursal
+
+        const periodoStr = `${format(payroll.periodStart, 'MMM yyyy', { locale: es })} ${payroll.periodStart.getDate()}-${payroll.periodEnd.getDate()}`;
+
+        const base = payroll.summary.salarioBaseQuincenal;
+        const recargos = payroll.summary.totalPagoRecargosExtrasQuincena + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) - (payroll.otrasDeduccionesLista || []).reduce((s,i)=>s+i.monto, 0); // Recargos + Adjustments
+        const totalRow = netoFinal; // Use calculated Neto Final
+
+        totalBase += base;
+        totalRecargos += recargos;
+        totalGeneral += totalRow;
+
         return [
-            payroll.employeeId,
-            employeeName, // Placeholder or actual name
-            formatCurrency(netoFinal),
+            employeeName,
+            sucursalName,
+            periodoStr,
+            formatCurrency(base),
+            formatCurrency(recargos),
+            formatCurrency(totalRow),
             '', // Empty cell for signature space
         ];
     });
@@ -366,25 +383,31 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         head: head,
         body: body,
         startY: currentY,
-        theme: 'grid',
+        theme: 'plain', // Use plain theme for minimal lines like the image
+        styles: { fontSize: 9, cellPadding: 2 },
         headStyles: {
-            fillColor: [76, 67, 223], // Primary color
-            textColor: [255, 255, 255], // White text
             fontStyle: 'bold',
+            halign: 'left',
+            fillColor: false, // No background fill for header
+            textColor: [0, 0, 0], // Black text
+            lineWidth: 0, // No header lines
         },
         columnStyles: {
-            0: { cellWidth: 80 }, // ID Colaborador
-            1: { cellWidth: 'auto' }, // Nombre
-            2: { halign: 'right', cellWidth: 80 }, // Neto a Pagar
-            3: { cellWidth: signatureColumnWidth, minCellHeight: 20 }, // Firma (ensure min height)
+            0: { cellWidth: 'auto', halign: 'left' }, // Empleado
+            1: { cellWidth: 'auto', halign: 'left' }, // Sucursal
+            2: { cellWidth: 'auto', halign: 'left' }, // Periodo
+            3: { halign: 'right' }, // Base
+            4: { halign: 'right' }, // Recargos
+            5: { halign: 'right', fontStyle: 'bold' }, // Total
+            6: { cellWidth: signatureColumnWidth, minCellHeight: firmaHeight }, // Firma
         },
         didDrawCell: (data) => {
             // Add a line in the signature cell for signing
-            if (data.column.index === 3 && data.cell.section === 'body') {
+            if (data.column.index === 6 && data.cell.section === 'body') {
                 const cell = data.cell;
-                const signatureLineY = cell.y + cell.height - 5; // Position line near bottom
-                const signatureLineXStart = cell.x + 5;
-                const signatureLineXEnd = cell.x + cell.width - 5;
+                const signatureLineY = cell.y + cell.height - 4; // Position line near bottom
+                const signatureLineXStart = cell.x + 2;
+                const signatureLineXEnd = cell.x + cell.width - 2;
                 doc.setDrawColor(200, 200, 200); // Light gray line
                 doc.setLineWidth(0.5);
                 doc.line(signatureLineXStart, signatureLineY, signatureLineXEnd, signatureLineY);
@@ -392,18 +415,41 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         },
         didDrawPage: (hookData) => {
             currentY = hookData.cursor?.y ?? currentY;
-            // Add page numbers if needed
+            // Add page numbers
             const pageNum = doc.internal.getNumberOfPages();
             doc.setFontSize(8);
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
         },
+        willDrawCell: (data) => {
+             // Prevent drawing borders for plain theme
+             if (data.cell.section === 'head' || data.cell.section === 'body') {
+                 // No border drawing needed for plain theme
+             }
+         },
+         // Add Totals Row using foot option
+         foot: [
+             [
+                 { content: 'Totales:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+                 { content: formatCurrency(totalBase), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+                 { content: formatCurrency(totalRecargos), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+                 { content: formatCurrency(totalGeneral), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+                 '' // Empty cell for signature column in footer
+             ],
+         ],
+         footStyles: {
+             fillColor: false, // No background for footer
+             textColor: [0, 0, 0],
+             lineWidth: { top: 0.5 }, // Only top border for totals row
+             lineColor: [0, 0, 0],
+         },
     });
 
     // --- Save the combined PDF ---
     const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
-    const filename = `Listado_Pago_Nominas_${timestamp}.pdf`;
+    const filename = `Lista_Pago_Nominas_${timestamp}.pdf`;
     doc.save(filename);
 }
+
 
 // Helper to parse HH:MM to minutes (same as in page.tsx, consider moving to utils)
 const parseTimeToMinutes = (timeStr: string): number => {
