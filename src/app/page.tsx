@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef } from 'react';
@@ -14,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
 import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval } from 'date-fns'; // Removed duplicate parse import
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval } from 'date-fns'; // Removed duplicate parse import, added isSameDay
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -1036,6 +1035,105 @@ export default function Home() {
     }
   };
 
+   // --- Bulk CSV Export Handler ---
+    const handleBulkExportCSV = () => {
+        const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls();
+
+        if (allPayrollDataToExport.length === 0) {
+            toast({
+                title: 'No Hay Datos para Exportar a CSV',
+                description: 'No se encontraron nóminas calculadas guardadas.',
+                variant: 'default',
+            });
+            return;
+        }
+
+        try {
+             const csvRows: string[][] = [];
+             // Headers
+             csvRows.push([
+                'ID Colaborador',
+                'Período Inicio',
+                'Período Fin',
+                'Salario Base',
+                ...displayOrder.map(key => `Horas: ${abbreviatedLabelMap[key]}`), // Hour details
+                'Total Horas',
+                'Total Recargos/Extras',
+                'Aux. Transporte',
+                'Otros Ingresos',
+                'Total Devengado Bruto',
+                'Ded. Salud (4%)',
+                'Ded. Pensión (4%)',
+                'Otras Deducciones',
+                'Neto a Pagar'
+             ]);
+
+             // Data Rows
+             allPayrollDataToExport.forEach(payroll => {
+                 const auxTransporteAplicado = payroll.incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
+                 const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+                 const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+                 const baseMasExtras = payroll.summary.pagoTotalConSalarioQuincena;
+                 const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
+                 const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+                 const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
+                 const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
+                 const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
+                 const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
+                 const netoAPagar = subtotalNetoParcial - totalOtrasDeducciones;
+
+                 const hourValues = displayOrder.map(key => formatHours(payroll.summary.totalHorasDetalladas[key]));
+
+                 csvRows.push([
+                    payroll.employeeId,
+                    format(payroll.periodStart, 'yyyy-MM-dd'),
+                    format(payroll.periodEnd, 'yyyy-MM-dd'),
+                    payroll.summary.salarioBaseQuincenal.toFixed(0), // No decimals for currency
+                    ...hourValues,
+                    formatHours(payroll.summary.totalDuracionTrabajadaHorasQuincena),
+                    payroll.summary.totalPagoRecargosExtrasQuincena.toFixed(0),
+                    auxTransporteAplicado.toFixed(0),
+                    totalOtrosIngresos.toFixed(0),
+                    totalDevengadoBruto.toFixed(0),
+                    deduccionSaludQuincenal.toFixed(0),
+                    deduccionPensionQuincenal.toFixed(0),
+                    totalOtrasDeducciones.toFixed(0),
+                    netoAPagar.toFixed(0)
+                 ]);
+             });
+
+            // Generate CSV content
+            const csvContent = "data:text/csv;charset=utf-8,"
+                + csvRows.map(row =>
+                     row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(",") // Quote fields
+                 ).join("\n");
+
+            // Trigger download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+            link.setAttribute("download", `Reporte_Nominas_Completo_${timestamp}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+             toast({
+                 title: 'Exportación CSV Completa',
+                 description: `Se generó un CSV con ${allPayrollDataToExport.length} registros de nómina.`,
+             });
+
+        } catch (error) {
+            console.error("Error durante la exportación masiva de CSV:", error);
+            toast({
+                title: 'Error en Exportación CSV',
+                description: 'Ocurrió un error al intentar generar el archivo CSV.',
+                variant: 'destructive',
+            });
+        }
+    };
+
+
    // --- Load Saved Payroll Handler ---
    const handleLoadSavedPayroll = (payrollKey: string) => {
      const payrollToLoad = savedPayrolls.find(p => p.key === payrollKey);
@@ -1476,6 +1574,7 @@ export default function Home() {
                    onLoad={handleLoadSavedPayroll}
                    onDelete={(key) => setPayrollToDeleteKey(key)} // Trigger confirmation dialog
                    onBulkExport={handleBulkExportPDF}
+                   onBulkExportCSV={handleBulkExportCSV} // Pass CSV export handler
                />
 
 

@@ -1,11 +1,10 @@
-
 // src/components/saved-payroll-list.tsx
 'use client';
 
 import type { FC } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSearch, FileDown, Trash2, Users } from 'lucide-react';
+import { FileSearch, FileDown, Trash2, Users, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet
 import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -16,10 +15,11 @@ interface SavedPayrollListProps {
   payrolls: SavedPayrollData[];
   onLoad: (key: string) => void;
   onDelete: (key: string) => void; // Changed to accept key for deletion confirmation
-  onBulkExport: () => void;
+  onBulkExport: () => void; // For PDF
+  onBulkExportCSV: () => void; // Add prop for CSV export
 }
 
-export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, onDelete, onBulkExport }) => {
+export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, onDelete, onBulkExport, onBulkExportCSV }) => { // Added onBulkExportCSV
 
     // Helper function to calculate final net pay for display
     const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
@@ -49,7 +49,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
   return (
     <Card className="shadow-lg bg-card">
       <CardHeader className="relative flex flex-row items-start justify-between pb-4"> {/* Use relative for positioning button */}
-        <div className="flex-1 pr-16"> {/* Add padding to prevent overlap */}
+        <div className="flex-1 pr-24"> {/* Increased padding-right to accommodate two buttons */}
             <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size */}
               <Users className="h-4 w-4" /> Nóminas Guardadas ({payrolls.length}) {/* Reduced icon size */}
             </CardTitle>
@@ -60,10 +60,17 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
               }
             </CardDescription>
         </div>
-         {/* Export Button: Positioned absolute top-right */}
-        <Button onClick={onBulkExport} variant="outline" size="sm" disabled={payrolls.length === 0} className="absolute top-4 right-4 px-2 py-1 h-auto"> {/* Adjust size and padding */}
-          <FileDown className="mr-1 h-3 w-3" /> PDF {/* Changed text and icon size */}
-        </Button>
+         {/* Export Buttons: Positioned absolute top-right */}
+        <div className="absolute top-4 right-4 flex items-center gap-1">
+             {/* CSV Export Button */}
+             <Button onClick={onBulkExportCSV} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
+                <FileSpreadsheet className="mr-1 h-3 w-3" /> CSV {/* Changed text */}
+             </Button>
+            {/* PDF Export Button */}
+            <Button onClick={onBulkExport} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
+              <FileDown className="mr-1 h-3 w-3" /> PDF {/* Changed text */}
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {payrolls.length > 0 ? (
@@ -79,7 +86,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                         </p>
                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena + (payroll.incluyeAuxTransporte ? 100000 : 0) + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) )}</span>
-                            <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-primary text-right">{formatCurrency(netoFinal)}</span> {/* Changed from text-accent */}
+                            <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-primary text-right">{formatCurrency(netoFinal)}</span>
                          </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
@@ -92,7 +99,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                         <AlertDialog>
                            {/* Ensure AlertDialogTrigger is inside AlertDialog */}
                           <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => onDelete(payroll.key)} title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                              <Button variant="ghost" size="icon" title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </AlertDialogTrigger>
