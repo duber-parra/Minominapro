@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet icon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown } from 'lucide-react'; // Added FileDown icon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -47,6 +47,8 @@ import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, 
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
+import { exportScheduleToPDF } from '@/lib/schedule-pdf-exporter'; // Import the new PDF exporter
+
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -124,6 +126,7 @@ const initialEmployees: Employee[] = [
 
 // Helper function to parse HH:MM time into minutes from midnight
 const parseTimeToMinutes = (timeStr: string): number => {
+  if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) return 0; // Return 0 for invalid format
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
 };
@@ -138,9 +141,16 @@ const calculateShiftDuration = (assignment: ShiftAssignment, shiftDate: Date): n
         const startTimeMinutes = parseTimeToMinutes(assignment.startTime);
         const endTimeMinutes = parseTimeToMinutes(assignment.endTime);
         let endTime = parseDateFnsInternal(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
-        if (endTimeMinutes < startTimeMinutes) { // Shift ends on the next day
-            endTime = addDays(endTime, 1);
+        if (!isValid(endTime) || endTimeMinutes < startTimeMinutes) { // Handle invalid end time or overnight shift
+             if (endTimeMinutes < startTimeMinutes) {
+                endTime = addDays(parseDateFnsInternal(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date()), 1);
+             } else {
+                 // If endTime is invalid but not overnight, return 0 or handle as error
+                 console.warn('Invalid end time for duration calculation:', assignment);
+                 return 0;
+             }
         }
+
 
         if (!isValid(startTime) || !isValid(endTime)) {
             console.warn('Invalid start or end time for duration calculation:', assignment);
@@ -837,6 +847,29 @@ export default function SchedulePage() {
         toast({ title: 'Exportación CSV Exitosa', description: 'Se ha descargado el archivo de horas trabajadas.' });
     };
 
+    // --- PDF Export Handler ---
+    const handleExportPDF = () => {
+        // Gather the necessary data for the current week
+        const locationName = locations.find(l => l.id === selectedLocationId)?.name || selectedLocationId;
+        const data = {
+            locationName,
+            weekDates,
+            departments: filteredDepartments, // Use filtered departments
+            employees: filteredEmployees, // Use filtered employees for rows
+            scheduleData,
+            getScheduleForDate,
+            calculateShiftDuration, // Pass the calculation function
+        };
+
+        try {
+            exportScheduleToPDF(data); // Call the PDF export function
+            toast({ title: 'Exportación PDF Exitosa', description: 'Se ha descargado el horario semanal.' });
+        } catch (error) {
+            console.error("Error exporting schedule to PDF:", error);
+            toast({ title: 'Error al Exportar PDF', description: 'No se pudo generar el archivo PDF.', variant: 'destructive' });
+        }
+    };
+
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
@@ -1092,6 +1125,10 @@ export default function SchedulePage() {
                 <Button onClick={handleExportCSV} variant="outline">
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
+                 {/* Export Schedule to PDF Button */}
+                <Button onClick={handleExportPDF} variant="outline">
+                     <FileDown className="mr-2 h-4 w-4" /> PDF {/* Changed text */}
+                 </Button>
              </div>
 
               {/* Main content grid */}
@@ -1281,5 +1318,4 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-    
+```
