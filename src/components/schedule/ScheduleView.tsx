@@ -68,7 +68,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     } else {
         // --- Week View ---
-        // Separate mapping logic from return statement to potentially help parser
+        // Map the dates to Card components first
         const weekViewContent = weekDates.map((date) => {
             const daySchedule = getScheduleForDate(date);
             const dateKey = format(date, 'yyyy-MM-dd');
@@ -118,7 +118,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             );
         });
 
-        // Return the container with the mapped content
+        // Then return the container div rendering the mapped content
         return (
             <div className="flex space-x-4 overflow-x-auto pb-4">
                 {weekViewContent}
