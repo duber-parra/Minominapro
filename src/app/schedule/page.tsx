@@ -657,7 +657,7 @@ export default function SchedulePage() {
                                                           <AlertDialogTrigger asChild>
                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                           </AlertDialogTrigger>
-                                                           {/* Delete Confirmation defined later */}
+                                                          {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                       </AlertDialog>
                                                   </div>
                                               </li>
@@ -682,7 +682,7 @@ export default function SchedulePage() {
                                                           <AlertDialogTrigger asChild>
                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
                                                           </AlertDialogTrigger>
-                                                           {/* Delete Confirmation defined later */}
+                                                          {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                        </AlertDialog>
                                                   </div>
                                               </li>
@@ -707,7 +707,7 @@ export default function SchedulePage() {
                                                            <AlertDialogTrigger asChild>
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
                                                            </AlertDialogTrigger>
-                                                            {/* Delete Confirmation defined later */}
+                                                           {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                         </AlertDialog>
                                                    </div>
                                                </li>
@@ -745,7 +745,7 @@ export default function SchedulePage() {
                                                             <AlertDialogTrigger asChild>
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Formación"><Trash2 className="h-4 w-4" /></Button>
                                                             </AlertDialogTrigger>
-                                                             {/* Delete Confirmation defined later */}
+                                                            {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                         </AlertDialog>
                                                     </div>
                                                 </li>
