@@ -55,7 +55,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         "text-lg font-medium",
                         isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight text if holiday
                     )}>
-                        Horario para el {format(currentDate, 'EEEE, d MMMM yyyy', { locale: es })}
+                        Horario para el {format(currentDate, 'PPPP', { locale: es })}
                         {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
                     </CardTitle>
                     {/* Add description or other info if needed */}
@@ -85,7 +85,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     } else {
         // --- Week View ---
-         // Map the dates to Card components first
+         // Restore original grid setup for week view
          const weekViewContent = weekDates.map((date, index) => {
             const daySchedule = getScheduleForDate(date);
             const dateKey = format(date, 'yyyy-MM-dd');
@@ -97,7 +97,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             return (
                 <div key={dateKey} className={cn(
                     "flex flex-col",
-                    isCurrentHoliday ? "" : "" // Remove specific width styling from here
+                     // Removed explicit width styling
                 )}>
                     <Card className={cn(
                         "shadow-sm bg-card border flex flex-col flex-grow", // Use flex-grow
@@ -172,22 +172,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                   </p>
                              )}
                         </CardContent>
-                        {/* Optional Footer can be added here if needed */}
-                        {/* <CardFooter className="p-1.5 border-t">
-                            <Button variant="outline" size="xs" className="w-full">Acción</Button>
-                        </CardFooter> */}
                     </Card>
                 </div>
             );
          });
 
-         // Use a flex container with overflow-x-auto
+         // Restore the original grid layout instead of flex with scroll
          return (
-            <div className="w-full overflow-x-auto pb-4"> {/* Enable horizontal scroll */}
-                <div className="flex space-x-2"> {/* Use flex and space-x for gaps */}
-                    {weekViewContent}
-                </div>
-            </div>
-        );
+             <div className="grid grid-cols-1 md:grid-cols-7 gap-2"> {/* Reverted to grid with 7 columns on medium screens and up */}
+                 {weekViewContent}
+             </div>
+         );
     }
 };

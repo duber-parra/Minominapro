@@ -1221,9 +1221,9 @@ export default function SchedulePage() {
                  </Button>
              </div>
 
-              {/* Main content grid */}
+              {/* Main content grid - Reverted to previous layout */}
              <DndWrapper> {/* Conditionally wrap with DndContext */}
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Use 12 columns */}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Reverted to 12 columns */}
 
                      {/* --- Available Employees (Takes 2/12 width) --- */}
                       <div className="lg:col-span-2 space-y-6">
@@ -1233,7 +1233,7 @@ export default function SchedulePage() {
 
 
                      {/* --- Schedule View (Takes remaining 10/12 width) --- */}
-                     <div className="lg:col-span-10"> {/* Schedule takes 10 columns */}
+                     <div className="lg:col-span-10"> {/* Reverted Schedule to take 10 columns */}
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
@@ -1411,4 +1411,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
