@@ -413,6 +413,7 @@ export default function SchedulePage() {
         setEmployees(loadedEmployees);
         setScheduleData(loadedSchedule);
         setSavedTemplates(loadedTemplates);
+        console.log("Loaded templates from localStorage:", loadedTemplates); // Log loaded templates
         setNotes(loadedNotes);
         setSelectedLocationId(initialSelectedLocId);
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLocId }));
@@ -512,9 +513,9 @@ export default function SchedulePage() {
      useEffect(() => {
         if (isClient) {
             try {
-                 console.log("Saving templates to localStorage:", savedTemplates);
+                 console.log("Saving templates to localStorage:", savedTemplates); // Log before saving
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
-                  console.log("Templates saved successfully.");
+                  console.log("Templates saved successfully."); // Log if saving succeeds
             } catch (error) {
                  console.error("Error saving templates to localStorage:", error);
                  toast({
@@ -562,12 +563,13 @@ export default function SchedulePage() {
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
 
     const filteredTemplates = useMemo(() => {
-        console.log("Filtering templates based on:", { savedTemplates, selectedLocationId, viewMode });
+        console.log("All saved templates:", savedTemplates); // Log all templates
+        // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp =>
-             temp.locationId === selectedLocationId && temp.type === viewMode
+             temp.locationId === selectedLocationId && temp.type === viewMode // Match current viewMode ('day' or 'week')
         );
-        console.log("Filtered templates:", filtered);
+        console.log(`Filtered templates for location ${selectedLocationId} and view ${viewMode}:`, filtered); // Log filtered templates
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -1490,8 +1492,8 @@ export default function SchedulePage() {
         const headers = rows[0].split(',').map(h => h.trim());
         const data: CsvRowData[] = [];
 
-        // Required headers for template mode (Fecha needed for day mapping)
-        const requiredHeaders = ['ID_Empleado', 'Fecha', 'Departamento', 'Hora_Inicio', 'Hora_Fin'];
+        // Required headers for template mode (Fecha still needed for day mapping, but less critical now)
+        const requiredHeaders = ['ID_Empleado', 'Departamento', 'Hora_Inicio', 'Hora_Fin'];
 
         // Check if required headers are present (case-insensitive)
         const missingHeaders = requiredHeaders.filter(reqHeader =>
@@ -1500,7 +1502,7 @@ export default function SchedulePage() {
 
         if (missingHeaders.length > 0) {
              // Provide a more informative error message
-             throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}. Asegúrate de que el archivo incluya estas columnas. La columna 'Fecha' se usa para determinar el día de la semana.`);
+             throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}. Asegúrate de que el archivo incluya estas columnas.`);
         }
 
         // Find the actual header names used in the CSV for mapping
@@ -1512,6 +1514,11 @@ export default function SchedulePage() {
                 headerMapping[key] = foundHeader;
             }
          });
+         // Manually add Fecha if it exists, even if not strictly required by the new logic
+         const fechaHeader = headers.find(h => h.toLowerCase() === 'fecha');
+         if (fechaHeader) {
+             headerMapping['Fecha'] = fechaHeader;
+         }
 
 
         for (let i = 1; i < rows.length; i++) {
@@ -1530,6 +1537,13 @@ export default function SchedulePage() {
                      rowObject[standardKey] = values[index]?.trim() || '';
                  }
              });
+
+             // Provide a default 'Fecha' if missing in the CSV, using the current year's first Monday
+             if (!rowObject['Fecha']) {
+                 const firstMondayOfYear = startOfWeek(new Date(new Date().getFullYear(), 0, 1), { weekStartsOn: 1 });
+                 rowObject['Fecha'] = format(firstMondayOfYear, 'yyyy-MM-dd');
+                 console.log(`Fila CSV ${i + 1}: Usando fecha por defecto ${rowObject['Fecha']} ya que 'Fecha' no se encontró.`);
+             }
 
             try {
                 const validatedRow = csvRowSchema.parse(rowObject);
@@ -1578,14 +1592,22 @@ export default function SchedulePage() {
                 return;
              }
 
+            // Use the Fecha from CSV (even if default was inserted) to determine day of week
             const csvDate = parseDateFnsInternal(row.Fecha, 'yyyy-MM-dd', new Date());
             if (!isValid(csvDate)) {
                 console.warn(`Fecha inválida en CSV "${row.Fecha}", saltando turno.`);
                 errorCount++;
                 return;
             }
-             let csvDayIndex = getDay(csvDate);
-             csvDayIndex = (csvDayIndex === 0) ? 6 : csvDayIndex - 1;
+             let csvDayIndex = getDay(csvDate); // 0=Sun, 1=Mon,...
+             csvDayIndex = (csvDayIndex === 0) ? 6 : csvDayIndex - 1; // Map Sunday(0) to index 6, Monday(1) to 0, etc.
+
+            // Ensure the index is within the bounds of the weekDates array
+            if (csvDayIndex < 0 || csvDayIndex >= weekDates.length) {
+                 console.warn(`Índice de día calculado (${csvDayIndex}) fuera de rango para fecha CSV "${row.Fecha}". Saltando turno.`);
+                 errorCount++;
+                 return;
+            }
 
             const targetDateForShift = weekDates[csvDayIndex];
             if (!targetDateForShift) {
@@ -1868,6 +1890,7 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
+             {/* Title */}
              <div className="text-center mb-6 md:mb-8">
                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
                     Planificador de Horarios
@@ -1875,6 +1898,7 @@ export default function SchedulePage() {
                  <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
+              {/* Hidden file input for CSV */}
               <input
                   type="file"
                   ref={fileInputRef}
@@ -1883,18 +1907,20 @@ export default function SchedulePage() {
                   className="hidden"
               />
 
-              {/* Controls - Removed Card wrapper */}
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 mb-6 md:mb-8 p-0 bg-transparent">
-                 {/* Location Selector */}
-                 <div className="flex items-center gap-2">
+              {/* Controls Row */}
+               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 md:gap-6 mb-6 md:mb-8 p-0 bg-transparent">
+
+                  {/* Location Selector */}
+                   <div className="flex items-center gap-2">
                      <LocationSelector
                          locations={locations}
                          selectedLocationId={selectedLocationId}
                          onLocationChange={handleLocationChange}
                      />
-                 </div>
-                {/* Configuration Button */}
-                 <div className="flex items-center gap-2">
+                   </div>
+
+                  {/* Configuration Button */}
+                   <div className="flex items-center gap-2">
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
                              <Button variant="outline" size="icon" title="Configuración">
@@ -2092,14 +2118,14 @@ export default function SchedulePage() {
                                      className={cn(
                                          'w-[200px] sm:w-[280px] justify-start text-left font-normal',
                                          !targetDate && 'text-muted-foreground',
-                                         isHoliday(targetDate) && 'border-primary'
+                                         isHoliday(targetDate) && 'border-primary border-2' // Use primary border
                                      )}
                                      disabled={isCheckingHoliday}
                                  >
                                      {isCheckingHoliday ? (
                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                      ) : (
-                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" />
+                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
                                      )}
                                      {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
                                      {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold text-primary">(Festivo)</span>}
@@ -2197,15 +2223,15 @@ export default function SchedulePage() {
                  </div>
              </DndWrapper>
 
-              {/* --- Actions Row --- */}
+              {/* --- Actions Row (Moved Below Schedule) --- */}
               <div className="flex flex-wrap justify-end gap-2 mt-6">
                  <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                      <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
                  </Button>
-                 <Button onClick={handleExportPDF} variant="outline" className="hover:bg-destructive hover:text-destructive-foreground">
+                 <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red Hover */}
                      <FileDown className="mr-2 h-4 w-4" /> PDF
                  </Button>
-                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white">
+                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green Hover */}
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
                  {viewMode === 'week' && (
@@ -2486,5 +2512,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-```
