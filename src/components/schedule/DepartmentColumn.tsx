@@ -67,7 +67,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
                   />
               ))
           ) : (
-              <p className="text-[10px] text-muted-foreground text-center py-1 italic">Vacío</p> // Slightly larger text, increased from 9px
+              <p className="text-[11px] text-muted-foreground text-center py-1 italic">Vacío</p> // Slightly larger text, increased from 10px
           )}
            {/* Add + Button for Mobile/Tablet - Always visible at the bottom in week view */}
             <Button

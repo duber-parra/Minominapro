@@ -108,12 +108,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                             isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
                         )}>
                             <CardTitle className={cn(
-                                "text-sm font-medium text-center whitespace-nowrap", // Adjusted size, was text-sm already
+                                "text-base font-medium text-center whitespace-nowrap", // Adjusted size back to base
                                 isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight title text with primary color
                             )}>
                                 {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
                             </CardTitle>
-                            <CardDescription className="text-[11px] text-muted-foreground text-center"> {/* Slightly larger description */}
+                            <CardDescription className="text-xs text-muted-foreground text-center"> {/* Increased size back to xs */}
                                 {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
                                 {isCurrentHoliday && <span className="text-primary block text-[10px] font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
                             </CardDescription>
@@ -149,7 +149,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                 departments.map((department) => (
                                     <div key={department.id} className="border rounded-md p-1.5 bg-muted/10 relative"> {/* Reduced padding, lighter bg, relative positioning */}
                                         <div className="flex justify-between items-center mb-1">
-                                            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis pr-5"> {/* Adjusted size, was text-[11px] */}
+                                            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis pr-5"> {/* Increased size back to xs */}
                                                  {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />} {/* Slightly larger icon */}
                                                  <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
                                             </h4>
