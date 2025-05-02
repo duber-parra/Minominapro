@@ -44,7 +44,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate, DailyAssignments, WeeklyAssignments } from '@/types/schedule';
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns';
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay } from 'date-fns'; // Added isSameDay
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
@@ -189,7 +189,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
         // Handle notes specifically as a string
         if (key === SCHEDULE_NOTES_KEY) {
             // Check if savedData is null or an empty string, return defaultValue in those cases
-            return savedData !== null && savedData !== '' ? (savedData as unknown as T) : defaultValue;
+            // This prevents JSON.parse from failing on empty or potentially invalid strings for notes
+            return savedData !== null ? (savedData as unknown as T) : defaultValue;
         }
 
 
@@ -1320,15 +1321,6 @@ export default function SchedulePage() {
      };
 
 
-     // Function to check if a date is the same day as another date
-     const isSameDay = (date1: Date, date2: Date): boolean => {
-         if (!isValid(date1) || !isValid(date2)) return false; // Add validity check
-         return date1.getFullYear() === date2.getFullYear() &&
-                date1.getMonth() === date2.getMonth() &&
-                date1.getDate() === date2.getDate();
-     };
-
-
 
     const isHoliday = useCallback((date: Date | null | undefined): boolean => {
         if (!date || !isValid(date)) return false;
@@ -1559,16 +1551,18 @@ export default function SchedulePage() {
                  <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
-            {/* Controls Card - Transparent background */}
-            <Card className="mb-8 shadow-none border-none bg-transparent">
-                 <CardHeader className="pb-4 pt-0 px-0 bg-transparent text-center opacity-0 pointer-events-none h-0"> {/* Hide visually and from interaction */}
-                     <CardDescription className="max-w-xl mx-auto">
+            {/* Controls Card - Restored visibility */}
+            <Card className="mb-8 shadow-sm border bg-card">
+                 <CardHeader className="pb-4 pt-4 text-center"> {/* Adjusted padding */}
+                     <CardDescription className="max-w-xl mx-auto text-foreground">
                         Seleccione una fecha o una semana a programar, duplica, guarda templates y descarga tu horario.
                      </CardDescription>
                  </CardHeader>
-                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6 p-0 bg-transparent opacity-0 pointer-events-none h-0"> {/* Hide visually and from interaction */}
+                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6 p-4"> {/* Adjusted padding */}
                         {/* Location Selector */}
                         <div className="flex flex-col items-center space-y-1">
+                             {/* Optional Label for better context */}
+                             {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
                              <LocationSelector
                                 locations={locations}
                                 selectedLocationId={selectedLocationId}
@@ -1576,8 +1570,8 @@ export default function SchedulePage() {
                              />
                          </div>
 
-                          {/* Configuration Button */}
-                        <div className="flex flex-col items-center space-y-1">
+                          {/* Configuration Button - Moved to the right */}
+                         <div className="flex flex-col items-center space-y-1">
                              <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                  <DialogTrigger asChild>
                                      <Button variant="outline" size="icon" title="Configuración">
@@ -1775,7 +1769,7 @@ export default function SchedulePage() {
                                          <Button
                                              variant={'outline'}
                                              className={cn(
-                                                 'w-[280px] justify-start text-left font-normal',
+                                                 'w-[240px] sm:w-[280px] justify-start text-left font-normal', // Adjusted width for better fit
                                                  !targetDate && 'text-muted-foreground',
                                                  isHoliday(targetDate) && 'border-primary font-semibold'
                                              )}
@@ -2128,4 +2122,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
