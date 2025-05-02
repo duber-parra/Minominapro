@@ -39,6 +39,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
@@ -165,7 +166,7 @@ export default function SchedulePage() {
     const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
-
+    const isMobile = useIsMobile(); // Hook to detect mobile/tablet view
     const { toast } = useToast(); // Get toast function
 
     // Fetch holidays whenever the year of the current week changes
@@ -683,6 +684,19 @@ export default function SchedulePage() {
     }, [holidaySet]);
 
 
+    // Wrapper component to conditionally provide DndContext
+    const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+        if (isMobile) {
+            return <>{children}</>; // Render children directly without DndContext on mobile
+        } else {
+            return (
+                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    {children}
+                </DndContext>
+            );
+        }
+    };
+
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
              <div className="flex justify-between items-center mb-6 gap-4 flex-wrap"> {/* Added flex-wrap */}
@@ -712,8 +726,7 @@ export default function SchedulePage() {
                                      locale={es}
                                      modifiers={{ holiday: (date) => isHoliday(date) }}
                                      modifiersClassNames={{
-                                         // Use accent color for text, normal font weight
-                                         holiday: 'text-accent font-medium',
+                                         holiday: 'border-primary', // Apply primary border for holiday
                                      }}
                                  />
                              </PopoverContent>
@@ -939,7 +952,7 @@ export default function SchedulePage() {
              </div>
 
               {/* Main content grid */}
-             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+             <DndWrapper> {/* Conditionally wrap with DndContext */}
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Use 12 columns */}
 
                      {/* --- Available Employees (Takes 2/12 width) --- */}
@@ -966,7 +979,7 @@ export default function SchedulePage() {
                         />
                      </div>
                  </div>
-             </DndContext>
+             </DndWrapper>
 
 
              {/* --- Modals --- */}
