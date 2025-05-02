@@ -52,7 +52,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
 
   // Simplified rendering for week view
   if (isWeekView) {
-    return ( // Line 53
+    return ( // Start of return statement for week view
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
           {assignments.length > 0 ? (
               assignments.map((assignment) => (
@@ -67,7 +67,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
               <p className="text-[9px] text-muted-foreground text-center py-1 italic">Vacío</p> {/* Smaller text and padding */}
           )}
       </div>
-    );
+    ); // End of return statement for week view
   }
 
   // Full rendering for day view
@@ -104,4 +104,3 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
     </Card>
   );
 };
-
