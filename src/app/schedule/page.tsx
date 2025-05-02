@@ -1093,7 +1093,7 @@ export default function SchedulePage() {
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
              <div className="flex justify-between items-center mb-6 gap-4 flex-wrap"> {/* Added flex-wrap */}
-                 <h1 className="text-2xl font-bold text-foreground flex-shrink-0 mr-auto">Planificador de Horarios</h1>
+                 <h1 className="text-2xl md:text-3xl font-bold text-foreground flex-shrink-0 mr-auto">Planificador de Horarios</h1> {/* Responsive title size */}
                  {/* --- Day View Date Selector --- */}
                  {viewMode === 'day' && (
                     <div className="order-1 md:order-none">
@@ -1313,7 +1313,7 @@ export default function SchedulePage() {
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
                  {viewMode === 'day' && (
-                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
+                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
                     </Button>
                  )}
