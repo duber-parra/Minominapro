@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal'; // Import EmployeeSelectionModal
 
-import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
+import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate, DailyAssignments, WeeklyAssignments } from '@/types/schedule'; // Added ShiftTemplate, DailyAssignments, WeeklyAssignments
 import { v4 as uuidv4 } from 'uuid';
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns'; // Added differenceInMinutes, parseDateFnsInternal, endOfWeek
 import { es } from 'date-fns/locale';
@@ -1305,16 +1305,21 @@ export default function SchedulePage() {
 
             {/* --- Actions Row - Moved to the bottom, aligned to the right --- */}
             <div className="mb-6 flex flex-wrap justify-end gap-2">
-                 {/* Buttons moved here and reversed */}
+                 {/* Buttons moved here */}
                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red hover */}
                      <FileDown className="mr-2 h-4 w-4" /> PDF
                  </Button>
                  <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green hover */}
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
+                 {viewMode === 'day' && (
+                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
+                        <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
+                    </Button>
+                 )}
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline" onClick={handleOpenTemplateModal}>
+                        <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                             <Download className="mr-2 h-4 w-4" /> Guardar como Template
                         </Button>
                     </DialogTrigger>
@@ -1340,12 +1345,7 @@ export default function SchedulePage() {
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
-                 {viewMode === 'day' && (
-                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
-                        <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
-                    </Button>
-                 )}
-                 <Button onClick={handleSaveSchedule} variant="outline">
+                 <Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
              </div>
