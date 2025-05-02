@@ -43,15 +43,15 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
          <div className="flex-grow min-w-0 overflow-hidden mr-1"> {/* Allow shrinking and hide overflow, add margin */}
              <p className={cn(
                  "font-medium truncate",
-                 isCompact ? "text-[10px]" : "text-sm" // Smaller text if compact
+                 isCompact ? "text-[11px]" : "text-sm" // Increased compact font size from 10px
              )} title={assignment.employee.name}>{assignment.employee.name}</p>
              <div className={cn( // Wrap times in a div for better spacing control
                  "text-muted-foreground flex flex-wrap items-center", // Use flex-wrap and items-center
-                 isCompact ? "text-[9px] gap-x-1 gap-y-0" : "text-xs gap-x-1.5 gap-y-0.5" // Smaller text and gap if compact, allow wrapping
+                 isCompact ? "text-[10px] gap-x-1 gap-y-0" : "text-xs gap-x-1.5 gap-y-0.5" // Increased compact font size from 9px, allow wrapping
              )}>
                  {/* Shift Time */}
                  <span className="flex items-center gap-0.5">
-                     <Clock className={cn("flex-shrink-0", isCompact ? "h-2 w-2" : "h-3 w-3")} /> {/* Smaller icon, prevent shrink */}
+                     <Clock className={cn("flex-shrink-0", isCompact ? "h-2.5 w-2.5" : "h-3 w-3")} /> {/* Slightly larger icon, prevent shrink */}
                      <span className="whitespace-nowrap">{assignment.startTime}-{assignment.endTime}</span> {/* Prevent time wrap */}
                  </span>
                  {/* Break Time - Show icon if included (even in compact) */}
@@ -60,7 +60,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
                         "flex items-center gap-0.5",
                         isCompact && "text-blue-600 dark:text-blue-400" // Optional: different color for break icon in compact
                         )} title={assignment.breakStartTime && assignment.breakEndTime ? `Descanso: ${assignment.breakStartTime}-${assignment.breakEndTime}` : 'Incluye Descanso'}>
-                        <Coffee className={cn("flex-shrink-0", isCompact ? "h-2 w-2" : "h-3 w-3")} /> {/* Break icon */}
+                        <Coffee className={cn("flex-shrink-0", isCompact ? "h-2.5 w-2.5" : "h-3 w-3")} /> {/* Break icon */}
                         {/* Only show text if NOT compact */}
                         {!isCompact && assignment.breakStartTime && assignment.breakEndTime && (
                             <span className="whitespace-nowrap">D: {assignment.breakStartTime}-{assignment.breakEndTime}</span>
