@@ -633,6 +633,7 @@ export default function SchedulePage() {
 
 
     useEffect(() => {
+        // If the department form data's locationId is not set or doesn't match the current selected location, update it.
         if (!departmentFormData.locationId || departmentFormData.locationId !== selectedLocationId) {
            setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
         }
@@ -2100,10 +2101,8 @@ export default function SchedulePage() {
          }
      };
 
-
-
-
-  return (
+    // Ensure this return statement is inside the component function
+    return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
              {/* Title */}
              <div className="text-center mb-6 md:mb-8">
@@ -2134,221 +2133,220 @@ export default function SchedulePage() {
                         onLocationChange={handleLocationChange}
                     />
                  </div>
-
-                {/* Configuration Button */}
-                 <div className="flex items-center gap-2">
-                     <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-                         <DialogTrigger asChild>
-                             <Button variant="outline" size="icon" title="Configuración">
-                                 <Settings className="h-5 w-5"/>
-                             </Button>
-                         </DialogTrigger>
-                         {/* Configuration Modal Content */}
-                         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
-                             <DialogHeader>
-                                 <DialogTitle>Configuración General</DialogTitle>
-                                 <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
-                             </DialogHeader>
-                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
-                                 {/* Locations Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center mb-2">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                     </div>
-                                     <ScrollArea className="h-[40vh]">
-                                         <ul className="space-y-2 text-sm pr-2">
-                                             {locations.map((loc) => (
-                                                 <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
-                                                     <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
-                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
-                                                         <AlertDialog>
-                                                             <AlertDialogTrigger asChild>
-                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
-                                                             </AlertDialogTrigger>
-                                                             <AlertDialogContent>
-                                                                 <AlertDialogHeader>
-                                                                     <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                     <AlertDialogDescription>
-                                                                         Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.
-                                                                     </AlertDialogDescription>
-                                                                 </AlertDialogHeader>
-                                                                 <AlertDialogFooter>
-                                                                     <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                 </AlertDialogFooter>
-                                                             </AlertDialogContent>
-                                                         </AlertDialog>
-                                                     </div>
-                                                 </li>
-                                             ))}
-                                         </ul>
-                                     </ScrollArea>
-                                 </div>
-                                 {/* Departments Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center mb-2">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                     </div>
+                 {/* Configuration Button */}
+                  <div className="flex items-center gap-2">
+                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+                          <DialogTrigger asChild>
+                              <Button variant="outline" size="icon" title="Configuración">
+                                  <Settings className="h-5 w-5"/>
+                              </Button>
+                          </DialogTrigger>
+                          {/* Configuration Modal Content */}
+                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+                              <DialogHeader>
+                                  <DialogTitle>Configuración General</DialogTitle>
+                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
+                              </DialogHeader>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
+                                  {/* Locations Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center mb-2">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
                                       <ScrollArea className="h-[40vh]">
-                                         <ul className="space-y-2 text-sm pr-2">
-                                             {departments.map((dep) => (
-                                                 <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
-                                                     <span className="truncate text-muted-foreground flex items-center gap-1">
-                                                          {dep.icon && <dep.icon className="h-3 w-3 mr-1 flex-shrink-0" />}
-                                                          {dep.name} <span className="text-xs italic ml-1">({locations.find(l => l.id === dep.locationId)?.name || 'Sede?'})</span>
-                                                     </span>
-                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
-                                                         <AlertDialog>
-                                                             <AlertDialogTrigger asChild>
-                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                             AlertDialogTrigger>
-                                                             <AlertDialogContent>
-                                                                 <AlertDialogHeader>
-                                                                     <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                     <AlertDialogDescription>
-                                                                         Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
-                                                                     </AlertDialogDescription>
-                                                                 AlertDialogHeader>
-                                                                 <AlertDialogFooter>
-                                                                     <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                 AlertDialogFooter>
-                                                             AlertDialogContent>
-                                                         AlertDialog>
-                                                     </div>
-                                                 </li>
-                                             ))}
-                                         </ul>
-                                     ScrollArea>
-                                 </div>
-                                 {/* Employees Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center mb-2">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
-                                             <Plus className="h-4 w-4" />
-                                         Button>
-                                     </div>
-                                     ScrollArea className="h-[40vh]">
-                                         ul className="space-y-2 text-sm pr-2">
-                                             {employees.map((emp) => (
-                                                 li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                     span className="truncate text-muted-foreground">{emp.name} span className="text-xs italic">(ID: {emp.id})span>span>
-                                                     div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                          Copy ID Button
-                                                        Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyEmployeeId(emp.id)} title="Copiar ID"Copy className="h-4 w-4" />Button>
-                                                         Edit Button
-                                                         Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"Edit className="h-4 w-4" />Button>
-                                                         Delete Button
-                                                         AlertDialog>
-                                                             AlertDialogTrigger asChild>
-                                                                 Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"Trash2 className="h-4 w-4" />Button>
-                                                             AlertDialogTrigger>
-                                                             AlertDialogContent>
-                                                                 AlertDialogHeader>
-                                                                     AlertDialogTitle¿Estás seguro?</AlertDialogTitle>
-                                                                     AlertDialogDescription
-                                                                         Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
-                                                                     AlertDialogDescription>
-                                                                 AlertDialogHeader>
-                                                                 AlertDialogFooter>
-                                                                     AlertDialogCancel onClick={() => setItemToDelete(null)}>CancelarAlertDialogCancel>
-                                                                     AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>EliminarAlertDialogAction>
-                                                                 AlertDialogFooter>
-                                                             AlertDialogContent>
-                                                         AlertDialog>
-                                                     div>
-                                                 li>
-                                             ))}
-                                         ul>
-                                     ScrollArea>
-                                 div>
-                                 {/* Saved Templates Column */}
-                                 div className="space-y-4">
-                                     div className="flex justify-between items-center mb-2">
-                                         h4 className="font-semibold text-foreground flex items-center gap-1">
-                                             Library className="h-4 w-4 text-muted-foreground"/>
-                                             Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
-                                         h4>
-                                         Load Template Button
-                                        DropdownMenu>
-                                            DropdownMenuTrigger asChild>
-                                                Button variant="outline" size="sm" disabled={filteredTemplates.length === 0} title="Cargar Template">
-                                                    Upload className="h-4 w-4" />
-                                                Button>
-                                            DropdownMenuTrigger>
-                                            DropdownMenuContent>
-                                                DropdownMenuLabelCargar Template GuardadoDropdownMenuLabel>
-                                                DropdownMenuSeparator />
-                                                {filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                                    DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template.id)}>
-                                                        {template.name}
-                                                    DropdownMenuItem>
-                                                )) : (
-                                                    DropdownMenuItem disabled>No hay templatesDropdownMenuItem>
-                                                )}
-                                            DropdownMenuContent>
-                                        DropdownMenu>
-                                     div>
-                                     ScrollArea className="h-[40vh]">
-                                         ul className="space-y-2 text-sm pr-2">
-                                             {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
-                                                 li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                     span className="truncate text-muted-foreground">{template.name}span>
-                                                     div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                          Removed Load button from here, moved to Dropdown
-                                                         AlertDialog>
-                                                             AlertDialogTrigger asChild>
-                                                                 Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"Trash2 className="h-4 w-4" />Button>
-                                                             AlertDialogTrigger>
-                                                             AlertDialogContent>
-                                                                 AlertDialogHeader>
-                                                                     AlertDialogTitle¿Estás seguro?</AlertDialogTitle>
-                                                                     AlertDialogDescriptionEliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.AlertDialogDescription>
-                                                                 AlertDialogHeader>
-                                                                 AlertDialogFooter>
-                                                                     AlertDialogCancel onClick={() => setItemToDelete(null)}>CancelarAlertDialogCancel>
-                                                                     AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>EliminarAlertDialogAction>
-                                                                 AlertDialogFooter>
-                                                             AlertDialogContent>
-                                                         AlertDialog>
-                                                     div>
-                                                 li>
-                                             )) : (
-                                                 p className="text-xs text-muted-foreground italic text-center pt-2">
-                                                     No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
-                                                 p>
-                                             )}
-                                         ul>
-                                     ScrollArea>
-                                 div>
-                             div>
-                             DialogFooter>
-                                 DialogClose asChild>
-                                     Button variant="secondary">CerrarButton>
-                                 DialogClose>
-                             DialogFooter>
-                         DialogContent>
-                     Dialog>
-                  div>
+                                          <ul className="space-y-2 text-sm pr-2">
+                                              {locations.map((loc) => (
+                                                  <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
+                                                      <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
+                                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
+                                                          <AlertDialog>
+                                                              <AlertDialogTrigger asChild>
+                                                                   <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                              </AlertDialogTrigger>
+                                                              <AlertDialogContent>
+                                                                  <AlertDialogHeader>
+                                                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                      <AlertDialogDescription>
+                                                                          Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.
+                                                                      </AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                          </AlertDialog>
+                                                      </div>
+                                                  </li>
+                                              ))}
+                                          </ul>
+                                      </ScrollArea>
+                                  </div>
+                                  {/* Departments Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center mb-2">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                       <ScrollArea className="h-[40vh]">
+                                          <ul className="space-y-2 text-sm pr-2">
+                                              {departments.map((dep) => (
+                                                  <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
+                                                      <span className="truncate text-muted-foreground flex items-center gap-1">
+                                                           {dep.icon && <dep.icon className="h-3 w-3 mr-1 flex-shrink-0" />}
+                                                           {dep.name} <span className="text-xs italic ml-1">({locations.find(l => l.id === dep.locationId)?.name || 'Sede?'})</span>
+                                                      </span>
+                                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
+                                                          <AlertDialog>
+                                                              <AlertDialogTrigger asChild>
+                                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                              </AlertDialogTrigger>
+                                                              <AlertDialogContent>
+                                                                  <AlertDialogHeader>
+                                                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                      <AlertDialogDescription>
+                                                                          Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
+                                                                      </AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                          </AlertDialog>
+                                                      </div>
+                                                  </li>
+                                              ))}
+                                          </ul>
+                                      </ScrollArea>
+                                  </div>
+                                  {/* Employees Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center mb-2">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <ScrollArea className="h-[40vh]">
+                                          <ul className="space-y-2 text-sm pr-2">
+                                              {employees.map((emp) => (
+                                                  <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
+                                                      <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
+                                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                           {/* Copy ID Button */}
+                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyEmployeeId(emp.id)} title="Copiar ID"><Copy className="h-4 w-4" /></Button>
+                                                          {/* Edit Button */}
+                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
+                                                          {/* Delete Button */}
+                                                          <AlertDialog>
+                                                              <AlertDialogTrigger asChild>
+                                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                              </AlertDialogTrigger>
+                                                              <AlertDialogContent>
+                                                                  <AlertDialogHeader>
+                                                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                      <AlertDialogDescription>
+                                                                          Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
+                                                                      </AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                          </AlertDialog>
+                                                      </div>
+                                                  </li>
+                                              ))}
+                                          </ul>
+                                      </ScrollArea>
+                                  </div>
+                                  {/* Saved Templates Column */}
+                                  <div className="space-y-4">
+                                      <div className="flex justify-between items-center mb-2">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1">
+                                              <Library className="h-4 w-4 text-muted-foreground"/>
+                                              Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
+                                          </h4>
+                                          {/* Load Template Button */}
+                                         <DropdownMenu>
+                                             <DropdownMenuTrigger asChild>
+                                                 <Button variant="outline" size="sm" disabled={filteredTemplates.length === 0} title="Cargar Template">
+                                                     <Upload className="h-4 w-4" />
+                                                 </Button>
+                                             </DropdownMenuTrigger>
+                                             <DropdownMenuContent>
+                                                 <DropdownMenuLabel>Cargar Template Guardado</DropdownMenuLabel>
+                                                 <DropdownMenuSeparator />
+                                                 {filteredTemplates.length > 0 ? filteredTemplates.map(template => (
+                                                     <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template.id)}>
+                                                         {template.name}
+                                                     </DropdownMenuItem>
+                                                 )) : (
+                                                     <DropdownMenuItem disabled>No hay templates</DropdownMenuItem>
+                                                 )}
+                                             </DropdownMenuContent>
+                                         </DropdownMenu>
+                                      </div>
+                                      <ScrollArea className="h-[40vh]">
+                                          <ul className="space-y-2 text-sm pr-2">
+                                              {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
+                                                  <li key={template.id} className="flex items-center justify-between group py-1 border-b">
+                                                      <span className="truncate text-muted-foreground">{template.name}</span>
+                                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                           {/* Removed Load button from here, moved to Dropdown */}
+                                                          <AlertDialog>
+                                                              <AlertDialogTrigger asChild>
+                                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
+                                                              </AlertDialogTrigger>
+                                                              <AlertDialogContent>
+                                                                  <AlertDialogHeader>
+                                                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                      <AlertDialogDescription>Eliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.</AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                          </AlertDialog>
+                                                      </div>
+                                                  </li>
+                                              )) : (
+                                                  <p className="text-xs text-muted-foreground italic text-center pt-2">
+                                                      No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
+                                                  </p>
+                                              )}
+                                          </ul>
+                                      </ScrollArea>
+                                  </div>
+                              </div>
+                              <DialogFooter>
+                                  <DialogClose asChild>
+                                      <Button variant="secondary">Cerrar</Button>
+                                  </DialogClose>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                   </div>
 
 
                  {/* --- Day View Date Selector OR Week View Navigator --- */}
-                 div className="flex items-center justify-center gap-2">
+                 <div className="flex items-center justify-center gap-2">
                      {viewMode === 'day' ? (
-                         Popover>
-                             PopoverTrigger asChild>
-                                 Button
+                         <Popover>
+                             <PopoverTrigger asChild>
+                                 <Button
                                      variant={'outline'}
-                                     className=cn(
+                                     className={cn(
                                          'w-[200px] sm:w-[280px] justify-start text-left font-normal',
                                          !targetDate && 'text-muted-foreground',
                                          isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
@@ -2356,16 +2354,16 @@ export default function SchedulePage() {
                                      disabled={isCheckingHoliday}
                                  >
                                      {isCheckingHoliday ? (
-                                         Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                      ) : (
-                                         CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
                                      )}
-                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : spanSelecciona fechaspan>}
-                                     {isHoliday(targetDate) && !isCheckingHoliday && span className="ml-auto text-xs font-semibold text-primary">(Festivo)span>}
-                                 Button>
-                             PopoverTrigger>
-                             PopoverContent className="w-auto p-0">
-                                 Calendar
+                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
+                                 </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-0">
+                                 <Calendar
                                      mode="single"
                                      selected={targetDate}
                                      onSelect={(date) => { if (date) setTargetDate(date) }}
@@ -2376,241 +2374,241 @@ export default function SchedulePage() {
                                           holiday: 'text-primary font-medium border border-primary', // Style holiday
                                      }}
                                  />
-                             PopoverContent>
-                         Popover>
+                             </PopoverContent>
+                         </Popover>
                      ) : (
-                         WeekNavigator
+                         <WeekNavigator
                              currentDate={currentDate}
                              onPreviousWeek={handlePreviousWeek}
                              onNextWeek={handleNextWeek}
                          />
                      )}
-                 div>
+                 </div>
 
                  {/* View Mode Toggle */}
-                 div className="flex items-center justify-center gap-2">
-                     Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                         SelectTrigger className="w-[120px]">
-                             SelectValue placeholder="Vista" />
-                         SelectTrigger>
-                         SelectContent>
-                             SelectItem value="day">DíaSelectItem>
-                             SelectItem value="week">SemanaSelectItem>
-                         SelectContent>
-                     Select>
-                 div>
+                 <div className="flex items-center justify-center gap-2">
+                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                         <SelectTrigger className="w-[120px]">
+                             <SelectValue placeholder="Vista" />
+                         </SelectTrigger>
+                         <SelectContent>
+                             <SelectItem value="day">Día</SelectItem>
+                             <SelectItem value="week">Semana</SelectItem>
+                         </SelectContent>
+                     </Select>
+                 </div>
 
                   {/* CSV Import Button */}
-                  div className="flex items-center gap-2">
-                     Button
+                  <div className="flex items-center gap-2">
+                     <Button
                          variant="outline"
                          onClick={triggerCSVFileInput}
                          disabled={isImportingCSV}
                          title="Importar Horario desde CSV (como Template)"
                      >
                          {isImportingCSV ? (
-                             Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                          ) : (
-                             FileUp className="mr-2 h-4 w-4" />
+                             <FileUp className="mr-2 h-4 w-4" />
                          )}
                          Importar CSV
-                     Button>
-                 div>
+                     </Button>
+                 </div>
 
 
-             div>
+             </div>
 
 
               {/* Main content grid */}
-             DndWrapper>
-                 div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start mb-6">
+              <DndWrapper>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start mb-6">
 
-                      {/* Employee List - Render only on desktop */}
-                      {!isMobile && (
-                           div className="lg:col-span-2 space-y-4">
-                               EmployeeList employees={availableEmployees} />
-                           div>
-                      )}
+                       {/* Employee List - Render only on desktop */}
+                       {!isMobile && (
+                            <div className="lg:col-span-2 space-y-4">
+                                <EmployeeList employees={availableEmployees} />
+                            </div>
+                       )}
 
 
-                     div className=cn(
-                         "lg:col-span-10", // Takes 10 columns on large screens
-                         isMobile && "lg:col-span-12", // Takes full width on mobile
-                         "overflow-x-auto" // Always allow horizontal scroll if needed
-                      )>
-                         ScheduleView
-                            departments={filteredDepartments}
-                            scheduleData={scheduleData}
-                            onRemoveShift={handleRemoveShift}
-                            viewMode={viewMode}
-                            weekDates={weekDates}
-                            currentDate={targetDate} // Use targetDate for day view consistency
-                            onAddShiftRequest={handleOpenEmployeeSelectionModal}
-                            onShiftClick={handleShiftClick}
-                            getScheduleForDate={getScheduleForDate}
-                            onDuplicateDay={handleDuplicateDay}
-                            onClearDay={handleConfirmClearDay}
-                            isHoliday={isHoliday}
-                            isMobile={isMobile}
-                        />
-                     div>
-                 div>
-             DndWrapper>
+                      <div className={cn(
+                          "lg:col-span-10", // Takes 10 columns on large screens
+                          isMobile && "lg:col-span-12", // Takes full width on mobile
+                          "overflow-x-auto" // Always allow horizontal scroll if needed
+                       )}>
+                          <ScheduleView
+                             departments={filteredDepartments}
+                             scheduleData={scheduleData}
+                             onRemoveShift={handleRemoveShift}
+                             viewMode={viewMode}
+                             weekDates={weekDates}
+                             currentDate={targetDate} // Use targetDate for day view consistency
+                             onAddShiftRequest={handleOpenEmployeeSelectionModal}
+                             onShiftClick={handleShiftClick}
+                             getScheduleForDate={getScheduleForDate}
+                             onDuplicateDay={handleDuplicateDay}
+                             onClearDay={handleConfirmClearDay}
+                             isHoliday={isHoliday}
+                             isMobile={isMobile}
+                         />
+                      </div>
+                  </div>
+              </DndWrapper>
 
-              {/* --- Actions Row (Moved Below Schedule) --- */}
-              div className="flex flex-wrap justify-end gap-2 mt-6">
-                 Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                     Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
-                 Button>
-                 Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red Hover */}
-                     FileDown className="mr-2 h-4 w-4" /> PDF
-                 Button>
-                 Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green Hover */}
-                     FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
-                 Button>
-                 {viewMode === 'week' && (
-                     Button
-                         variant="outline"
-                         onClick={handleDuplicateWeek}
-                         title="Duplicar semana completa a la siguiente"
-                         className="hover:bg-primary hover:text-primary-foreground"
-                     >
-                         CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
-                     Button>
-                 )}
-                 Button
-                    variant="outline"
-                    onClick={handleOpenTemplateModal}
-                    title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
-                    className="hover:bg-primary hover:text-primary-foreground"
-                 >
-                    Download className="mr-2 h-4 w-4" /> Guardar Template
-                 Button>
-                 Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                     Save className="mr-2 h-4 w-4" /> Guardar Horario
-                 Button>
+               {/* --- Actions Row (Moved Below Schedule) --- */}
+               <div className="flex flex-wrap justify-end gap-2 mt-6">
+                  <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                      <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
+                  </Button>
+                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red Hover */}
+                      <FileDown className="mr-2 h-4 w-4" /> PDF
+                  </Button>
+                  <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green Hover */}
+                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
+                  </Button>
+                  {viewMode === 'week' && (
+                      <Button
+                          variant="outline"
+                          onClick={handleDuplicateWeek}
+                          title="Duplicar semana completa a la siguiente"
+                          className="hover:bg-primary hover:text-primary-foreground"
+                      >
+                          <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
+                      </Button>
+                  )}
+                  <Button
+                     variant="outline"
+                     onClick={handleOpenTemplateModal}
+                     title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
+                     className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                     <Download className="mr-2 h-4 w-4" /> Guardar Template
+                  </Button>
+                  <Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
+                  </Button>
 
-             div>
+              </div>
 
 
              {/* --- Modals --- */}
 
              {/* Location Modal */}
-             Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
-                  DialogContent>
-                      DialogHeader>
-                           DialogTitle>{editingLocation ? 'Editar Sede' : 'Agregar Sede'}DialogTitle>
-                      DialogHeader>
-                      div className="space-y-4 py-4">
-                          Label htmlFor="location-name">NombreLabel>
-                          Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
-                      div>
-                      DialogFooter>
-                         DialogClose asChild>
-                           Button variant="outline">CancelarButton>
-                         DialogClose>
-                          Button onClick={handleSaveLocation}>GuardarButton>
-                      DialogFooter>
-                  DialogContent>
-             Dialog>
+             <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+                  <DialogContent>
+                      <DialogHeader>
+                           <DialogTitle>{editingLocation ? 'Editar Sede' : 'Agregar Sede'}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                          <Label htmlFor="location-name">Nombre</Label>
+                          <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
+                      </div>
+                      <DialogFooter>
+                         <DialogClose asChild>
+                           <Button variant="outline">Cancelar</Button>
+                         </DialogClose>
+                          <Button onClick={handleSaveLocation}>Guardar</Button>
+                      </DialogFooter>
+                  </DialogContent>
+             </Dialog>
 
              {/* Department Modal */}
-            Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
-                 DialogContent>
-                     DialogHeader>
-                         DialogTitle>{editingDepartment ? 'Editar Departamento' : 'Agregar Departamento'}DialogTitle>
-                     DialogHeader>
-                     div className="space-y-4 py-4">
-                          div>
-                             Label htmlFor="department-name">NombreLabel>
-                             Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento"/>
-                          div>
-                         div>
-                              Label htmlFor="department-location">SedeLabel>
-                              Select value={departmentFormData.locationId} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, locationId: value }))}>
-                                  SelectTrigger id="department-location">
-                                      SelectValue placeholder="Selecciona sede" />
-                                  SelectTrigger>
-                                  SelectContent>
+            <Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
+                 <DialogContent>
+                     <DialogHeader>
+                         <DialogTitle>{editingDepartment ? 'Editar Departamento' : 'Agregar Departamento'}</DialogTitle>
+                     </DialogHeader>
+                     <div className="space-y-4 py-4">
+                          <div>
+                             <Label htmlFor="department-name">Nombre</Label>
+                             <Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento"/>
+                          </div>
+                         <div>
+                              <Label htmlFor="department-location">Sede</Label>
+                              <Select value={departmentFormData.locationId} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, locationId: value }))}>
+                                  <SelectTrigger id="department-location">
+                                      <SelectValue placeholder="Selecciona sede" />
+                                  </SelectTrigger>
+                                  <SelectContent>
                                       {locations.map(loc => (
-                                          SelectItem key={loc.id} value={loc.id}>{loc.name}SelectItem>
+                                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                                       ))}
-                                  SelectContent>
-                              Select>
-                         div>
+                                  </SelectContent>
+                              </Select>
+                         </div>
                           {/* Icon Selector */}
-                          div>
-                              Label htmlFor="department-icon">Icono (Opcional)Label>
-                              Select value={departmentFormData.iconName} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, iconName: value }))}>
-                                  SelectTrigger id="department-icon">
-                                      SelectValue placeholder="Selecciona icono" />
-                                  SelectTrigger>
-                                  SelectContent>
+                          <div>
+                              <Label htmlFor="department-icon">Icono (Opcional)</Label>
+                              <Select value={departmentFormData.iconName} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, iconName: value }))}>
+                                  <SelectTrigger id="department-icon">
+                                      <SelectValue placeholder="Selecciona icono" />
+                                  </SelectTrigger>
+                                  <SelectContent>
                                       {Object.keys(iconMap).map(iconKey => {
                                           const IconComponent = iconMap[iconKey];
                                           return (
-                                              SelectItem key={iconKey} value={iconKey}>
-                                                  span className="flex items-center gap-2">
-                                                      IconComponent className="h-4 w-4" /> {iconKey}
-                                                  span>
-                                              SelectItem>
+                                              <SelectItem key={iconKey} value={iconKey}>
+                                                  <span className="flex items-center gap-2">
+                                                      <IconComponent className="h-4 w-4" /> {iconKey}
+                                                  </span>
+                                              </SelectItem>
                                           );
                                       })}
-                                  SelectContent>
-                              Select>
-                         div>
-                     div>
-                     DialogFooter>
-                          DialogClose asChild>
-                            Button variant="outline">CancelarButton>
-                          DialogClose>
-                         Button onClick={handleSaveDepartment}>GuardarButton>
-                     DialogFooter>
-                 DialogContent>
-            Dialog>
+                                  </SelectContent>
+                              </Select>
+                         </div>
+                     </div>
+                     <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                          </DialogClose>
+                         <Button onClick={handleSaveDepartment}>Guardar</Button>
+                     </DialogFooter>
+                 </DialogContent>
+            </Dialog>
 
              {/* Employee Modal */}
-            Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
-                DialogContent>
-                    DialogHeader>
-                        DialogTitle>{editingEmployee ? 'Editar Colaborador' : 'Agregar Colaborador'}DialogTitle>
-                    DialogHeader>
-                     div className="space-y-4 py-4">
-                           div>
-                               Label htmlFor="employee-id">ID ColaboradorLabel>
-                               Input
+            <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingEmployee ? 'Editar Colaborador' : 'Agregar Colaborador'}</DialogTitle>
+                    </DialogHeader>
+                     <div className="space-y-4 py-4">
+                           <div>
+                               <Label htmlFor="employee-id">ID Colaborador</Label>
+                               <Input
                                    id="employee-id"
                                    value={employeeFormData.id}
                                    onChange={(e) => setEmployeeFormData(prev => ({ ...prev, id: e.target.value }))}
                                    placeholder="Ej: 101, CEDULA123"
                                    disabled={!!editingEmployee} // Disable ID field when editing
                                />
-                               {!!editingEmployee && p className="text-xs text-muted-foreground mt-1">El ID no se puede cambiar al editar.p>}
-                           div>
-                          div>
-                             Label htmlFor="employee-name">NombreLabel>
-                             Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre Completo" />
-                          div>
-                          div>
-                               Label htmlFor="employee-locations">Sedes AsignadasLabel>
+                               {!!editingEmployee && <p className="text-xs text-muted-foreground mt-1">El ID no se puede cambiar al editar.</p>}
+                           </div>
+                          <div>
+                             <Label htmlFor="employee-name">Nombre</Label>
+                             <Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre Completo" />
+                          </div>
+                          <div>
+                               <Label htmlFor="employee-locations">Sedes Asignadas</Label>
                                 {/* Use Dropdown Menu for multi-select */}
-                                DropdownMenu>
-                                    DropdownMenuTrigger asChild>
-                                        Button variant="outline" className="w-full justify-start">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-start">
                                             {employeeFormData.locationIds.length > 0
                                                 ? employeeFormData.locationIds
                                                       .map(id => locations.find(l => l.id === id)?.name)
                                                       .filter(Boolean) // Remove undefined if location not found
                                                       .join(', ')
                                                 : 'Selecciona sedes'}
-                                            ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
-                                        Button>
-                                    DropdownMenuTrigger>
-                                    DropdownMenuContent className="w-full">
-                                        DropdownMenuLabelSelecciona SedesDropdownMenuLabel>
-                                        DropdownMenuSeparator />
+                                            <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-full">
+                                        <DropdownMenuLabel>Selecciona Sedes</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
                                         {locations.map(loc => (
-                                            DropdownMenuCheckboxItem
+                                            <DropdownMenuCheckboxItem
                                                 key={loc.id}
                                                 checked={employeeFormData.locationIds.includes(loc.id)}
                                                 onCheckedChange={() => handleToggleEmployeeLocation(loc.id)}
@@ -2618,25 +2616,25 @@ export default function SchedulePage() {
                                                 onSelect={(e) => e.preventDefault()}
                                             >
                                                 {loc.name}
-                                            DropdownMenuCheckboxItem>
+                                            </DropdownMenuCheckboxItem>
                                         ))}
-                                    DropdownMenuContent>
-                                DropdownMenu>
-                                {employeeFormData.locationIds.length === 0 && p className="text-xs text-destructive mt-1">Debes seleccionar al menos una sede.p>}
-                           div>
-                     div>
-                    DialogFooter>
-                         DialogClose asChild>
-                            Button variant="outline">CancelarButton>
-                          DialogClose>
-                        Button onClick={handleSaveEmployee}>GuardarButton>
-                    DialogFooter>
-                DialogContent>
-            Dialog>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                {employeeFormData.locationIds.length === 0 && <p className="text-xs text-destructive mt-1">Debes seleccionar al menos una sede.</p>}
+                           </div>
+                     </div>
+                    <DialogFooter>
+                         <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                          </DialogClose>
+                        <Button onClick={handleSaveEmployee}>Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
 
              {/* Employee Selection Modal */}
-             EmployeeSelectionModal
+             <EmployeeSelectionModal
                  isOpen={isEmployeeSelectionModalOpen}
                  onClose={() => setIsEmployeeSelectionModalOpen(false)}
                  employees={availableEmployees}
@@ -2646,7 +2644,7 @@ export default function SchedulePage() {
              />
 
              {/* Shift Detail Modal */}
-             ShiftDetailModal
+             <ShiftDetailModal
                  isOpen={isShiftModalOpen}
                  onClose={() => {
                      setIsShiftModalOpen(false);
@@ -2662,89 +2660,89 @@ export default function SchedulePage() {
              />
 
              {/* Universal Delete Confirmation */}
-              AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-                  AlertDialogContent>
-                      AlertDialogHeader>
-                          AlertDialogTitle¿Estás seguro?</AlertDialogTitle>
-                          AlertDialogDescription>
+              <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                          <AlertDialogDescription>
                               {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'department' && `Eliminar Departamento "${itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'employee' && `Eliminar Colaborador "${itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'template' && `Eliminar Template "${itemToDelete?.name}"? Esta acción no se puede deshacer.`}
-                          AlertDialogDescription>
-                      AlertDialogHeader>
-                      AlertDialogFooter>
-                          AlertDialogCancel onClick={() => setItemToDelete(null)}>CancelarAlertDialogCancel>
-                          AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>EliminarAlertDialogAction>
-                      AlertDialogFooter>
-                  AlertDialogContent>
-              AlertDialog>
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
 
 
             {/* Clear Day Confirmation */}
-            AlertDialog open={!!clearingDate} onOpenChange={(open) => !open && setClearingDate(null)}>
-                 AlertDialogContent>
-                     AlertDialogHeader>
-                         AlertDialogTitle¿Limpiar Turnos del Día?</AlertDialogTitle>
-                         AlertDialogDescription>
+            <AlertDialog open={!!clearingDate} onOpenChange={(open) => !open && setClearingDate(null)}>
+                 <AlertDialogContent>
+                     <AlertDialogHeader>
+                         <AlertDialogTitle>¿Limpiar Turnos del Día?</AlertDialogTitle>
+                         <AlertDialogDescription>
                             Esta acción eliminará todos los turnos asignados para el{' '}
-                            strong>{clearingDate ? format(clearingDate, 'PPP', { locale: es }) : ''}strong>. No se puede deshacer.
-                         AlertDialogDescription>
-                     AlertDialogHeader>
-                     AlertDialogFooter>
-                         AlertDialogCancel onClick={() => setClearingDate(null)}>CancelarAlertDialogCancel>
-                         AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearDay}>Limpiar DíaAlertDialogAction>
-                     AlertDialogFooter>
-                 AlertDialogContent>
-            AlertDialog>
+                            <strong>{clearingDate ? format(clearingDate, 'PPP', { locale: es }) : ''}</strong>. No se puede deshacer.
+                         </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                         <AlertDialogCancel onClick={() => setClearingDate(null)}>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearDay}>Limpiar Día</AlertDialogAction>
+                     </AlertDialogFooter>
+                 </AlertDialogContent>
+            </AlertDialog>
 
             {/* Template Saving Modal */}
-             Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-                 DialogContent>
-                     DialogHeader>
-                         DialogTitle>Guardar Template {viewMode === 'day' ? 'Diario' : 'Semanal'}DialogTitle>
-                         DialogDescription>Ingresa un nombre para este template (basado en el horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', {locale: es})}` : 'de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}).DialogDescription>
-                     DialogHeader>
-                     div className="py-4">
-                         Label htmlFor="template-name">Nombre TemplateLabel>
-                         Input
+             <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+                 <DialogContent>
+                     <DialogHeader>
+                         <DialogTitle>Guardar Template {viewMode === 'day' ? 'Diario' : 'Semanal'}</DialogTitle>
+                         <DialogDescription>Ingresa un nombre para este template (basado en el horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', {locale: es})}` : 'de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}).</DialogDescription>
+                     </DialogHeader>
+                     <div className="py-4">
+                         <Label htmlFor="template-name">Nombre Template</Label>
+                         <Input
                             id="template-name"
                             value={templateName}
                             onChange={(e) => setTemplateName(e.target.value)}
                             placeholder="Ej: Apertura Semana, Cierre FinDeSemana"
                          />
-                     div>
-                     DialogFooter>
-                        DialogClose asChild>
-                          Button variant="outline">CancelarButton>
-                        DialogClose>
-                         Button onClick={handleSaveTemplate}>Guardar TemplateButton>
-                     DialogFooter>
-                 DialogContent>
-             Dialog>
+                     </div>
+                     <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="outline">Cancelar</Button>
+                        </DialogClose>
+                         <Button onClick={handleSaveTemplate}>Guardar Template</Button>
+                     </DialogFooter>
+                 </DialogContent>
+             </Dialog>
 
 
             {/* Editable Notes Section */}
-            Card className="mt-8 shadow-lg bg-card">
-                CardHeader>
-                    CardTitle className="text-lg text-foreground">Notas AdicionalesCardTitle>
-                    CardDescription
+            <Card className="mt-8 shadow-lg bg-card">
+                <CardHeader>
+                    <CardTitle className="text-lg text-foreground">Notas Adicionales</CardTitle>
+                    <CardDescription>
                         Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
-                    CardDescription>
-                CardHeader>
-                CardContent>
-                    Textarea
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea
                         value={notes}
                         onChange={handleNotesChange}
                         placeholder="Ej: Cierre anticipado el jueves por fumigación..."
                         rows={4}
                         className="w-full"
                     />
-                CardContent>
-                CardFooter className="flex justify-end">
-                    Button onClick={handleSaveNotes}>Guardar NotasButton>
-                CardFooter>
-            Card>
-        main>
+                </CardContent>
+                <CardFooter className="flex justify-end">
+                    <Button onClick={handleSaveNotes}>Guardar Notas</Button>
+                </CardFooter>
+            </Card>
+        </main>
     );
 }
