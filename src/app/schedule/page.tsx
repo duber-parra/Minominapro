@@ -523,9 +523,9 @@ export default function SchedulePage() {
      useEffect(() => {
         if (isClient) { // Only save on client
             try {
-                 console.log("Attempting to save templates:", savedTemplates); // Log before saving
+                 console.log("Saving templates to localStorage:", savedTemplates); // Log before saving
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
-                 console.log("Templates theoretically saved."); // Log after attempting save
+                  console.log("Templates saved successfully."); // Log if saving succeeds
             } catch (error) {
                  console.error("Error saving templates to localStorage:", error);
                  toast({
@@ -1758,10 +1758,15 @@ export default function SchedulePage() {
              processCSVAsTemplate(parsedData);
          } catch (error) {
              console.error("Error procesando archivo CSV:", error);
+             const errorMessage = error instanceof Error ? error.message : 'No se pudo leer o procesar el archivo.';
              toast({
                  title: 'Error al Importar CSV',
-                 description: error instanceof Error ? error.message : 'No se pudo leer o procesar el archivo.',
+                 // Display specific header error if caught
+                 description: errorMessage.includes("Faltan encabezados CSV requeridos")
+                     ? `${errorMessage}. Asegúrate de que el archivo tenga las columnas: ID_Empleado, Fecha, Departamento, Hora_Inicio, Hora_Fin.`
+                     : errorMessage,
                  variant: 'destructive',
+                 duration: 7000, // Longer duration for detailed error
              });
          } finally {
              setIsImportingCSV(false);
@@ -1780,7 +1785,7 @@ export default function SchedulePage() {
 
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         // Disable DndContext entirely if on mobile
-        if (isMobile) {
+        if (isMobile || !isClient) { // Also check for isClient
             return <>{children}</>;
         }
         return (
@@ -2002,7 +2007,7 @@ export default function SchedulePage() {
               />
 
 
-              {/* Controls Section - Transparent background, removed Card wrapper */}
+              {/* Controls Section - Removed Card wrapper, using flex layout */}
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 mb-6 md:mb-8 p-0 bg-transparent">
                  {/* Location Selector */}
                  <div className="flex items-center gap-2">
@@ -2619,4 +2624,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
