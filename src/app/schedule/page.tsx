@@ -185,12 +185,18 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
     }
     try {
         const savedData = localStorage.getItem(key);
+
+        // Handle notes specifically as a string
+        if (key === SCHEDULE_NOTES_KEY) {
+            return savedData !== null ? (savedData as unknown as T) : defaultValue;
+        }
+
         if (savedData) {
              const parsed = JSON.parse(savedData);
              // Basic check to see if parsed data looks like the expected type (array for lists)
              if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY || key === SCHEDULE_TEMPLATES_KEY) {
                  if (Array.isArray(parsed)) return parsed as T;
-             } else if (key === SCHEDULE_DATA_KEY || key === SCHEDULE_NOTES_KEY) {
+             } else if (key === SCHEDULE_DATA_KEY) {
                  // More complex types might need more checks, but for now assume it's okay if it parses
                  return parsed as T;
              }
@@ -202,6 +208,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
     }
     return defaultValue; // Return default if nothing saved or error occurred
 };
+
 
 // Helper specifically for loading departments and restoring icons
 const loadDepartmentsFromLocalStorage = (defaultValue: Department[]): Department[] => {
@@ -487,9 +494,9 @@ export default function SchedulePage() {
     // Update availableEmployees based on assignedEmployeeIdsForTargetDate
     const availableEmployees = useMemo(() => {
         // In week view, always show all filtered employees
-        // if (viewMode === 'week') {
-        //     return filteredEmployees;
-        // }
+        if (viewMode === 'week') {
+            return filteredEmployees;
+        }
         // Filter out employees already assigned on the targetDate (relevant for both day and when adding in week view via modal)
         const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
         if (!dateForFiltering) return filteredEmployees; // If no date context, show all
@@ -1532,7 +1539,7 @@ export default function SchedulePage() {
                  <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
-            {/* Controls Card - Removed background and border */}
+            {/* Controls Card - Transparent background */}
             <Card className="mb-8 shadow-none border-none bg-transparent">
                  <CardHeader className="pb-4 pt-0 px-0 bg-transparent text-center">
                      <CardDescription className="max-w-xl mx-auto">
@@ -1548,7 +1555,8 @@ export default function SchedulePage() {
                                 onLocationChange={handleLocationChange}
                              />
                          </div>
-                         {/* Configuration Button */}
+
+                          {/* Configuration Button */}
                         <div className="flex flex-col items-center space-y-1">
                              <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                  <DialogTrigger asChild>
@@ -1749,7 +1757,6 @@ export default function SchedulePage() {
                                              className={cn(
                                                  'w-[280px] justify-start text-left font-normal',
                                                  !targetDate && 'text-muted-foreground',
-                                                  // Highlight border with primary color if it's a holiday
                                                  isHoliday(targetDate) && 'border-primary font-semibold'
                                              )}
                                               disabled={isCheckingHoliday}
@@ -1760,7 +1767,6 @@ export default function SchedulePage() {
                                                  <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" />
                                              )}
                                              {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                             {/* Optional: Show holiday indicator */}
                                              {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold text-primary">(Festivo)</span>}
                                          </Button>
                                      </PopoverTrigger>
@@ -1773,7 +1779,6 @@ export default function SchedulePage() {
                                              locale={es}
                                               modifiers={{ holiday: (date) => isHoliday(date) }}
                                               modifiersClassNames={{
-                                                   // Style holidays in the calendar picker itself
                                                    holiday: 'text-primary font-semibold border border-primary rounded-md',
                                               }}
                                          />
@@ -1862,7 +1867,7 @@ export default function SchedulePage() {
                      <FileDown className="mr-2 h-4 w-4" /> PDF
                  </Button>
                  {/* CSV Export */}
-                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-accent hover:text-accent-foreground">
+                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white">
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
              </div>
