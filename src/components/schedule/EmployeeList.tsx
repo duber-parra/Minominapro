@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DraggableEmployee } from './DraggableEmployee';
 import type { Employee } from '@/types/schedule';
 import { Users } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -13,6 +14,7 @@ interface EmployeeListProps {
 
 export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
   const [isClient, setIsClient] = useState(false);
+  const isMobile = useIsMobile(); // Use the hook
 
   useEffect(() => {
     setIsClient(true);
@@ -20,6 +22,11 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
 
   // Calculate count only on client
   const employeeCount = isClient ? employees.length : 0;
+
+  // Do not render this component on mobile
+  if (isMobile) {
+    return null;
+  }
 
   return (
     <Card className="h-full"> {/* Allow card to take full height */}
@@ -50,5 +57,3 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
     </Card>
   );
 };
-
-    

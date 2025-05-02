@@ -1,7 +1,7 @@
 
 'use client'; // Ensure this directive is present
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react'; // Added useRef, ChangeEvent
+import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react'; // Added useRef, ChangeEvent, useMemo
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -209,7 +209,6 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              // Basic check to see if parsed data looks like the expected type (array for lists)
              if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY || key === SCHEDULE_TEMPLATES_KEY) {
                  if (Array.isArray(parsed)) {
-                      console.log(`[loadFromLocalStorage] Loaded ${parsed.length} items for key: ${key}`); // Add logging
                       // Ensure employees have locationIds array
                        if (key === EMPLOYEES_KEY) {
                            return parsed.map((emp: any) => ({
@@ -235,14 +234,11 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
                  }
              } else if (key === SCHEDULE_DATA_KEY) {
                  // More complex types might need more checks, but for now assume it's okay if it parses
-                  console.log(`[loadFromLocalStorage] Loaded schedule data for key: ${key}`); // Add logging
                  return parsed as T;
              } else {
                  // For unknown keys, just return the parsed data if it's not null/undefined
                  return parsed as T;
              }
-        } else {
-            console.log(`[loadFromLocalStorage] No data found for key: ${key}, returning default.`); // Add logging for missing data
         }
     } catch (error) {
         // More specific error handling for JSON parsing
@@ -351,22 +347,18 @@ type CsvRowData = z.infer<typeof csvRowSchema>;
 
 
 export default function SchedulePage() {
-    // --- State Initialization using localStorage loaders ---
-    const [locations, setLocations] = useState<Location[]>(() => loadFromLocalStorage(LOCATIONS_KEY, initialLocations));
-    const [departments, setDepartments] = useState<Department[]>(() => loadDepartmentsFromLocalStorage(initialDepartments));
-    const [employees, setEmployees] = useState<Employee[]>(() => loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees));
-    const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>(() => loadScheduleDataFromLocalStorage(employees, {})); // Pass initial employees to loader
-    const [savedTemplates, setSavedTemplates] = useState<ShiftTemplate[]>(() => loadFromLocalStorage(SCHEDULE_TEMPLATES_KEY, []));
-    const [notes, setNotes] = useState<string>(() => loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText));
-
-    // Other state variables remain the same
+    // --- State Initialization ---
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
-    const [selectedLocationId, setSelectedLocationId] = useState<string>(() => {
-        // Try to load initially selected location based on loaded locations
-        const loadedLocations = loadFromLocalStorage<Location[]>(LOCATIONS_KEY, initialLocations);
-        return loadedLocations.length > 0 ? loadedLocations[0].id : '';
-    });
+    // Initialize state with default values, load from localStorage in useEffect
+    const [locations, setLocations] = useState<Location[]>(initialLocations);
+    const [departments, setDepartments] = useState<Department[]>(initialDepartments);
+    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+    const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
+    const [savedTemplates, setSavedTemplates] = useState<ShiftTemplate[]>([]);
+    const [notes, setNotes] = useState<string>(defaultNotesText);
+    const [selectedLocationId, setSelectedLocationId] = useState<string>(''); // Initialize empty
+
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
     const [isEmployeeSelectionModalOpen, setIsEmployeeSelectionModalOpen] = useState(false);
     const [shiftRequestContext, setShiftRequestContext] = useState<{ departmentId: string; date: Date } | null>(null);
@@ -383,11 +375,11 @@ export default function SchedulePage() {
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-    const [departmentFormData, setDepartmentFormData] = useState<{name: string, locationId: string, iconName?: string}>({ name: '', locationId: selectedLocationId, iconName: undefined }); // Add iconName
+    const [departmentFormData, setDepartmentFormData] = useState<{name: string, locationId: string, iconName?: string}>({ name: '', locationId: '', iconName: undefined }); // Initialize locationId empty
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    // Initialize employee form data with locationIds as an array
-    const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[] }>({ id: '', name: '', locationIds: [selectedLocationId] });
+    // Initialize employee form data with locationIds as an empty array initially
+    const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[] }>({ id: '', name: '', locationIds: [] });
 
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null);
@@ -404,10 +396,36 @@ export default function SchedulePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     // State for CSV import loading
     const [isImportingCSV, setIsImportingCSV] = useState<boolean>(false);
+    const [isClient, setIsClient] = useState(false);
 
 
     const isMobile = useIsMobile();
     const { toast } = useToast();
+
+    // --- Load Data from localStorage on Mount (Client-side only) ---
+    useEffect(() => {
+        setIsClient(true); // Mark as client-side
+        const loadedLocations = loadFromLocalStorage(LOCATIONS_KEY, initialLocations);
+        const loadedDepartments = loadDepartmentsFromLocalStorage(initialDepartments);
+        const loadedEmployees = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
+        // Load schedule after employees are loaded to ensure correct hydration
+        const loadedSchedule = loadScheduleDataFromLocalStorage(loadedEmployees, {});
+        const loadedTemplates = loadFromLocalStorage(SCHEDULE_TEMPLATES_KEY, []);
+        const loadedNotes = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
+        const initialSelectedLocId = loadedLocations.length > 0 ? loadedLocations[0].id : '';
+
+        setLocations(loadedLocations);
+        setDepartments(loadedDepartments);
+        setEmployees(loadedEmployees);
+        setScheduleData(loadedSchedule);
+        setSavedTemplates(loadedTemplates);
+        setNotes(loadedNotes);
+        setSelectedLocationId(initialSelectedLocId);
+        // Initialize form defaults based on loaded selected location
+        setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLocId }));
+        setEmployeeFormData(prev => ({ ...prev, locationIds: [initialSelectedLocId] }));
+
+    }, []); // Empty dependency array ensures this runs only once on mount
 
     useEffect(() => {
         const startYear = getYear(startOfWeek(currentDate, { weekStartsOn: 1 }));
@@ -430,22 +448,16 @@ export default function SchedulePage() {
             });
     }, [currentDate]);
 
-    // --- Load Data from localStorage on Mount ---
-     // Reload schedule data if employees change (e.g., after adding/editing an employee)
-    useEffect(() => {
-        setScheduleData(loadScheduleDataFromLocalStorage(employees, {}));
-    }, [employees]);
-
      // --- Save Data to localStorage on Change ---
      useEffect(() => {
-         if (typeof window !== 'undefined') {
+         if (isClient) { // Only save on client
              try { localStorage.setItem(LOCATIONS_KEY, JSON.stringify(locations)); }
              catch (e) { console.error("Error saving locations:", e); }
          }
-     }, [locations]);
+     }, [locations, isClient]);
 
      useEffect(() => {
-         if (typeof window !== 'undefined') {
+         if (isClient) { // Only save on client
              try {
                  // Store icon name instead of component
                  const departmentsToSave = departments.map(({ icon, ...rest }) => ({
@@ -456,17 +468,17 @@ export default function SchedulePage() {
              }
              catch (e) { console.error("Error saving departments:", e); }
          }
-     }, [departments]);
+     }, [departments, isClient]);
 
      useEffect(() => {
-         if (typeof window !== 'undefined') {
+         if (isClient) { // Only save on client
              try { localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees)); }
              catch (e) { console.error("Error saving employees:", e); }
          }
-     }, [employees]);
+     }, [employees, isClient]);
 
      useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (isClient) { // Only save on client
             try {
                 const dataToSave = JSON.parse(JSON.stringify(scheduleData));
                  Object.keys(dataToSave).forEach(key => {
@@ -494,24 +506,22 @@ export default function SchedulePage() {
                  });
             }
         }
-    }, [scheduleData, toast]); // Added toast dependency
+    }, [scheduleData, isClient, toast]); // Added toast dependency
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (isClient) { // Only save on client
             try {
                 localStorage.setItem(SCHEDULE_NOTES_KEY, notes);
             } catch (error) {
                 console.error("Error saving notes to localStorage:", error);
             }
         }
-    }, [notes]);
+    }, [notes, isClient]);
 
      useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (isClient) { // Only save on client
             try {
-                 console.log("[SAVE] Attempting to save templates:", savedTemplates);
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
-                 console.log("[SAVE] Templates supposedly saved.");
             } catch (error) {
                  console.error("Error saving templates to localStorage:", error);
                  toast({
@@ -521,7 +531,7 @@ export default function SchedulePage() {
                  });
             }
         }
-     }, [savedTemplates, toast]); // Add toast as a dependency
+     }, [savedTemplates, isClient, toast]); // Add toast as a dependency
 
     // ---- End LocalStorage Effects ---
 
@@ -570,11 +580,9 @@ export default function SchedulePage() {
     const filteredTemplates = useMemo(() => {
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-        console.log("[FILTER] All templates:", templatesArray); // Log all templates before filtering
         const filtered = templatesArray.filter(temp =>
              temp.locationId === selectedLocationId && temp.type === viewMode // Match current viewMode ('day' or 'week')
         );
-        console.log(`[FILTER] Filtered templates for location ${selectedLocationId} and view ${viewMode}:`, filtered); // Log filtered templates
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -852,7 +860,7 @@ export default function SchedulePage() {
             setLocations([...locations, newLocation]);
             toast({ title: 'Sede Agregada', description: `Sede "${name}" agregada.` });
             // Set as selected only if it's the first one or none is selected
-            if (locations.length === 0 || !selectedLocationId) {
+            if (locations.length === 1 || !selectedLocationId) {
                  setSelectedLocationId(newLocation.id);
             }
         }
@@ -1373,14 +1381,6 @@ export default function SchedulePage() {
           setSavedTemplates(prev => {
               const validPrev = Array.isArray(prev) ? prev : [];
               const updatedTemplates = [...validPrev, newTemplate];
-               console.log("[SAVE TEMPLATE] Updated templates:", updatedTemplates);
-               // Attempt to save immediately after state update (might still be async)
-               try {
-                   localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-                   console.log("[SAVE TEMPLATE] Immediately saved to localStorage.");
-               } catch (e) {
-                   console.error("[SAVE TEMPLATE] Error immediately saving:", e);
-               }
               return updatedTemplates;
           });
          toast({ title: 'Template Guardado', description: `El template "${newTemplate.name}" (${templateType === 'daily' ? 'Diario' : 'Semanal'}) se ha guardado.` });
@@ -1396,11 +1396,9 @@ export default function SchedulePage() {
         // Ensure savedTemplates is an array before finding
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const templateToLoad = templatesArray.find((t: any) => t.id === templateId);
-        console.log("[LOAD] Attempting to load template:", templateToLoad); // Log template to load
 
         if (!templateToLoad) {
             toast({ title: 'Template no encontrado', variant: 'destructive' });
-            console.error(`[LOAD] Template with ID ${templateId} not found.`);
             return;
         }
         if (templateToLoad.locationId !== selectedLocationId) {
@@ -1409,7 +1407,6 @@ export default function SchedulePage() {
                 description: `El template "${templateToLoad.name}" pertenece a otra sede. Cambia de sede para cargarlo.`,
                 variant: 'destructive',
             });
-             console.warn(`[LOAD] Template location mismatch: ${templateToLoad.locationId} vs ${selectedLocationId}`);
             return;
         }
         // Check if template type matches current view mode
@@ -1420,7 +1417,6 @@ export default function SchedulePage() {
                 description: `El template "${templateToLoad.name}" es ${templateToLoad.type === 'daily' ? 'diario' : 'semanal'}. Cambia a la vista ${requiredView} para cargarlo.`,
                 variant: 'destructive',
             });
-             console.warn(`[LOAD] Template view mode mismatch: ${templateToLoad.type} vs ${viewMode}`);
             return;
         }
 
@@ -1429,13 +1425,10 @@ export default function SchedulePage() {
         let assignmentsLoadedCount = 0; // Track if any assignments were actually loaded
 
         try {
-            console.log(`[LOAD] Loading ${templateToLoad.type} template "${templateToLoad.name}"...`); // Log type
             if (templateToLoad.type === 'daily') {
                 const loadTargetDate = targetDate;
                 const dateKey = format(loadTargetDate, 'yyyy-MM-dd');
                 const loadedAssignments: { [deptId: string]: ShiftAssignment[] } = {};
-
-                console.log("[LOAD] Daily template assignments structure:", templateToLoad.assignments); // Log daily assignments structure
 
                 Object.keys(templateToLoad.assignments).forEach(deptId => {
                     // Ensure assignments[deptId] is an array before mapping
@@ -1474,12 +1467,10 @@ export default function SchedulePage() {
                      date: loadTargetDate,
                      assignments: loadedAssignments,
                 };
-                console.log(`[LOAD] Updated schedule data for ${dateKey}:`, updatedScheduleData[dateKey]); // Log updated data
 
                 successMessage = `Se cargó el template "${templateToLoad.name}" para ${format(loadTargetDate, 'PPP', { locale: es })}.`;
 
             } else { // Weekly template
-                console.log("[LOAD] Weekly template assignments structure:", templateToLoad.assignments); // Log weekly assignments structure
                 // Clear the assignments for the current week before loading the template
                 weekDates.forEach(date => {
                     const dateKey = format(date, 'yyyy-MM-dd');
@@ -1490,12 +1481,10 @@ export default function SchedulePage() {
                 // Load assignments from the template
                 Object.keys(templateToLoad.assignments).forEach(sourceDateKey => {
                     const templateDate = parseDateFnsInternal(sourceDateKey, 'yyyy-MM-dd', new Date()); // Parse date from template key
-                    console.log(`[LOAD] Processing date from template: ${sourceDateKey}, Parsed: ${templateDate}`); // Log date processing
                     // Find the corresponding date object in the current weekDates array based on day matching
                     const targetWeekDate = weekDates.find(weekDate => isSameDay(weekDate, templateDate)); // Use isSameDay for comparison
 
                     if (isValid(templateDate) && targetWeekDate) {
-                         console.log(`[LOAD] Date ${sourceDateKey} is valid and within the current week.`); // Log valid date
                          const targetDateKey = format(targetWeekDate, 'yyyy-MM-dd'); // Use the actual key for the target week
                         const dailyAssignmentsFromTemplate = (templateToLoad.assignments as WeeklyAssignments)[sourceDateKey] || {};
                         const loadedDailyAssignments: { [deptId: string]: ShiftAssignment[] } = {};
@@ -1532,7 +1521,6 @@ export default function SchedulePage() {
                                ...updatedScheduleData[targetDateKey], // Keep existing date object
                                assignments: loadedDailyAssignments
                             };
-                            console.log(`[LOAD] Updated schedule data for ${targetDateKey}:`, updatedScheduleData[targetDateKey]); // Log update for the specific day
                          }
 
                     } else {
@@ -1981,7 +1969,7 @@ export default function SchedulePage() {
         <main className="container mx-auto p-4 md:p-8 max-w-full">
              {/* Title */}
              <div className="text-center mb-6 md:mb-8">
-                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
+                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
                     Planificador de Horarios
                  </h1>
                  <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
@@ -2008,7 +1996,6 @@ export default function SchedulePage() {
                          onLocationChange={handleLocationChange}
                      />
                  </div>
-
                    {/* Configuration Button */}
                    <div className="flex items-center gap-2">
                        <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
@@ -2039,9 +2026,9 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
+                                                           <AlertDialogTrigger asChild>
+                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
                                                           <AlertDialogContent>
                                                               <AlertDialogHeader>
                                                                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -2075,9 +2062,9 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
+                                                           <AlertDialogTrigger asChild>
+                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
                                                           <AlertDialogContent>
                                                               <AlertDialogHeader>
                                                                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -2111,9 +2098,9 @@ export default function SchedulePage() {
                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
+                                                           <AlertDialogTrigger asChild>
+                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
                                                           <AlertDialogContent>
                                                               <AlertDialogHeader>
                                                                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -2165,9 +2152,9 @@ export default function SchedulePage() {
                                                           <Upload className="h-4 w-4" />
                                                       </Button>
                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
+                                                           <AlertDialogTrigger asChild>
+                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
                                                           <AlertDialogContent>
                                                               <AlertDialogHeader>
                                                                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -2315,6 +2302,7 @@ export default function SchedulePage() {
                             onDuplicateDay={handleDuplicateDay}
                             onClearDay={handleConfirmClearDay}
                             isHoliday={isHoliday}
+                            isMobile={isMobile} // Pass mobile flag
                         />
                      </div>
                  </div>
@@ -2615,4 +2603,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-

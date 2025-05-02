@@ -1,3 +1,4 @@
+
 // src/components/schedule/DepartmentColumn.tsx
 'use client'; // Ensure client component
 
@@ -20,6 +21,7 @@ interface DepartmentColumnProps {
   onAddShiftRequest: (departmentId: string, date: Date) => void; // New handler for '+' button click
   onShiftClick: (assignment: ShiftAssignment, date: Date, departmentId: string) => void; // Handler for clicking a shift card
   isWeekView?: boolean; // Flag for potentially different rendering in week view
+  isMobile: boolean; // Flag to detect mobile view
 }
 
 export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
@@ -30,6 +32,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   onAddShiftRequest, // Destructure new handler
   onShiftClick, // Destructure shift click handler
   isWeekView = false,
+  isMobile, // Destructure mobile flag
 }) => {
   const [isClient, setIsClient] = useState(false); // State for client-side rendering
 
@@ -44,7 +47,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
         type: 'department',
         id: department.id,
         date: dateKey, // Pass date string in data
-    }
+    },
+    disabled: isMobile, // Disable dropping on mobile
   });
 
   const style = {
@@ -86,17 +90,31 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
               />
             ))
           ) : (
-            <p className="text-[11px] text-muted-foreground text-center py-1 italic">Vacío</p>
+             // Show '+' button prominently if empty in week/mobile view
+             isMobile && (
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1"
+                      onClick={() => onAddShiftRequest(department.id, date)}
+                      title="Añadir Colaborador"
+                  >
+                      <Plus className="h-4 w-4" />
+                  </Button>
+             )
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1 md:hidden"
-            onClick={() => onAddShiftRequest(department.id, date)}
-            title="Añadir Colaborador"
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
+          {/* Show '+' button on mobile/tablet at the bottom of the card content even if not empty */}
+          {(isMobile) && (
+               <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1"
+                  onClick={() => onAddShiftRequest(department.id, date)}
+                  title="Añadir Colaborador"
+              >
+                  <Plus className="h-3 w-3" />
+              </Button>
+          )}
         </>
       );
     } else {

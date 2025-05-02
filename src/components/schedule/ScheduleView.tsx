@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import type { Department, ScheduleData, ShiftAssignment } from '@/types/schedule'; // Assuming types exist, Added ShiftAssignment
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
@@ -22,6 +23,7 @@ interface ScheduleViewProps {
   onDuplicateDay: (sourceDate: Date) => void; // Add prop for duplicating a day's schedule
   onClearDay: (dateToClear: Date) => void; // Add prop for clearing a day's schedule
   isHoliday: (date: Date | null | undefined) => boolean; // Function to check if a date is a holiday
+  isMobile: boolean; // Flag to detect mobile view
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
@@ -37,6 +39,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     onDuplicateDay, // Receive duplicate handler
     onClearDay, // Receive clear handler
     isHoliday, // Receive holiday check function
+    isMobile, // Receive mobile flag
 }) => {
   const [isClient, setIsClient] = useState(false); // State for client-side rendering check
 
@@ -77,6 +80,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                     date={currentDate} // Pass the date
                                     onAddShiftRequest={onAddShiftRequest} // Pass new assign handler
                                     onShiftClick={onShiftClick} // Pass shift click handler
+                                    isMobile={isMobile} // Pass mobile flag
                                 />
                             ))}
                         </div>
@@ -188,6 +192,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                   date={date}
                                                   onAddShiftRequest={onAddShiftRequest}
                                                   onShiftClick={onShiftClick}
+                                                  isMobile={isMobile} // Pass mobile flag
                                               />
                                           </div>
                                       ))
@@ -208,5 +213,3 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
          return weekViewContent;
     }
 };
-
-    
