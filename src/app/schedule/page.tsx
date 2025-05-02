@@ -42,6 +42,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 
@@ -2131,7 +2135,7 @@ export default function SchedulePage() {
                   className="hidden"
               />
 
-             {/* Controls Section - Removed Card wrapping */}
+             {/* Controls Section - No background/card */}
              <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 md:mb-8 flex-wrap bg-transparent">
 
                  {/* Sede Selector */}
@@ -2143,8 +2147,85 @@ export default function SchedulePage() {
                         onLocationChange={handleLocationChange}
                     />
                  </div>
-                   {/* Configuration Button */}
-                 <div className="flex items-center gap-2">
+
+                 {/* --- Day View Date Selector OR Week View Navigator --- */}
+                 <div className="flex items-center justify-center gap-2">
+                     {viewMode === 'day' ? (
+                         <Popover>
+                             <PopoverTrigger asChild>
+                                 <Button
+                                     variant={'outline'}
+                                     className={cn(
+                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
+                                         !targetDate && 'text-muted-foreground',
+                                         isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
+                                     )}
+                                     disabled={isCheckingHoliday}
+                                 >
+                                     {isCheckingHoliday ? (
+                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                     ) : (
+                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                     )}
+                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
+                                 </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-0">
+                                 <Calendar
+                                     mode="single"
+                                     selected={targetDate}
+                                     onSelect={(date) => { if (date) setTargetDate(date) }}
+                                     initialFocus
+                                     locale={es}
+                                     modifiers={{ holiday: (date) => isHoliday(date) }}
+                                     modifiersClassNames={{
+                                          holiday: 'text-primary font-medium border border-primary', // Style holiday
+                                     }}
+                                 />
+                             </PopoverContent>
+                         </Popover>
+                     ) : (
+                         <WeekNavigator
+                             currentDate={currentDate}
+                             onPreviousWeek={handlePreviousWeek}
+                             onNextWeek={handleNextWeek}
+                         />
+                     )}
+                 </div>
+
+                 {/* View Mode Toggle */}
+                 <div className="flex items-center justify-center gap-2">
+                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                         <SelectTrigger className="w-[120px]">
+                             <SelectValue placeholder="Vista" />
+                         </SelectTrigger>
+                         <SelectContent>
+                             <SelectItem value="day">Día</SelectItem>
+                             <SelectItem value="week">Semana</SelectItem>
+                         </SelectContent>
+                     </Select>
+                 </div>
+
+                  {/* CSV Import Button */}
+                  <div className="flex items-center gap-2">
+                     <Button
+                         variant="outline"
+                         onClick={triggerCSVFileInput}
+                         disabled={isImportingCSV}
+                         title="Importar Horario desde CSV (como Template)"
+                     >
+                         {isImportingCSV ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         ) : (
+                             <FileUp className="mr-2 h-4 w-4" />
+                         )}
+                         Importar CSV
+                     </Button>
+                 </div>
+
+                 {/* Configuration Button */}
+                  <div className="flex items-center gap-2">
                       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                           <DialogTrigger asChild>
                               <Button variant="outline" size="icon" title="Configuración">
@@ -2152,12 +2233,12 @@ export default function SchedulePage() {
                               </Button>
                           </DialogTrigger>
                           {/* Configuration Modal Content */}
-                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+                          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"> {/* Changed width to 3xl */}
                               <DialogHeader>
                                   <DialogTitle>Configuración General</DialogTitle>
-                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
+                                  <DialogDescription>Gestiona sedes, departamentos y colaboradores.</DialogDescription>
                               </DialogHeader>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4"> {/* Changed to 3 columns */}
                                   {/* Locations Column */}
                                   <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
                                       <div className="flex justify-between items-center mb-2">
@@ -2238,7 +2319,7 @@ export default function SchedulePage() {
                                       </ScrollArea>
                                   </div>
                                   {/* Employees Column */}
-                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                  <div className="space-y-4"> {/* Removed border and padding */}
                                       <div className="flex justify-between items-center mb-2">
                                           <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
                                           <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
@@ -2279,65 +2360,7 @@ export default function SchedulePage() {
                                           </ul>
                                       </ScrollArea>
                                   </div>
-                                  {/* Saved Templates Column */}
-                                  <div className="space-y-4">
-                                      <div className="flex justify-between items-center mb-2">
-                                          <h4 className="font-semibold text-foreground flex items-center gap-1">
-                                              <Library className="h-4 w-4 text-muted-foreground"/>
-                                              Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
-                                          </h4>
-                                          {/* Load Template Button */}
-                                         <DropdownMenu>
-                                             <DropdownMenuTrigger asChild>
-                                                 <Button variant="outline" size="sm" disabled={filteredTemplates.length === 0} title="Cargar Template">
-                                                     <Upload className="h-4 w-4" />
-                                                 </Button>
-                                             </DropdownMenuTrigger>
-                                             <DropdownMenuContent>
-                                                 <DropdownMenuLabel>Cargar Template Guardado</DropdownMenuLabel>
-                                                 <DropdownMenuSeparator />
-                                                 {filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                                     <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template.id)}>
-                                                         {template.name}
-                                                     </DropdownMenuItem>
-                                                 )) : (
-                                                     <DropdownMenuItem disabled>No hay templates</DropdownMenuItem>
-                                                 )}
-                                             </DropdownMenuContent>
-                                         </DropdownMenu>
-                                      </div>
-                                      <ScrollArea className="h-[40vh]">
-                                          <ul className="space-y-2 text-sm pr-2">
-                                              {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
-                                                  <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                      <span className="truncate text-muted-foreground">{template.name}</span>
-                                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                           {/* Removed Load button from here, moved to Dropdown */}
-                                                          <AlertDialog>
-                                                              <AlertDialogTrigger asChild>
-                                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                              </AlertDialogTrigger>
-                                                              <AlertDialogContent>
-                                                                  <AlertDialogHeader>
-                                                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                      <AlertDialogDescription>Eliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.</AlertDialogDescription>
-                                                                  </AlertDialogHeader>
-                                                                  <AlertDialogFooter>
-                                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                  </AlertDialogFooter>
-                                                              </AlertDialogContent>
-                                                          </AlertDialog>
-                                                      </div>
-                                                  </li>
-                                              )) : (
-                                                  <p className="text-xs text-muted-foreground italic text-center pt-2">
-                                                      No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
-                                                  </p>
-                                              )}
-                                          </ul>
-                                      </ScrollArea>
-                                  </div>
+                                  {/* Removed Templates Column */}
                               </div>
                               <DialogFooter>
                                   <DialogClose asChild>
@@ -2347,85 +2370,6 @@ export default function SchedulePage() {
                           </DialogContent>
                       </Dialog>
                  </div>
-
-
-                 {/* --- Day View Date Selector OR Week View Navigator --- */}
-                 <div className="flex items-center justify-center gap-2">
-                     {viewMode === 'day' ? (
-                         <Popover>
-                             <PopoverTrigger asChild>
-                                 <Button
-                                     variant={'outline'}
-                                     className={cn(
-                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
-                                         !targetDate && 'text-muted-foreground',
-                                         isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
-                                     )}
-                                     disabled={isCheckingHoliday}
-                                 >
-                                     {isCheckingHoliday ? (
-                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                     ) : (
-                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
-                                     )}
-                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
-                                 </Button>
-                             </PopoverTrigger>
-                             <PopoverContent className="w-auto p-0">
-                                 <Calendar
-                                     mode="single"
-                                     selected={targetDate}
-                                     onSelect={(date) => { if (date) setTargetDate(date) }}
-                                     initialFocus
-                                     locale={es}
-                                     modifiers={{ holiday: (date) => isHoliday(date) }}
-                                     modifiersClassNames={{
-                                          holiday: 'text-primary font-medium border border-primary', // Style holiday
-                                     }}
-                                 />
-                             </PopoverContent>
-                         </Popover>
-                     ) : (
-                         <WeekNavigator
-                             currentDate={currentDate}
-                             onPreviousWeek={handlePreviousWeek}
-                             onNextWeek={handleNextWeek}
-                         />
-                     )}
-                 </div>
-
-                 {/* View Mode Toggle */}
-                 <div className="flex items-center justify-center gap-2">
-                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                         <SelectTrigger className="w-[120px]">
-                             <SelectValue placeholder="Vista" />
-                         </SelectTrigger>
-                         <SelectContent>
-                             <SelectItem value="day">Día</SelectItem>
-                             <SelectItem value="week">Semana</SelectItem>
-                         </SelectContent>
-                     </Select>
-                 </div>
-
-                  {/* CSV Import Button */}
-                  <div className="flex items-center gap-2">
-                     <Button
-                         variant="outline"
-                         onClick={triggerCSVFileInput}
-                         disabled={isImportingCSV}
-                         title="Importar Horario desde CSV (como Template)"
-                     >
-                         {isImportingCSV ? (
-                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         ) : (
-                             <FileUp className="mr-2 h-4 w-4" />
-                         )}
-                         Importar CSV
-                     </Button>
-                 </div>
-
-
 
              </div>
 
@@ -2487,14 +2431,41 @@ export default function SchedulePage() {
                           <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
                       </Button>
                   )}
-                  <Button
-                     variant="outline"
-                     onClick={handleOpenTemplateModal}
-                     title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
-                     className="hover:bg-primary hover:text-primary-foreground"
-                  >
-                     <Download className="mr-2 h-4 w-4" /> Guardar Template
-                  </Button>
+                   {/* Template Buttons */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" title="Gestionar Templates">
+                        <Library className="mr-2 h-4 w-4" /> Templates
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleOpenTemplateModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
+                        <Download className="mr-2 h-4 w-4" /> Guardar Template Actual
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger disabled={filteredTemplates.length === 0}>
+                           <Upload className="mr-2 h-4 w-4" /> Cargar Template Guardado
+                        </DropdownMenuSubTrigger>
+                         <DropdownMenuPortal>
+                           <DropdownMenuSubContent>
+                             <DropdownMenuLabel>Cargar Template {viewMode === 'day' ? 'Diario' : 'Semanal'}</DropdownMenuLabel>
+                             <DropdownMenuSeparator />
+                             {filteredTemplates.length > 0 ? filteredTemplates.map(template => (
+                               <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template.id)}>
+                                 {template.name}
+                               </DropdownMenuItem>
+                             )) : (
+                               <DropdownMenuItem disabled>No hay templates para esta vista/sede</DropdownMenuItem>
+                             )}
+                           </DropdownMenuSubContent>
+                         </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                       {/* Optional: Add a way to view/delete templates directly in the dropdown? */}
+                       {/* Could add another sub-menu for "Administrar Templates" */}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                       <Save className="mr-2 h-4 w-4" /> Guardar Horario
                   </Button>
