@@ -31,6 +31,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Import Popover
 import { Calendar } from '@/components/ui/calendar'; // Import Calendar
+import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
@@ -60,6 +61,7 @@ const getWeekDates = (currentDate: Date): Date[] => {
 // LocalStorage Keys
 const SCHEDULE_DATA_KEY = 'schedulePlannerData';
 const SCHEDULE_TEMPLATES_KEY = 'scheduleTemplates';
+const SCHEDULE_NOTES_KEY = 'schedulePlannerNotes'; // Key for notes
 
 // Cache for holidays
 let holidaysCache: { [year: number]: Set<string> } = {};
@@ -124,6 +126,10 @@ const initialEmployees: Employee[] = [
   { id: 'emp-5', name: 'Diego Torres', primaryLocationId: 'loc-3' },
   { id: 'emp-6', name: 'Isabel Castro', primaryLocationId: 'loc-3' },
 ];
+
+// Default notes text
+const defaultNotesText = `Lun a Jue: Parrillazo y Gauchos 12am. - Gaucho 11pm. | Vie a Sab: Parrillazo y Gauchos 1am. - Gaucho 12am. | Dom: Todos 11 pm`;
+
 
 // Helper function to parse HH:MM time into minutes from midnight
 const parseTimeToMinutes = (timeStr: string): number => {
@@ -228,6 +234,9 @@ export default function SchedulePage() {
     const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
+    // State for editable notes
+    const [notes, setNotes] = useState<string>(defaultNotesText);
+
     const isMobile = useIsMobile(); // Hook to detect mobile/tablet view
     const { toast } = useToast(); // Get toast function
 
@@ -254,7 +263,7 @@ export default function SchedulePage() {
             });
     }, [currentDate]); // Re-run when the navigated date changes
 
-    // Load schedule data and templates from localStorage on mount
+    // Load schedule data, templates, and notes from localStorage on mount
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const savedSchedule = localStorage.getItem(SCHEDULE_DATA_KEY);
@@ -290,6 +299,14 @@ export default function SchedulePage() {
                      localStorage.removeItem(SCHEDULE_TEMPLATES_KEY); // Clear invalid data
                  }
              }
+
+             // Load notes
+            const savedNotes = localStorage.getItem(SCHEDULE_NOTES_KEY);
+            if (savedNotes) {
+                setNotes(savedNotes);
+            } else {
+                setNotes(defaultNotesText); // Set default if nothing saved
+            }
         }
     }, []);
 
@@ -996,6 +1013,23 @@ export default function SchedulePage() {
         return holidaySet.has(dateStr);
     }, [holidaySet]);
 
+     // --- Notes Handler ---
+    const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setNotes(event.target.value);
+    };
+
+    const handleSaveNotes = () => {
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem(SCHEDULE_NOTES_KEY, notes);
+                toast({ title: 'Notas Guardadas', description: 'Tus notas han sido guardadas localmente.' });
+            } catch (error) {
+                console.error("Error saving notes to localStorage:", error);
+                toast({ title: 'Error al Guardar Notas', variant: 'destructive' });
+            }
+        }
+    };
+
 
     // Wrapper component to conditionally provide DndContext
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1112,15 +1146,17 @@ export default function SchedulePage() {
                  <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
-            {/* Controls Card */}
-            <Card className="mb-8 shadow-none border-none bg-transparent"> {/* Removed card appearance */}
-                 <CardHeader className="pb-4 pt-0 px-0"> {/* Removed padding */}
-                     {/* Header content removed as per request */}
+            {/* Controls Card - Hidden background */}
+            <Card className="mb-8 shadow-none border-none bg-transparent">
+                 <CardHeader className="pb-4 pt-0 px-0 bg-transparent text-center"> {/* Centered text */}
+                    {/* Description moved here */}
+                     <CardDescription className="max-w-xl mx-auto">
+                        Seleccione una fecha o una semana a programar, duplica, guarda templates y descarga tu horario.
+                     </CardDescription>
                  </CardHeader>
-                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6 p-0"> {/* Removed padding */}
+                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6 p-0 bg-transparent">
                         {/* Location Selector */}
                         <div className="flex flex-col items-center space-y-1">
-                             {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
                              <LocationSelector
                                 locations={locations}
                                 selectedLocationId={selectedLocationId}
@@ -1276,7 +1312,7 @@ export default function SchedulePage() {
                                              className={cn(
                                                  'w-[280px] justify-start text-left font-normal',
                                                  !targetDate && 'text-muted-foreground',
-                                                  isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday (use primary color)
+                                                 isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Use primary color for holiday highlight
                                              )}
                                               disabled={isCheckingHoliday} // Disable while checking holiday
                                          >
@@ -1295,7 +1331,7 @@ export default function SchedulePage() {
                                              locale={es}
                                              modifiers={{ holiday: (date) => isHoliday(date) }}
                                              modifiersClassNames={{
-                                                   holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
+                                                  holiday: 'text-primary font-semibold border border-primary', // Use primary border/text for holiday
                                              }}
                                          />
                                      </PopoverContent>
@@ -1363,7 +1399,7 @@ export default function SchedulePage() {
              </DndWrapper>
 
              {/* --- Actions Row - Moved below the main grid, aligned to the right --- */}
-            <div className="flex flex-wrap justify-end gap-2 mt-6"> {/* Added mt-6 for spacing */}
+            <div className="flex flex-wrap justify-end gap-2 mt-6">
                  {/* PDF Export */}
                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white">
                      <FileDown className="mr-2 h-4 w-4" /> PDF
@@ -1568,8 +1604,29 @@ export default function SchedulePage() {
                  </AlertDialogContent>
             </AlertDialog>
 
+            {/* Editable Notes Section */}
+            <Card className="mt-8 shadow-lg bg-card">
+                <CardHeader>
+                    <CardTitle className="text-lg text-foreground">Notas Adicionales</CardTitle>
+                    <CardDescription>
+                        Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea
+                        value={notes}
+                        onChange={handleNotesChange}
+                        placeholder="Ej: Cierre anticipado el jueves por fumigación..."
+                        rows={4}
+                        className="w-full"
+                    />
+                </CardContent>
+                <CardFooter className="flex justify-end">
+                    <Button onClick={handleSaveNotes}>Guardar Notas</Button>
+                </CardFooter>
+            </Card>
+
 
         </main>
     );
 }
-
