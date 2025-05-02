@@ -27,7 +27,7 @@ interface PayrollPageData {
 }
 
 
-// Helper function to draw a single payroll report page
+// Helper function to draw a single payroll report page (Kept for single export, but not used in modified bulk export)
 function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -290,8 +290,32 @@ export function exportPayrollToPDF(
     doc.save(filename);
 }
 
-// --- Bulk Payroll Export ---
-// exportAllPayrollsToPDF now directly uses SavedPayrollData which includes adjustments and transport flag
+// Helper function to calculate final net pay for display/export
+const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
+    const baseMasExtras = payroll.summary.pagoTotalConSalarioQuincena;
+    const auxTransporteValorConfig = 100000; // Assuming this value, ideally get from config
+    const auxTransporteAplicado = payroll.incluyeAuxTransporte ? auxTransporteValorConfig : 0;
+    const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+    const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+
+    // Calculate Total Devengado Bruto
+    const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
+
+    // Estimate legal deductions (IBC excludes transport allowance)
+    const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+    const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
+    const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
+    const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
+
+    // Calculate Subtotal Neto Parcial
+    const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
+
+    // Calculate final net pay
+    return subtotalNetoParcial - totalOtrasDeducciones;
+};
+
+
+// --- Bulk Payroll Export (Modified for List Format) ---
 export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void {
     if (!allPayrollData || allPayrollData.length === 0) {
         console.warn("No payroll data provided for bulk export.");
@@ -299,33 +323,92 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     }
 
     const doc = new jsPDF();
-    let isFirstPage = true;
+    let currentY = 15; // Start position
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const leftMargin = 14;
+    const rightMargin = 14;
+    const signatureColumnWidth = 80; // Width for the signature column
+    const dataColumnWidth = pageWidth - leftMargin - rightMargin - signatureColumnWidth - 10; // Width for data column (-10 for margin)
 
-    allPayrollData.forEach((savedData) => { // Use savedData which is SavedPayrollData
-        if (!isFirstPage) {
-            doc.addPage(); // Add a new page for each subsequent payroll report
-        }
-        // Determine transport allowance value based on the saved flag
-        const auxTransporteValorConfig = 100000; // Use the configured value
-        const auxTransporteAplicado = savedData.incluyeAuxTransporte ? auxTransporteValorConfig : 0;
+    // --- Header ---
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Listado de Pago de Nómina Quincenal', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 10;
 
-        // Construct the PayrollPageData object from SavedPayrollData
-        const payrollPageData: PayrollPageData = {
-            employeeId: savedData.employeeId,
-            periodStart: savedData.periodStart,
-            periodEnd: savedData.periodEnd,
-            summary: savedData.summary,
-            otrosIngresosLista: savedData.otrosIngresosLista,
-            otrasDeduccionesLista: savedData.otrasDeduccionesLista,
-            auxTransporteAplicado: auxTransporteAplicado // Pass the calculated value
-        };
+    // Use the period from the first payroll entry as the header period (assuming all are for the same period)
+    if (allPayrollData.length > 0) {
+        const firstPayroll = allPayrollData[0];
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Período: ${format(firstPayroll.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(firstPayroll.periodEnd, 'dd/MM/yyyy', { locale: es })}`, pageWidth / 2, currentY, { align: 'center' });
+        currentY += 15;
+    }
 
-        drawPayrollPage(doc, payrollPageData); // Pass the constructed data
-        isFirstPage = false;
+    // --- Table Header ---
+    const head = [['ID Colaborador', 'Nombre', 'Neto a Pagar', 'Firma']]; // Simplified header
+
+    // --- Table Body ---
+    const body = allPayrollData.map(payroll => {
+        const netoFinal = calculateNetoAPagar(payroll);
+        // Placeholder for name - ideally, you'd fetch the name based on ID
+        const employeeName = `Colaborador ${payroll.employeeId}`; // Replace with actual name lookup if possible
+        return [
+            payroll.employeeId,
+            employeeName, // Placeholder or actual name
+            formatCurrency(netoFinal),
+            '', // Empty cell for signature space
+        ];
+    });
+
+    autoTable(doc, {
+        head: head,
+        body: body,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [76, 67, 223], // Primary color
+            textColor: [255, 255, 255], // White text
+            fontStyle: 'bold',
+        },
+        columnStyles: {
+            0: { cellWidth: 80 }, // ID Colaborador
+            1: { cellWidth: 'auto' }, // Nombre
+            2: { halign: 'right', cellWidth: 80 }, // Neto a Pagar
+            3: { cellWidth: signatureColumnWidth, minCellHeight: 20 }, // Firma (ensure min height)
+        },
+        didDrawCell: (data) => {
+            // Add a line in the signature cell for signing
+            if (data.column.index === 3 && data.cell.section === 'body') {
+                const cell = data.cell;
+                const signatureLineY = cell.y + cell.height - 5; // Position line near bottom
+                const signatureLineXStart = cell.x + 5;
+                const signatureLineXEnd = cell.x + cell.width - 5;
+                doc.setDrawColor(200, 200, 200); // Light gray line
+                doc.setLineWidth(0.5);
+                doc.line(signatureLineXStart, signatureLineY, signatureLineXEnd, signatureLineY);
+            }
+        },
+        didDrawPage: (hookData) => {
+            currentY = hookData.cursor?.y ?? currentY;
+            // Add page numbers if needed
+            const pageNum = doc.internal.getNumberOfPages();
+            doc.setFontSize(8);
+            doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
+        },
     });
 
     // --- Save the combined PDF ---
     const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
-    const filename = `Reporte_Nominas_${timestamp}.pdf`;
+    const filename = `Listado_Pago_Nominas_${timestamp}.pdf`;
     doc.save(filename);
 }
+
+// Helper to parse HH:MM to minutes (same as in page.tsx, consider moving to utils)
+const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+};
+    
