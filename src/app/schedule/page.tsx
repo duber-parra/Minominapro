@@ -36,6 +36,7 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData } from '@/types/schedule';
 import { v4 as uuidv4 } from 'uuid';
@@ -105,6 +106,7 @@ export default function SchedulePage() {
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null);
 
+    const { toast } = useToast(); // Get toast function
 
     const weekDates = getWeekDates(currentDate);
     const currentDayKey = format(targetDate, 'yyyy-MM-dd'); // Date key for current schedule
@@ -115,43 +117,28 @@ export default function SchedulePage() {
         return scheduleData[key] || { date: date, assignments: {} };
     }
 
-    // Derived state for available employees
-    const assignedEmployeeIds = useMemo(() => {
-        const ids = new Set<string>();
-        const datesToConsider = viewMode === 'week' ? weekDates : [targetDate];
-
-        datesToConsider.forEach(date => {
-            const dateKey = format(date, 'yyyy-MM-dd');
-            const daySchedule = scheduleData[dateKey];
-            if (daySchedule) {
-                Object.values(daySchedule.assignments).forEach(deptAssignments => {
-                    deptAssignments.forEach(assignment => ids.add(assignment.employee.id));
-                });
-            }
-        });
-        return ids;
-    }, [scheduleData, targetDate, viewMode, weekDates]);
-
+    // Derived state for filtering employees and departments by location
     const filteredEmployees = useMemo(() => employees.filter(emp => emp.primaryLocationId === selectedLocationId), [employees, selectedLocationId]);
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
-    // Update availableEmployees logic to exclude employees assigned *anywhere* on the current date/week
-     const availableEmployees = useMemo(() => {
-        const currentAssignedIds = new Set<string>();
-        const datesToCheck = viewMode === 'week' ? weekDates : [targetDate];
 
-        datesToCheck.forEach(date => {
-            const dateKey = format(date, 'yyyy-MM-dd');
+    // Available employees: In day view, exclude assigned. In week view, show all for the location.
+    const availableEmployees = useMemo(() => {
+        if (viewMode === 'day') {
+            const dateKey = format(targetDate, 'yyyy-MM-dd');
             const daySchedule = scheduleData[dateKey];
+            const assignedIdsThisDay = new Set<string>();
             if (daySchedule) {
                 Object.values(daySchedule.assignments).forEach(deptAssignments => {
-                    deptAssignments.forEach(assignment => currentAssignedIds.add(assignment.employee.id));
+                    deptAssignments.forEach(assignment => assignedIdsThisDay.add(assignment.employee.id));
                 });
             }
-        });
-
-        // Filter employees based on selected location AND if they are NOT in the currentAssignedIds set
-        return filteredEmployees.filter(emp => !currentAssignedIds.has(emp.id));
-     }, [filteredEmployees, scheduleData, targetDate, viewMode, weekDates]);
+            return filteredEmployees.filter(emp => !assignedIdsThisDay.has(emp.id));
+        } else { // week view
+            // In week view, show all employees for the selected location.
+            // The check for assignment on a specific day happens during the drop.
+            return filteredEmployees;
+        }
+    }, [filteredEmployees, scheduleData, targetDate, viewMode]);
 
 
     useEffect(() => {
@@ -251,16 +238,25 @@ export default function SchedulePage() {
         const employee = employees.find(emp => emp.id === employeeId);
         if (!employee) return;
 
-        // Check if employee is already assigned to this department on this date
+        // --- Check if employee is already assigned ANYWHERE on this date ---
         const dateKey = format(dropDate, 'yyyy-MM-dd');
-        const assignmentsForDept = scheduleData[dateKey]?.assignments[departmentId] || [];
-        if (assignmentsForDept.some(a => a.employee.id === employeeId)) {
-             // Optionally show a toast or message
-             console.log(`${employee.name} is already assigned to this department on this date.`);
-             return;
+        const daySchedule = scheduleData[dateKey];
+        if (daySchedule) {
+             const isAlreadyAssigned = Object.values(daySchedule.assignments)
+                                            .flat() // Combine assignments from all departments for the day
+                                            .some(assignment => assignment.employee.id === employeeId);
+             if (isAlreadyAssigned) {
+                 toast({
+                     title: 'Asignación Duplicada',
+                     description: `${employee.name} ya tiene un turno asignado para el ${format(dropDate, 'PPP', { locale: es })}.`,
+                     variant: 'destructive',
+                 });
+                 return; // Stop the assignment
+             }
         }
+        // --- End Check ---
 
-
+        // If not already assigned on this date, proceed to open modal
         handleOpenShiftModal(employee, departmentId, dropDate);
     };
 
@@ -655,3 +651,5 @@ export default function SchedulePage() {
         </main>
     );
 }
+
+    
