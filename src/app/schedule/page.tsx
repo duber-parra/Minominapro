@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Imported useMemo
@@ -15,6 +16,7 @@ import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, B
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator'; // Import Separator
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,7 +132,25 @@ export default function SchedulePage() {
 
     const filteredEmployees = useMemo(() => employees.filter(emp => emp.primaryLocationId === selectedLocationId), [employees, selectedLocationId]);
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
-    const availableEmployees = useMemo(() => filteredEmployees.filter(emp => !assignedEmployeeIds.has(emp.id)), [filteredEmployees, assignedEmployeeIds]);
+    // Update availableEmployees logic to exclude employees assigned *anywhere* on the current date/week
+     const availableEmployees = useMemo(() => {
+        const currentAssignedIds = new Set<string>();
+        const datesToCheck = viewMode === 'week' ? weekDates : [targetDate];
+
+        datesToCheck.forEach(date => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const daySchedule = scheduleData[dateKey];
+            if (daySchedule) {
+                Object.values(daySchedule.assignments).forEach(deptAssignments => {
+                    deptAssignments.forEach(assignment => currentAssignedIds.add(assignment.employee.id));
+                });
+            }
+        });
+
+        // Filter employees based on selected location AND if they are NOT in the currentAssignedIds set
+        return filteredEmployees.filter(emp => !currentAssignedIds.has(emp.id));
+     }, [filteredEmployees, scheduleData, targetDate, viewMode, weekDates]);
+
 
     useEffect(() => {
         // Ensure department locationId defaults to current selected location
@@ -377,10 +397,10 @@ export default function SchedulePage() {
 
               {/* Main content grid */}
              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Adjusted grid columns to 12 */}
 
-                     {/* --- Configuration & Available Employees (Takes 3/12 width on large screens) --- */}
-                     <div className={`lg:col-span-3 space-y-6 ${viewMode === 'week' ? 'hidden lg:block' : ''}`}> {/* Always show on large screens */}
+                     {/* --- Configuration & Available Employees (Takes 2/12 width on large screens) --- */}
+                     <div className="lg:col-span-2 space-y-6"> {/* Reduced to 2 columns */}
                          {/* Configuration Card */}
                          <Card className="shadow-md bg-card border border-border">
                               <CardHeader className="pb-3 pt-4 px-4 border-b">
@@ -473,8 +493,8 @@ export default function SchedulePage() {
 
                      </div>
 
-                     {/* --- Schedule View (Takes remaining space - 9/12 width) --- */}
-                     <div className={`lg:col-span-9`}> {/* Adjust column span */}
+                     {/* --- Schedule View (Takes remaining space - 10/12 width) --- */}
+                     <div className={`lg:col-span-10`}> {/* Increased to 10 columns */}
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
@@ -613,3 +633,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
