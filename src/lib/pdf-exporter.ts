@@ -293,13 +293,13 @@ export function exportPayrollToPDF(
     doc.save(filename);
 }
 
-// Helper function to calculate final net pay for display/export
-const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
+// Helper function to calculate final net pay and total deductions for display/export
+const calculateNetoYTotalDeducciones = (payroll: SavedPayrollData): { neto: number; totalDeducciones: number } => {
     const baseMasExtras = payroll.summary.pagoTotalConSalarioQuincena;
     const auxTransporteValorConfig = 100000; // Assuming this value, ideally get from config
     const auxTransporteAplicado = payroll.incluyeAuxTransporte ? auxTransporteValorConfig : 0;
     const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
-    const totalOtrasDeducciones = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+    const totalOtrasDeduccionesManuales = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
 
     // Calculate Total Devengado Bruto
     const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
@@ -310,11 +310,16 @@ const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
     const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
 
+    // Calculate total deductions (Legal + Manual)
+    const totalDeducciones = totalDeduccionesLegales + totalOtrasDeduccionesManuales;
+
     // Calculate Subtotal Neto Parcial
     const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
 
     // Calculate final net pay
-    return subtotalNetoParcial - totalOtrasDeducciones;
+    const neto = subtotalNetoParcial - totalOtrasDeduccionesManuales;
+
+    return { neto, totalDeducciones };
 };
 
 
@@ -331,7 +336,7 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const pageHeight = doc.internal.pageSize.height;
     const leftMargin = 14;
     const rightMargin = 14;
-    const signatureColumnWidth = 40; // Adjust width for signature column
+    const signatureColumnWidth = 35; // Reduced signature column width
     const firmaHeight = 15; // Height reserved for signature line/space
 
     // --- Header ---
@@ -345,35 +350,41 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     currentY += 15;
 
     // --- Table Setup ---
-    const head = [['Empleado', 'Sucursal', 'Periodo', 'Base', 'Recargos', 'Total', 'Firma']]; // Added Sucursal (Placeholder)
+    const head = [['Empleado', 'Periodo', 'T. Horas', 'Base', 'Recargos', 'Ded.', 'Total', 'Firma']]; // Added T. Horas, Ded., removed Sucursal
 
     let totalBase = 0;
     let totalRecargos = 0;
-    let totalGeneral = 0;
+    let totalDeduccionesGlobal = 0; // Total deductions
+    let totalGeneral = 0; // Total net pay
 
     const body = allPayrollData.map(payroll => {
-        const netoFinal = calculateNetoAPagar(payroll);
-        // Placeholders - Need to fetch actual Employee Name and Sucursal (Location Name)
+        const { neto: netoFinal, totalDeducciones } = calculateNetoYTotalDeducciones(payroll); // Use helper
+        // Placeholders - Need to fetch actual Employee Name
         const employeeName = `Colab. ${payroll.employeeId}`; // Placeholder name
-        // TODO: Fetch location name based on employee's primary location or shift data if available
-        const sucursalName = "Sede Principal"; // Placeholder sucursal
 
-        const periodoStr = `${format(payroll.periodStart, 'MMM yyyy', { locale: es })} ${payroll.periodStart.getDate()}-${payroll.periodEnd.getDate()}`;
+        const periodoStr = `${format(payroll.periodStart, 'd')} - ${format(payroll.periodEnd, 'd MMM', { locale: es })}`; // Shortened period
 
         const base = payroll.summary.salarioBaseQuincenal;
-        const recargos = payroll.summary.totalPagoRecargosExtrasQuincena + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) - (payroll.otrasDeduccionesLista || []).reduce((s,i)=>s+i.monto, 0); // Recargos + Adjustments
+        // Calculate 'Recargos' as extras + other income
+        const auxTransporteAplicado = payroll.incluyeAuxTransporte ? 100000 : 0;
+        const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((s, i) => s + i.monto, 0);
+        const recargos = payroll.summary.totalPagoRecargosExtrasQuincena + auxTransporteAplicado + totalOtrosIngresos; // Include transport and other income here
+
+        const totalHoras = payroll.summary.totalDuracionTrabajadaHorasQuincena;
         const totalRow = netoFinal; // Use calculated Neto Final
 
         totalBase += base;
         totalRecargos += recargos;
+        totalDeduccionesGlobal += totalDeducciones; // Accumulate total deductions
         totalGeneral += totalRow;
 
         return [
             employeeName,
-            sucursalName,
             periodoStr,
+            formatHours(totalHoras), // Format total hours
             formatCurrency(base),
             formatCurrency(recargos),
+            formatCurrency(totalDeducciones), // Display total deductions
             formatCurrency(totalRow),
             '', // Empty cell for signature space
         ];
@@ -384,7 +395,7 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         body: body,
         startY: currentY,
         theme: 'plain', // Use plain theme for minimal lines like the image
-        styles: { fontSize: 9, cellPadding: 2 },
+        styles: { fontSize: 8, cellPadding: 2 }, // Reduced font size
         headStyles: {
             fontStyle: 'bold',
             halign: 'left',
@@ -394,16 +405,17 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         },
         columnStyles: {
             0: { cellWidth: 'auto', halign: 'left' }, // Empleado
-            1: { cellWidth: 'auto', halign: 'left' }, // Sucursal
-            2: { cellWidth: 'auto', halign: 'left' }, // Periodo
+            1: { cellWidth: 'auto', halign: 'left' }, // Periodo
+            2: { halign: 'right' }, // T. Horas
             3: { halign: 'right' }, // Base
             4: { halign: 'right' }, // Recargos
-            5: { halign: 'right', fontStyle: 'bold' }, // Total
-            6: { cellWidth: signatureColumnWidth, minCellHeight: firmaHeight }, // Firma
+            5: { halign: 'right' }, // Ded.
+            6: { halign: 'right', fontStyle: 'bold' }, // Total
+            7: { cellWidth: signatureColumnWidth, minCellHeight: firmaHeight }, // Firma
         },
         didDrawCell: (data) => {
             // Add a line in the signature cell for signing
-            if (data.column.index === 6 && data.cell.section === 'body') {
+            if (data.column.index === 7 && data.cell.section === 'body') { // Index 7 is Firma now
                 const cell = data.cell;
                 const signatureLineY = cell.y + cell.height - 4; // Position line near bottom
                 const signatureLineXStart = cell.x + 2;
@@ -429,10 +441,11 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
          // Add Totals Row using foot option
          foot: [
              [
-                 { content: 'Totales:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
-                 { content: formatCurrency(totalBase), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
-                 { content: formatCurrency(totalRecargos), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
-                 { content: formatCurrency(totalGeneral), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+                 { content: 'Totales:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } }, // Span 3 columns
+                 { content: formatCurrency(totalBase), styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
+                 { content: formatCurrency(totalRecargos), styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
+                 { content: formatCurrency(totalDeduccionesGlobal), styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } }, // Show total deductions
+                 { content: formatCurrency(totalGeneral), styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
                  '' // Empty cell for signature column in footer
              ],
          ],
@@ -457,4 +470,6 @@ const parseTimeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
 };
+    
+
     
