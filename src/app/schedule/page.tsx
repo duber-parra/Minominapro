@@ -1139,13 +1139,13 @@ export default function SchedulePage() {
                                                             size="icon"
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                                             onClick={() => handleLoadTemplate(template.id)}
-                                                            title="Cargar Template (Aplicar a fecha actual)" // Changed from Formación
+                                                            title="Cargar Template (Aplicar a fecha actual)"
                                                         >
                                                             <Upload className="h-4 w-4" />
                                                         </Button>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button> {/* Changed from Formación */}
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
                                                             </AlertDialogTrigger>
                                                             {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                         </AlertDialog>
@@ -1202,16 +1202,16 @@ export default function SchedulePage() {
                     <DialogTrigger asChild>
                          {/* Button enabled in both views */}
                         <Button variant="outline" onClick={handleOpenTemplateModal}>
-                            <Download className="mr-2 h-4 w-4" /> Guardar como Template {/* Changed from Formación */}
+                            <Download className="mr-2 h-4 w-4" /> Guardar como Template
                         </Button>
                     </DialogTrigger>
                      <DialogContent>
                          <DialogHeader>
-                             <DialogTitle>Guardar Template</DialogTitle> {/* Changed from Formación */}
-                             <DialogDescription>Ingresa un nombre para este template (basado en el horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', {locale: es})}` : 'del primer día de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}).</DialogDescription> {/* Changed from Formación */}
+                             <DialogTitle>Guardar Template</DialogTitle>
+                             <DialogDescription>Ingresa un nombre para este template (basado en el horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', {locale: es})}` : 'del primer día de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}).</DialogDescription>
                          </DialogHeader>
                          <div className="py-4">
-                             <Label htmlFor="template-name">Nombre Template</Label> {/* Changed from Formación */}
+                             <Label htmlFor="template-name">Nombre Template</Label>
                              <Input
                                 id="template-name"
                                 value={templateName}
@@ -1223,7 +1223,7 @@ export default function SchedulePage() {
                             <DialogClose asChild>
                               <Button variant="outline">Cancelar</Button>
                             </DialogClose>
-                             <Button onClick={handleSaveTemplate}>Guardar Template</Button> {/* Changed from Formación */}
+                             <Button onClick={handleSaveTemplate}>Guardar Template</Button>
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
@@ -1427,4 +1427,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
