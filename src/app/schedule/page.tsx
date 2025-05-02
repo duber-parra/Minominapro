@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle } from 'lucide-react'; // Added icons
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown } from 'lucide-react'; // Added icons
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -41,6 +41,7 @@ import type { Location, Department, Employee, ShiftAssignment, ScheduleData } fr
 import { v4 as uuidv4 } from 'uuid';
 import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns'; // Import date-fns functions
 import { es } from 'date-fns/locale'; // Import Spanish locale
+import { cn } from '@/lib/utils'; // Import cn
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -102,6 +103,9 @@ export default function SchedulePage() {
     const [employeeFormData, setEmployeeFormData] = useState({ name: '', primaryLocationId: selectedLocationId });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null);
+
+    // State for configuration collapse
+    const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
 
 
     const weekDates = getWeekDates(currentDate);
@@ -362,6 +366,11 @@ export default function SchedulePage() {
         setCurrentDate(prevDate => addWeeks(prevDate, 1));
      };
 
+     // Toggle configuration panel collapse
+     const toggleConfigCollapse = () => {
+         setIsConfigCollapsed(!isConfigCollapsed);
+     };
+
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
@@ -399,15 +408,20 @@ export default function SchedulePage() {
              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Adjusted grid columns to 12 */}
 
-                     {/* --- Configuration & Available Employees (Takes 2/12 width on large screens) --- */}
-                     <div className="lg:col-span-2 space-y-6"> {/* Reduced to 2 columns */}
+                     {/* --- Configuration & Available Employees (Takes 2/12 width initially) --- */}
+                      <div className={cn("lg:col-span-2 space-y-6 transition-all duration-300", isConfigCollapsed && "lg:col-span-0 hidden lg:block")}> {/* Add conditional class */}
                          {/* Configuration Card */}
                          <Card className="shadow-md bg-card border border-border">
-                              <CardHeader className="pb-3 pt-4 px-4 border-b">
-                                 <CardTitle className="text-lg font-medium text-foreground">Configuración</CardTitle>
-                                 <CardDescription className="text-xs text-muted-foreground">Sedes, Deptos, Colaboradores</CardDescription>
+                              <CardHeader className="pb-3 pt-4 px-4 border-b flex flex-row justify-between items-center">
+                                 <div>
+                                     <CardTitle className="text-lg font-medium text-foreground">Configuración</CardTitle>
+                                     <CardDescription className="text-xs text-muted-foreground">Sedes, Deptos, Colaboradores</CardDescription>
+                                 </div>
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 lg:hidden" onClick={toggleConfigCollapse}> {/* Hide on lg+ */}
+                                      <ChevronsUpDown className="h-4 w-4" />
+                                  </Button>
                              </CardHeader>
-                             <CardContent className="px-4 py-4 space-y-4 text-sm">
+                              <CardContent className="px-4 py-4 space-y-4 text-sm">
                                  {/* Locations */}
                                  <div className="space-y-1">
                                      <div className="flex justify-between items-center">
@@ -493,8 +507,17 @@ export default function SchedulePage() {
 
                      </div>
 
-                     {/* --- Schedule View (Takes remaining space - 10/12 width) --- */}
-                     <div className={`lg:col-span-10`}> {/* Increased to 10 columns */}
+
+                      {/* --- Collapse/Expand Toggle Button (Visible only on lg+) --- */}
+                       <div className={cn("hidden lg:flex items-center justify-center", isConfigCollapsed && "lg:col-span-0")}>
+                           <Button variant="outline" size="icon" className="h-8 w-8" onClick={toggleConfigCollapse}>
+                               <ChevronsUpDown className="h-4 w-4" />
+                           </Button>
+                       </div>
+
+
+                     {/* --- Schedule View (Takes remaining space) --- */}
+                     <div className={cn("transition-all duration-300", isConfigCollapsed ? "lg:col-span-11" : "lg:col-span-10")}> {/* Adjust colspan */}
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
