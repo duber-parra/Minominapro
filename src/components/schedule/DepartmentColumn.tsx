@@ -16,7 +16,9 @@ interface DepartmentColumnProps {
   assignments: ShiftAssignment[];
   onRemoveShift: (departmentId: string, assignmentId: string) => void;
   date: Date; // Date for this column
-  onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for '+' button assignment
+  // Removed onAssign, replaced with onAddShiftRequest
+  // onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for '+' button assignment
+  onAddShiftRequest: (departmentId: string, date: Date) => void; // New handler for '+' button click to open modal
   isWeekView?: boolean; // Flag for potentially different rendering in week view
 }
 
@@ -25,7 +27,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   assignments,
   onRemoveShift,
   date,
-  onAssign,
+  // Removed onAssign from destructuring
+  onAddShiftRequest, // Destructure new handler
   isWeekView = false,
 }) => {
   const dateKey = format(date, 'yyyy-MM-dd');
@@ -66,6 +69,16 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
           ) : (
               <p className="text-[9px] text-muted-foreground text-center py-1 italic">Vacío</p> // Smaller text and padding
           )}
+           {/* Add + Button for Mobile/Tablet - Always visible at the bottom in week view */}
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1 md:hidden" // Center button, show only on mobile/tablet
+                onClick={() => onAddShiftRequest(department.id, date)} // Call new handler
+                title="Añadir Colaborador"
+            >
+                <Plus className="h-3 w-3" />
+            </Button>
       </div>
     ); // End of return statement for week view
   }
@@ -83,15 +96,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => {
-                // Placeholder action for Day View '+' click
-                // The current onAssign requires an Employee, which we don't have here.
-                // We need a mechanism to select an employee *after* clicking this button.
-                console.log(`(+) Clicked for Dept: ${department.name} (${department.id}) on Date: ${format(date, 'yyyy-MM-dd')}. Need to implement employee selection.`);
-                // Future: Trigger a modal or sidebar to select an employee, then call:
-                // onAssign(selectedEmployee, department.id, date);
-            }}
-            title="Añadir Colaborador (Selección pendiente)"
+            onClick={() => onAddShiftRequest(department.id, date)} // Call new handler
+            title="Añadir Colaborador"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -109,8 +115,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
           ))
         ) : (
           <p className="text-xs text-muted-foreground text-center pt-4 italic">
-            Arrastra un colaborador aquí
-          </p>
+            Arrastra o usa '+'
+          </p> // Updated placeholder text
         )}
         {/* </SortableContext> */}
       </CardContent>

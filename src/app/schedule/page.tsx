@@ -40,6 +40,7 @@ import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
+import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal'; // Import EmployeeSelectionModal
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
@@ -130,9 +131,12 @@ export default function SchedulePage() {
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({}); // Store data per date key "yyyy-MM-dd"
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week'); // Default to week view
     const [selectedLocationId, setSelectedLocationId] = useState<string>(initialLocations[0].id);
-    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-    const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false); // Shift details modal
+    // State for selecting employee via '+' button
+    const [isEmployeeSelectionModalOpen, setIsEmployeeSelectionModalOpen] = useState(false);
+    const [shiftRequestContext, setShiftRequestContext] = useState<{ departmentId: string; date: Date } | null>(null);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null); // Employee selected for the shift being added/edited
+    // const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null); // No longer needed, use shiftRequestContext
     const [editingShiftDetails, setEditingShiftDetails] = useState<{ assignmentId: string; details: any } | null>(null); // For edit workflow
     // Target date: Used specifically for DAY VIEW and for MODALS (shift add/edit, template load)
     const [targetDate, setTargetDate] = useState<Date>(new Date());
@@ -246,10 +250,12 @@ export default function SchedulePage() {
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
     const filteredTemplates = useMemo(() => savedTemplates.filter(temp => temp.locationId === selectedLocationId), [savedTemplates, selectedLocationId]); // Filter templates by location
 
-    // Derived state for available employees (considering view mode)
+    // Derived state for available employees (considering view mode and date)
     const assignedEmployeeIdsForTargetDate = useMemo(() => {
         const ids = new Set<string>();
-        const dateKey = format(targetDate, 'yyyy-MM-dd');
+         // Determine the date to check based on context
+        const dateToCheck = shiftRequestContext?.date || targetDate; // Use context date if available, else targetDate
+        const dateKey = format(dateToCheck, 'yyyy-MM-dd');
         const daySchedule = scheduleData[dateKey];
         if (daySchedule) {
             Object.values(daySchedule.assignments).forEach(deptAssignments => {
@@ -257,18 +263,14 @@ export default function SchedulePage() {
             });
         }
         return ids;
-    }, [scheduleData, targetDate]); // Depends only on schedule and the specific target date
+        // Re-calculate when schedule changes, or when the context/target date changes
+    }, [scheduleData, targetDate, shiftRequestContext]);
 
 
     const availableEmployees = useMemo(() => {
-        // Only filter out assigned employees in 'day' view
-        if (viewMode === 'day') {
-            return filteredEmployees.filter(emp => !assignedEmployeeIdsForTargetDate.has(emp.id));
-        } else {
-            // In 'week' view, the available list shows all employees for the location
-            return filteredEmployees;
-        }
-    }, [filteredEmployees, assignedEmployeeIdsForTargetDate, viewMode]);
+        // Always filter out assigned employees for the *specific date* being considered (targetDate or shiftRequestContext.date)
+        return filteredEmployees.filter(emp => !assignedEmployeeIdsForTargetDate.has(emp.id));
+    }, [filteredEmployees, assignedEmployeeIdsForTargetDate]);
 
 
     useEffect(() => {
@@ -281,18 +283,35 @@ export default function SchedulePage() {
         setSelectedLocationId(locationId);
     };
 
+    // Handler to open Employee Selection Modal when '+' is clicked
+    const handleOpenEmployeeSelectionModal = (departmentId: string, date: Date) => {
+         setShiftRequestContext({ departmentId, date }); // Store the context
+         setIsEmployeeSelectionModalOpen(true); // Open the selection modal
+    };
 
-    const handleOpenShiftModal = (employee: Employee, departmentId: string, date: Date) => {
+    // Handler when an employee is selected from the EmployeeSelectionModal
+    const handleEmployeeSelectedForShift = (employee: Employee) => {
+        if (!shiftRequestContext) return;
+        setSelectedEmployee(employee); // Set the selected employee
+        setIsEmployeeSelectionModalOpen(false); // Close selection modal
+        setIsShiftModalOpen(true); // Open the shift detail modal
+    };
+
+    // Handler for Drag & Drop assignment
+    const handleOpenShiftModalForDrop = (employee: Employee, departmentId: string, date: Date) => {
         setSelectedEmployee(employee);
-        setSelectedDepartmentId(departmentId);
-        setTargetDate(date); // Set the date for which the shift is being added/edited
+        // Set context for consistency, even though we already have the employee
+        setShiftRequestContext({ departmentId, date });
         setIsShiftModalOpen(true);
     };
 
-    const handleAddShift = (details: any) => {
-        if (!selectedEmployee || !selectedDepartmentId) return;
 
-        const dateKey = format(targetDate, 'yyyy-MM-dd');
+    const handleAddShift = (details: any) => {
+        // Use selectedEmployee and shiftRequestContext instead of selectedDepartmentId/targetDate
+        if (!selectedEmployee || !shiftRequestContext) return;
+
+        const { departmentId, date } = shiftRequestContext;
+        const dateKey = format(date, 'yyyy-MM-dd');
 
         const newAssignment: ShiftAssignment = {
             id: uuidv4(),
@@ -305,23 +324,23 @@ export default function SchedulePage() {
         };
 
         setScheduleData(prevData => {
-            const dayData = prevData[dateKey] || { date: targetDate, assignments: {} };
-            const departmentAssignments = dayData.assignments[selectedDepartmentId!] || [];
+            const dayData = prevData[dateKey] || { date: date, assignments: {} };
+            const departmentAssignments = dayData.assignments[departmentId] || [];
             return {
                 ...prevData,
                 [dateKey]: {
                     ...dayData,
                     assignments: {
                         ...dayData.assignments,
-                        [selectedDepartmentId!]: [...departmentAssignments, newAssignment],
+                        [departmentId]: [...departmentAssignments, newAssignment],
                     },
                 },
             };
         });
+        // Reset state after saving
         setIsShiftModalOpen(false);
-        // Don't clear selection immediately, let useEffect handle filtering based on viewMode and date
-        // setSelectedEmployee(null);
-        // setSelectedDepartmentId(null);
+        setSelectedEmployee(null);
+        setShiftRequestContext(null);
     };
 
     const handleRemoveShift = (dateKey: string, departmentId: string, assignmentId: string) => {
@@ -353,7 +372,7 @@ export default function SchedulePage() {
     const handleDragEnd = (event: DragEndEvent) => {
         const { over, active } = event;
 
-        if (!over || !active) return;
+        if (!over || !active || isMobile) return; // Ignore drag on mobile
 
         const employeeId = active.id as string;
         const targetData = over.data.current as { type: string; id: string; date?: string }; // Expecting { type: 'department', id: 'dept-id', date: 'yyyy-MM-dd' }
@@ -388,7 +407,7 @@ export default function SchedulePage() {
         // --- End Check ---
 
         // If not already assigned on this date, proceed to open modal
-        handleOpenShiftModal(employee, departmentId, dropDate);
+        handleOpenShiftModalForDrop(employee, departmentId, dropDate);
     };
 
     // CRUD Handlers
@@ -971,7 +990,7 @@ export default function SchedulePage() {
                             viewMode={viewMode}
                             weekDates={weekDates} // Pass week dates
                             currentDate={targetDate} // Pass target date for single day view
-                            onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
+                            onAddShiftRequest={handleOpenEmployeeSelectionModal} // Pass the handler to open employee selection
                             getScheduleForDate={getScheduleForDate} // Pass helper function
                             onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
                             onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
@@ -1072,13 +1091,27 @@ export default function SchedulePage() {
                 </DialogContent>
             </Dialog>
 
+             {/* Employee Selection Modal */}
+             <EmployeeSelectionModal
+                 isOpen={isEmployeeSelectionModalOpen}
+                 onClose={() => setIsEmployeeSelectionModalOpen(false)}
+                 employees={availableEmployees} // Pass only available employees for the specific date/dept context
+                 onSelectEmployee={handleEmployeeSelectedForShift}
+                 departmentName={departments.find(d => d.id === shiftRequestContext?.departmentId)?.name || ''}
+                 date={shiftRequestContext?.date || new Date()} // Pass the date from context
+             />
+
              {/* Shift Detail Modal */}
              <ShiftDetailModal
                  isOpen={isShiftModalOpen}
-                 onClose={() => setIsShiftModalOpen(false)}
+                 onClose={() => {
+                     setIsShiftModalOpen(false);
+                     setSelectedEmployee(null); // Clear selected employee when closing detail modal
+                     setShiftRequestContext(null); // Clear context
+                 }}
                  onSave={handleAddShift}
                  employeeName={selectedEmployee?.name || ''}
-                 departmentName={departments.find(d => d.id === selectedDepartmentId)?.name || ''}
+                 departmentName={departments.find(d => d.id === shiftRequestContext?.departmentId)?.name || ''}
                  initialDetails={editingShiftDetails?.details}
              />
 

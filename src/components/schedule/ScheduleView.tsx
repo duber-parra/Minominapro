@@ -16,7 +16,9 @@ interface ScheduleViewProps {
   viewMode: 'day' | 'week';
   weekDates: Date[];
   currentDate: Date; // For day view
-  onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for adding shift via button
+  // Removed onAssign, replaced with onAddShiftRequest
+  // onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for adding shift via button
+  onAddShiftRequest: (departmentId: string, date: Date) => void; // New handler for '+' button click
   getScheduleForDate: (date: Date) => ScheduleData; // Function to get schedule for a specific date
   onDuplicateDay: (sourceDate: Date) => void; // Add prop for duplicating a day's schedule
   onClearDay: (dateToClear: Date) => void; // Add prop for clearing a day's schedule
@@ -30,7 +32,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     viewMode,
     weekDates,
     currentDate,
-    onAssign,
+    // Removed onAssign from destructuring
+    onAddShiftRequest, // Destructure new handler
     getScheduleForDate, // Receive helper function
     onDuplicateDay, // Receive duplicate handler
     onClearDay, // Receive clear handler
@@ -68,7 +71,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                     assignments={daySchedule.assignments[department.id] || []}
                                     onRemoveShift={(deptId, assignId) => onRemoveShift(format(currentDate, 'yyyy-MM-dd'), deptId, assignId)}
                                     date={currentDate} // Pass the date
-                                    onAssign={onAssign} // Pass assign handler
+                                    onAddShiftRequest={onAddShiftRequest} // Pass new assign handler
                                 />
                             ))}
                         </div>
@@ -146,23 +149,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                              {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
                                              <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
                                         </h4>
-                                        {/* Add + Button for Mobile/Tablet */}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary absolute top-1 right-1 md:hidden" // Position top-right, hide on md and up
-                                            onClick={() => {
-                                                console.log(`Add clicked for Dept: ${department.name} (${department.id}) on Date: ${format(date, 'yyyy-MM-dd')}`);
-                                                // TODO: Implement employee selection mechanism here before calling onAssign
-                                                // Example placeholder:
-                                                // openEmployeeSelectionModal(department.id, date);
-                                                // In the modal selection, then call:
-                                                // onAssign(selectedEmployee, department.id, date);
-                                            }}
-                                            title="Añadir Colaborador"
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                        </Button>
+                                         {/* Add + Button for Mobile/Tablet - Moved to DepartmentColumn */}
                                     </div>
                                     <DepartmentColumn
                                         department={department}
@@ -170,7 +157,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                         onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
                                         isWeekView // Indicate week view for potentially different rendering
                                         date={date}
-                                        onAssign={onAssign} // Pass assign handler (primarily for DND drop)
+                                        onAddShiftRequest={onAddShiftRequest} // Pass new assign handler
                                     />
                                 </div>
                             ))
