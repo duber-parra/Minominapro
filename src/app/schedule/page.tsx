@@ -426,19 +426,19 @@ export default function SchedulePage() {
         }
     };
 
-    const handleDuplicateToNextDay = () => {
-         const currentDayKey = format(targetDate, 'yyyy-MM-dd');
-         const nextDayDate = addDays(targetDate, 1);
+     const handleDuplicateDay = (sourceDate: Date) => {
+         const sourceDayKey = format(sourceDate, 'yyyy-MM-dd');
+         const nextDayDate = addDays(sourceDate, 1);
          const nextDayKey = format(nextDayDate, 'yyyy-MM-dd');
-         const currentSchedule = scheduleData[currentDayKey];
+         const sourceSchedule = scheduleData[sourceDayKey];
 
-         if (!currentSchedule || Object.keys(currentSchedule.assignments).length === 0) {
-             toast({ title: 'Nada que Duplicar', description: `No hay turnos asignados para el ${format(targetDate, 'PPP', { locale: es })}.`, variant: 'destructive' });
+         if (!sourceSchedule || Object.keys(sourceSchedule.assignments).length === 0) {
+             toast({ title: 'Nada que Duplicar', description: `No hay turnos asignados para el ${format(sourceDate, 'PPP', { locale: es })}.`, variant: 'destructive' });
              return;
          }
 
          // Deep copy assignments to avoid reference issues
-         const duplicatedAssignments = JSON.parse(JSON.stringify(currentSchedule.assignments));
+         const duplicatedAssignments = JSON.parse(JSON.stringify(sourceSchedule.assignments));
          // Regenerate unique IDs for duplicated assignments
          Object.keys(duplicatedAssignments).forEach(deptId => {
              duplicatedAssignments[deptId].forEach((assign: ShiftAssignment) => {
@@ -461,7 +461,7 @@ export default function SchedulePage() {
              setCurrentDate(nextDayDate); // Ensure week navigator updates if view changes
          }
 
-         toast({ title: 'Horario Duplicado', description: `El horario del ${format(targetDate, 'dd/MM')} se duplicó al ${format(nextDayDate, 'dd/MM')}.` });
+         toast({ title: 'Horario Duplicado', description: `El horario del ${format(sourceDate, 'dd/MM')} se duplicó al ${format(nextDayDate, 'dd/MM')}.` });
      };
 
      const handleOpenTemplateModal = () => {
@@ -688,7 +688,7 @@ export default function SchedulePage() {
                  <Button onClick={handleSaveSchedule} variant="outline">
                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
-                 <Button onClick={handleDuplicateToNextDay} variant="outline" disabled={viewMode !== 'day'}>
+                 <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline" disabled={viewMode !== 'day'}>
                      <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
                  </Button>
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
@@ -747,6 +747,7 @@ export default function SchedulePage() {
                             currentDate={targetDate} // Pass target date for single day view or start of week
                             onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
                             getScheduleForDate={getScheduleForDate} // Pass helper function
+                            onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
                         />
                      </div>
                  </div>
