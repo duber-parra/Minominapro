@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef } from 'react';
@@ -176,6 +175,32 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
        if (dateDiff !== 0) return dateDiff;
        return a.employeeId.localeCompare(b.employeeId);
     });
+};
+
+
+// Helper function to parse CSV content
+// Expected Headers: ID_Empleado, Fecha, Hora_Inicio, Hora_Fin, Incluye_Descanso, Inicio_Descanso, Fin_Descanso
+// Note: This is a basic parser and might need adjustments based on CSV specifics (e.g., quotes, different delimiters)
+const parseCSV = (content: string): Record<string, string>[] => {
+    const rows = content.trim().split('\n');
+    if (rows.length < 2) return []; // Need header + at least one data row
+
+    const headers = rows[0].split(',').map(h => h.trim());
+    const data = [];
+
+    for (let i = 1; i < rows.length; i++) {
+        const values = rows[i].split(',').map(v => v.trim());
+        if (values.length === headers.length) {
+            const rowObject: Record<string, string> = {};
+            headers.forEach((header, index) => {
+                rowObject[header] = values[index];
+            });
+            data.push(rowObject);
+        } else {
+            console.warn(`Skipping CSV row ${i + 1}: Mismatched number of columns.`);
+        }
+    }
+    return data;
 };
 
 
@@ -490,20 +515,17 @@ export default function Home() {
 
         try {
             const fileContent = await file.text();
-            // Placeholder for CSV parsing logic (e.g., using papaparse or similar)
-            console.log('CSV Content:', fileContent);
-            // 1. Parse CSV content
-            // 2. Identify rows matching the current employeeId and within the payPeriod
-            // 3. Map rows to WorkdayFormValues
-            // 4. Loop through mapped values and call calculateSingleWorkday
-            // 5. Merge results with setCalculatedDays
+            const parsedData = parseCSV(fileContent); // Use the CSV parser
 
-            // Example Placeholder Logic (replace with actual parsing and calculation)
-            // const parsedData = parseCSV(fileContent); // Assume parseCSV function exists
-            const parsedData = [ // Dummy data - replace with actual parsed CSV
-                 { ID_Empleado: '101', Fecha: '2025-04-16', Hora_Inicio: '08:00', Hora_Fin: '17:00', Incluye_Descanso: 'Sí', Inicio_Descanso: '12:00', Fin_Descanso: '13:00' },
-                 { ID_Empleado: '101', Fecha: '2025-04-17', Hora_Inicio: '14:00', Hora_Fin: '23:00', Incluye_Descanso: 'No', Inicio_Descanso: '', Fin_Descanso: '' }
-            ];
+            if (parsedData.length === 0) {
+                toast({
+                    title: 'Archivo CSV Vacío o Inválido',
+                    description: 'No se encontraron datos válidos en el archivo CSV.',
+                    variant: 'destructive',
+                });
+                setIsImporting(false);
+                return;
+            }
 
             let importedCount = 0;
             let skippedCount = 0;
@@ -511,15 +533,51 @@ export default function Home() {
             const newCalculatedDays: CalculationResults[] = [];
 
             for (const row of parsedData) {
-                if (row.ID_Empleado !== employeeId) continue; // Skip rows for other employees
+                // Validate row existence and required fields
+                if (!row || !row.ID_Empleado || !row.Fecha || !row.Hora_Inicio || !row.Hora_Fin) {
+                    console.warn('Skipping invalid CSV row:', row);
+                    errorCount++; // Consider this an error or skip
+                    continue;
+                }
 
-                const shiftDate = parseDateFns(row.Fecha, 'yyyy-MM-dd', new Date());
+                if (row.ID_Empleado !== employeeId) {
+                    // console.log(`Skipping row for employee ${row.ID_Empleado}, current is ${employeeId}`);
+                    skippedCount++; // Count skipped rows for other employees
+                    continue; // Skip rows for other employees
+                }
+
+                let shiftDate: Date;
+                try {
+                    // Attempt to parse the date, handle potential errors
+                    shiftDate = parseDateFns(row.Fecha, 'yyyy-MM-dd', new Date());
+                    if (!isValid(shiftDate)) {
+                        throw new Error(`Invalid date format: ${row.Fecha}`);
+                    }
+                } catch (dateError) {
+                    console.error(`Error parsing date from CSV for row:`, row, dateError);
+                    errorCount++;
+                    toast({
+                        title: `Error Fecha CSV Inválida (${row.Fecha || '??'})`,
+                        description: 'El formato de la fecha en el CSV no es válido (AAAA-MM-DD).',
+                        variant: 'destructive',
+                        duration: 5000
+                    });
+                    continue; // Skip this row
+                }
+
 
                  // Skip if outside pay period or already calculated
-                if (!isWithinInterval(shiftDate, { start: payPeriodStart, end: payPeriodEnd }) || isDateCalculated(shiftDate)) {
+                if (!isWithinInterval(shiftDate, { start: payPeriodStart, end: payPeriodEnd })) {
+                     console.log(`Skipping row: Date ${format(shiftDate, 'yyyy-MM-dd')} is outside the selected period.`);
                     skippedCount++;
                     continue;
                 }
+                 if (isDateCalculated(shiftDate)) {
+                    console.log(`Skipping row: Date ${format(shiftDate, 'yyyy-MM-dd')} is already calculated.`);
+                    skippedCount++;
+                    continue;
+                 }
+
 
                 // Convert CSV row to WorkdayFormValues
                 const shiftValues: WorkdayFormValues = {
@@ -528,9 +586,10 @@ export default function Home() {
                     endTime: row.Hora_Fin,     // Assuming HH:mm format in CSV
                     // Calculate endsNextDay based on times
                     endsNextDay: parseInt(row.Hora_Fin.split(':')[0]) < parseInt(row.Hora_Inicio.split(':')[0]),
-                    includeBreak: row.Incluye_Descanso === 'Sí',
-                    breakStartTime: row.Incluye_Descanso === 'Sí' ? row.Inicio_Descanso : undefined,
-                    breakEndTime: row.Incluye_Descanso === 'Sí' ? row.Fin_Descanso : undefined,
+                    // Normalize 'Sí'/'No' to boolean for includeBreak
+                    includeBreak: row.Incluye_Descanso?.toLowerCase() === 'sí' || row.Incluye_Descanso?.toLowerCase() === 'si',
+                    breakStartTime: (row.Incluye_Descanso?.toLowerCase() === 'sí' || row.Incluye_Descanso?.toLowerCase() === 'si') ? row.Inicio_Descanso : undefined,
+                    breakEndTime: (row.Incluye_Descanso?.toLowerCase() === 'sí' || row.Incluye_Descanso?.toLowerCase() === 'si') ? row.Fin_Descanso : undefined,
                 };
 
                  // Validate shiftValues using Zod schema before calculating
@@ -574,14 +633,14 @@ export default function Home() {
              );
 
             // Show summary toast
-             let toastDescription = `${importedCount} turno(s) importado(s) de CSV y calculado(s).`;
-             if (skippedCount > 0) toastDescription += ` ${skippedCount} día(s) omitido(s) (fuera de período o ya calculado).`;
-             if (errorCount > 0) toastDescription += ` ${errorCount} error(es) al calcular o validar.`;
+             let toastDescription = `${importedCount} turno(s) importado(s) de CSV y calculado(s) para ${employeeId}.`;
+             if (skippedCount > 0) toastDescription += ` ${skippedCount} día(s) omitido(s) (otro colab., fuera de período o ya calculado).`;
+             if (errorCount > 0) toastDescription += ` ${errorCount} error(es) al procesar CSV.`;
 
             toast({
                 title: 'Importación de CSV Completa',
                 description: toastDescription,
-                variant: errorCount > 0 ? 'destructive' : 'default',
+                variant: errorCount > 0 ? 'destructive' : (importedCount === 0 ? 'destructive' : 'default'), // Destructive if errors or 0 imported
                 duration: 7000
             });
 
@@ -600,7 +659,7 @@ export default function Home() {
                  fileInputRef.current.value = '';
              }
         }
-    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays, formSchema]);
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]);
 
     // Trigger file input click
     const triggerFileInput = () => {
@@ -1770,5 +1829,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
