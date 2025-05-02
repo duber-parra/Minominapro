@@ -39,17 +39,18 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   const style = {
     // Highlight when dragging over
     backgroundColor: isOver ? 'hsl(var(--accent)/0.1)' : undefined,
-    borderColor: isOver ? 'hsl(var(--accent))' : undefined,
-    borderWidth: isOver ? '1px' : '1px', // Use 1px border always
+    borderColor: isOver ? 'hsl(var(--accent))' : (isWeekView ? 'hsl(var(--border) / 0.3)' : undefined), // Lighter border in week view normal state
+    borderWidth: '1px', // Use 1px border always
     borderStyle: isOver ? 'dashed' : 'solid',
-    minHeight: isWeekView ? '100px' : '200px', // Shorter min-height for week view
+    minHeight: isWeekView ? '60px' : '200px', // Shorter min-height for week view
     transition: 'background-color 0.2s ease, border-color 0.2s ease', // Smooth transition
+    borderRadius: isWeekView ? '0.375rem' : undefined, // Add rounding in week view
   };
 
   // Simplified rendering for week view
   if (isWeekView) {
     return (
-      <div ref={setNodeRef} style={style} className="p-1 space-y-1 rounded-md border border-border/50 bg-background">
+      <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
           {assignments.length > 0 ? (
               assignments.map((assignment) => (
                   <ShiftCard
@@ -60,7 +61,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
                   />
               ))
           ) : (
-              <p className="text-[10px] text-muted-foreground text-center py-2 italic">Vacío</p>
+              <p className="text-[9px] text-muted-foreground text-center py-1 italic">Vacío</p> {/* Smaller text and padding */}
           )}
       </div>
     );

@@ -29,20 +29,21 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
      >
        <CardContent className={cn(
            "flex items-center justify-between",
-           isCompact ? "p-1" : "p-3" // Smaller padding if compact
+           isCompact ? "p-0.5" : "p-3" // Smaller padding if compact
        )}>
-         <div className="flex-grow min-w-0">
+         <div className="flex-grow min-w-0 overflow-hidden mr-1"> {/* Allow shrinking and hide overflow, add margin */}
              <p className={cn(
                  "font-medium truncate",
-                 isCompact ? "text-[11px]" : "text-sm" // Smaller text if compact
-             )}>{assignment.employee.name}</p>
+                 isCompact ? "text-[10px]" : "text-sm" // Smaller text if compact
+             )} title={assignment.employee.name}>{assignment.employee.name}</p>
              <p className={cn(
-                 "text-muted-foreground flex items-center gap-1",
-                 isCompact ? "text-[10px]" : "text-xs" // Smaller text if compact
+                 "text-muted-foreground flex items-center gap-0.5", // Reduced gap
+                 isCompact ? "text-[9px]" : "text-xs" // Smaller text if compact
              )}>
-                 <Clock className={cn(isCompact ? "h-2.5 w-2.5" : "h-3 w-3")} />
-                 {assignment.startTime}-{assignment.endTime}
-                 {assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime && !isCompact && ( // Hide break details in compact
+                 <Clock className={cn("flex-shrink-0", isCompact ? "h-2 w-2" : "h-3 w-3")} /> {/* Smaller icon, prevent shrink */}
+                 <span className="whitespace-nowrap">{assignment.startTime}-{assignment.endTime}</span> {/* Prevent time wrap */}
+                 {/* Break details hidden in compact view */}
+                 {assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime && !isCompact && (
                     <span className="ml-1">(D: {assignment.breakStartTime}-{assignment.breakEndTime})</span>
                  )}
              </p>
@@ -51,12 +52,12 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
              variant="ghost"
              size="icon"
              className={cn(
-                 "text-destructive ml-1 flex-shrink-0", // Use ml-1 instead of ml-2
-                 isCompact ? "h-5 w-5" : "h-7 w-7" // Smaller button if compact
+                 "text-destructive flex-shrink-0", // Use ml-1 instead of ml-2
+                 isCompact ? "h-4 w-4" : "h-7 w-7" // Smaller button if compact
              )}
              onClick={onRemove}
           >
-           <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} /> {/* Smaller icon if compact */}
+           <Trash2 className={cn(isCompact ? "h-2.5 w-2.5" : "h-4 w-4")} /> {/* Smaller icon if compact */}
          </Button>
        </CardContent>
      </Card>

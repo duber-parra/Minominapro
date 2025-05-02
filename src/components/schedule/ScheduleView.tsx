@@ -75,29 +75,26 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             const dateKey = format(date, 'yyyy-MM-dd');
             const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
 
+            // Card represents a single day column in the week view
             return (
-                <Card key={dateKey} className="shadow-md bg-card border border-border min-w-[260px] flex flex-col"> {/* Reduced min-w */}
-                    <CardHeader className="pb-3 pt-4 px-4 border-b">
-                        <CardTitle className="text-base font-medium text-foreground text-center">
-                            {format(date, 'EEE d', { locale: es })}
+                <Card key={dateKey} className="shadow-sm bg-card border border-border/50 flex flex-col"> {/* Reduced shadow, lighter border */}
+                    <CardHeader className="pb-2 pt-3 px-3 border-b"> {/* Reduced padding */}
+                        <CardTitle className="text-sm font-medium text-foreground text-center whitespace-nowrap"> {/* Reduced size, nowrap */}
+                            {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
                         </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground text-center">
-                            {format(date, 'MMMM', { locale: es })} ({totalAssignmentsForDay} turnos)
+                        <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Smaller description */}
+                            {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-3 space-y-3 flex-grow overflow-y-auto">
+                    <CardContent className="p-1.5 space-y-2 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
                         {departments.length > 0 ? (
                             departments.map((department) => (
-                                <div key={department.id} className="border rounded-md p-2 bg-muted/20">
+                                <div key={department.id} className="border rounded-md p-1.5 bg-muted/10"> {/* Reduced padding, lighter bg */}
                                     <div className="flex justify-between items-center mb-1">
-                                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                             {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />}
-                                             {department.name}
+                                        <h4 className="text-[11px] font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis"> {/* Smaller title, ellipsis */}
+                                             {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
+                                             <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
                                         </h4>
-                                         {/* Add shift button - potentially simplified view for week */}
-                                         {/* <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAssign( /* needs employee info* / , department.id, date)}>
-                                             <Plus className="h-3 w-3" />
-                                         </Button> */}
                                     </div>
                                     <DepartmentColumn
                                         department={department}
@@ -110,8 +107,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                 </div>
                             ))
                          ) : (
-                              <p className="text-center text-xs text-muted-foreground italic pt-4">
-                                  No hay departamentos.
+                              <p className="text-center text-xs text-muted-foreground italic pt-2"> {/* Smaller padding */}
+                                  No hay deptos.
                               </p>
                          )}
                     </CardContent>
@@ -119,12 +116,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             );
          });
 
-         // Then return the container div rendering the mapped content
+         // Use CSS Grid for the container to manage column widths
          return (
-            <div className="flex space-x-3 overflow-x-auto pb-4"> {/* Reduced space-x */}
+            <div className="grid grid-cols-7 gap-2 w-full"> {/* Grid with 7 columns and smaller gap */}
                 {weekViewContent}
             </div>
         );
     }
 };
-
