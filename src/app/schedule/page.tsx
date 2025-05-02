@@ -1375,15 +1375,16 @@ export default function SchedulePage() {
 
               {/* Main content grid */}
              <DndWrapper> {/* Conditionally wrap with DndContext */}
+                 {/* Adjusted grid layout: 2 columns for employees, 10 for schedule on large screens */}
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                     {/* --- Available Employees (Takes 2/12 width) --- */}
+                     {/* --- Available Employees (Takes 2/12 width on lg) --- */}
                       <div className="lg:col-span-2 space-y-6">
                           <EmployeeList employees={availableEmployees} />
                      </div>
 
 
-                     {/* --- Schedule View (Takes remaining 10/12 width) --- */}
+                     {/* --- Schedule View (Takes remaining 10/12 width on lg) --- */}
                      <div className="lg:col-span-10">
                         <ScheduleView
                             departments={filteredDepartments}
