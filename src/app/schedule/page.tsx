@@ -1092,56 +1092,59 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
-             <div className="flex justify-between items-center mb-6 gap-4 flex-wrap"> {/* Added flex-wrap */}
-                 <h1 className="text-2xl md:text-3xl font-bold text-foreground flex-shrink-0 mr-auto">Planificador de Horarios</h1> {/* Responsive title size */}
-                 {/* --- Day View Date Selector --- */}
-                 {viewMode === 'day' && (
-                    <div className="order-1 md:order-none">
-                         <Popover>
-                             <PopoverTrigger asChild>
-                                 <Button
-                                     variant={'outline'}
-                                     className={cn(
-                                         'w-[280px] justify-start text-left font-normal',
-                                         !targetDate && 'text-muted-foreground',
-                                         isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday
-                                     )}
-                                      disabled={isCheckingHoliday} // Disable while checking holiday
-                                 >
-                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                     {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                     {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
-                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
-                                 </Button>
-                             </PopoverTrigger>
-                             <PopoverContent className="w-auto p-0">
-                                 <Calendar
-                                     mode="single"
-                                     selected={targetDate}
-                                     onSelect={(date) => { if (date) setTargetDate(date) }} // Update targetDate for day view
-                                     initialFocus
-                                     locale={es}
-                                     modifiers={{ holiday: (date) => isHoliday(date) }}
-                                     modifiersClassNames={{
-                                         holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
-                                     }}
-                                 />
-                             </PopoverContent>
-                         </Popover>
-                    </div>
-                 )}
-                 {/* --- Week View Navigator --- */}
-                 {viewMode === 'week' && (
-                     <div className="flex items-center gap-4 order-1 md:order-none"> {/* Center navigation */}
+             <div className="flex flex-wrap md:flex-nowrap justify-between items-center mb-6 gap-4"> {/* flex-wrap for mobile, flex-nowrap for larger */}
+                 <h1 className="text-2xl md:text-3xl font-bold text-foreground flex-shrink-0 order-1 md:order-none mr-auto">Planificador de Horarios</h1> {/* Responsive title size, adjust order */}
+
+                 {/* --- Central Controls (Week/Day View) --- */}
+                 <div className="flex justify-center items-center gap-4 order-3 md:order-none w-full md:w-auto mt-4 md:mt-0"> {/* Center on mobile, order-3 */}
+                     {/* --- Day View Date Selector --- */}
+                     {viewMode === 'day' && (
+                         <div >
+                              <Popover>
+                                  <PopoverTrigger asChild>
+                                      <Button
+                                          variant={'outline'}
+                                          className={cn(
+                                              'w-[280px] justify-start text-left font-normal',
+                                              !targetDate && 'text-muted-foreground',
+                                              isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday
+                                          )}
+                                           disabled={isCheckingHoliday} // Disable while checking holiday
+                                      >
+                                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" /> {/* Style CalendarIcon */}
+                                          {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                          {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
+                                          {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
+                                      </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0">
+                                      <Calendar
+                                          mode="single"
+                                          selected={targetDate}
+                                          onSelect={(date) => { if (date) setTargetDate(date) }} // Update targetDate for day view
+                                          initialFocus
+                                          locale={es}
+                                          modifiers={{ holiday: (date) => isHoliday(date) }}
+                                          modifiersClassNames={{
+                                              holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
+                                          }}
+                                      />
+                                  </PopoverContent>
+                              </Popover>
+                         </div>
+                      )}
+                     {/* --- Week View Navigator --- */}
+                     {viewMode === 'week' && (
                          <WeekNavigator
                              currentDate={currentDate}
                              onPreviousWeek={handlePreviousWeek}
                              onNextWeek={handleNextWeek}
                          />
-                     </div>
-                 )}
+                     )}
+                 </div>
 
-                 <div className="flex items-center gap-2 flex-shrink-0 order-last"> {/* Ensure controls are on the right */}
+                 {/* --- Right Controls (Config, View Mode, Location) --- */}
+                 <div className="flex items-center gap-2 flex-shrink-0 order-2 md:order-last"> {/* Order-2 on mobile */}
                      {/* Configuration Button */}
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
@@ -1371,7 +1374,7 @@ export default function SchedulePage() {
                             weekDates={weekDates} // Pass week dates
                             currentDate={targetDate} // Pass target date for single day view
                             onAddShiftRequest={handleOpenEmployeeSelectionModal} // Pass the handler to open employee selection
-                            onShiftClick={handleShiftClick} // Pass the handler for clicking a shift
+                            onShiftClick={handleShiftClick} // Pass the handler for clicking a shift card
                             getScheduleForDate={getScheduleForDate} // Pass helper function
                             onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
                             onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
@@ -1540,4 +1543,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
