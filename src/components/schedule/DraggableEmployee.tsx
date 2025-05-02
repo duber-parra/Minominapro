@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { GripVertical } from 'lucide-react';
 import type { Employee } from '@/types/schedule'; // Assuming type exists
+import { cn } from '@/lib/utils'; // Import cn
 
 interface DraggableEmployeeProps {
   employee: Employee;
@@ -40,7 +41,7 @@ export const DraggableEmployee: React.FC<DraggableEmployeeProps> = ({ employee }
         className="w-full flex items-center justify-between p-2 bg-card hover:bg-muted/50 opacity-50 cursor-wait" // Indicate loading/placeholder state
         disabled
       >
-        <span>{employee.name}</span>
+        <span className="truncate">{employee.name}</span> {/* Add truncate here */}
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </Button>
     );
@@ -55,7 +56,7 @@ export const DraggableEmployee: React.FC<DraggableEmployeeProps> = ({ employee }
       {...listeners}
       {...attributes}
     >
-      <span>{employee.name}</span>
+      <span className="truncate">{employee.name}</span> {/* Add truncate here */}
       <GripVertical className="h-4 w-4 text-muted-foreground" />
     </Button>
   );

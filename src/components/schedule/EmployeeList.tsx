@@ -13,8 +13,8 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
   return (
     <Card className="h-full"> {/* Allow card to take full height */}
       <CardHeader>
-         <CardTitle className="text-lg font-medium flex items-center gap-2">
-             <Users className="h-5 w-5 text-muted-foreground" />
+         <CardTitle className="text-lg font-medium flex items-center gap-2 truncate"> {/* Add truncate here */}
+             <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Prevent icon shrink */}
              Colaboradores Disponibles ({employees.length})
          </CardTitle>
       </CardHeader>
@@ -32,5 +32,3 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
     </Card>
   );
 };
-
-    
