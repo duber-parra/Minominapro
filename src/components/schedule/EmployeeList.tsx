@@ -18,12 +18,15 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
     setIsClient(true);
   }, []);
 
+  // Calculate count only on client
+  const employeeCount = isClient ? employees.length : 0;
+
   return (
     <Card className="h-full"> {/* Allow card to take full height */}
       <CardHeader>
          <CardTitle className="text-lg font-medium flex items-center gap-2 truncate"> {/* Add truncate here */}
              <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Prevent icon shrink */}
-             Colaboradores Disponibles ({isClient ? employees.length : 0}) {/* Show 0 count initially */}
+             Colaboradores Disponibles ({employeeCount}) {/* Use client-side count */}
          </CardTitle>
       </CardHeader>
        <CardContent className="space-y-3 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* Make content scrollable */}
@@ -34,7 +37,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
             ))
           ) : (
             <p className="text-sm text-muted-foreground text-center pt-4 italic">
-              No hay colaboradores para esta sede.
+              No hay colaboradores para esta sede o ya están asignados.
             </p>
           )
         ) : (
@@ -47,3 +50,5 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
     </Card>
   );
 };
+
+    
