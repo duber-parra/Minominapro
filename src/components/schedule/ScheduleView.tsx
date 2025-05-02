@@ -64,7 +64,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          </p>
                     )}
                 </CardContent>
-            </Card> // Removed semicolon here
+            </Card>
         );
     } else {
         // --- Week View ---
@@ -75,7 +75,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
 
             return (
-                <Card key={dateKey} className="shadow-md bg-card border border-border min-w-[300px] sm:min-w-[350px] flex flex-col">
+                <Card key={dateKey} className="shadow-md bg-card border border-border min-w-[260px] flex flex-col"> {/* Reduced min-w */}
                     <CardHeader className="pb-3 pt-4 px-4 border-b">
                         <CardTitle className="text-base font-medium text-foreground text-center">
                             {format(date, 'EEE d', { locale: es })}
@@ -120,7 +120,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
          // Then return the container div rendering the mapped content
          return (
-            <div className="flex space-x-4 overflow-x-auto pb-4">
+            <div className="flex space-x-3 overflow-x-auto pb-4"> {/* Reduced space-x */}
                 {weekViewContent}
             </div>
         );
