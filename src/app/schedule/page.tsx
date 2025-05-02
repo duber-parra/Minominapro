@@ -1,3 +1,4 @@
+
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -1592,7 +1593,7 @@ export default function SchedulePage() {
                  <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
-              {/* Controls Section - Centered Flexbox */}
+              {/* Controls Section - Centered Flexbox, removed Card wrapper */}
              <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 p-4">
                  {/* Location Selector */}
                  <div className="flex flex-col items-center space-y-1">
@@ -1602,7 +1603,6 @@ export default function SchedulePage() {
                          onLocationChange={handleLocationChange}
                      />
                  </div>
-
                  {/* Configuration Button */}
                   <div className="flex flex-col items-center space-y-1">
                       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
