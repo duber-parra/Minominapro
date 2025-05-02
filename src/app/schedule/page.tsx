@@ -1113,14 +1113,11 @@ export default function SchedulePage() {
              </div>
 
             {/* Controls Card */}
-            <Card className="mb-8 shadow-md">
-                 <CardHeader className="pb-4">
-                     <CardTitle className="text-lg font-medium text-foreground text-center">Panel de Control</CardTitle>
-                     <CardDescription className="text-center text-muted-foreground">
-                        Selecciona sede, fecha o semana a programar, guarda templates y descarga tu horario.
-                     </CardDescription>
+            <Card className="mb-8 shadow-none border-none bg-transparent"> {/* Removed card appearance */}
+                 <CardHeader className="pb-4 pt-0 px-0"> {/* Removed padding */}
+                     {/* Header content removed as per request */}
                  </CardHeader>
-                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+                 <CardContent className="flex flex-wrap items-center justify-center gap-4 md:gap-6 p-0"> {/* Removed padding */}
                         {/* Location Selector */}
                         <div className="flex flex-col items-center space-y-1">
                              {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
@@ -1131,69 +1128,8 @@ export default function SchedulePage() {
                              />
                          </div>
 
-                        {/* --- Day View Date Selector --- */}
-                         {viewMode === 'day' && (
-                             <div className="flex flex-col items-center space-y-1">
-                                 <Popover>
-                                     <PopoverTrigger asChild>
-                                         <Button
-                                             variant={'outline'}
-                                             className={cn(
-                                                 'w-[280px] justify-start text-left font-normal',
-                                                 !targetDate && 'text-muted-foreground',
-                                                  isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday (use primary color)
-                                             )}
-                                              disabled={isCheckingHoliday} // Disable while checking holiday
-                                         >
-                                             <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> {/* Modern Calendar Icon */}
-                                             {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                             {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
-                                             {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
-                                         </Button>
-                                     </PopoverTrigger>
-                                     <PopoverContent className="w-auto p-0">
-                                         <Calendar
-                                             mode="single"
-                                             selected={targetDate}
-                                             onSelect={(date) => { if (date) setTargetDate(date) }} // Update targetDate for day view
-                                             initialFocus
-                                             locale={es}
-                                             modifiers={{ holiday: (date) => isHoliday(date) }}
-                                             modifiersClassNames={{
-                                                   holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
-                                             }}
-                                         />
-                                     </PopoverContent>
-                                 </Popover>
-                            </div>
-                         )}
-
-                        {/* --- Week View Navigator --- */}
-                        {viewMode === 'week' && (
-                             <div className="flex flex-col items-center space-y-1">
-                                <WeekNavigator
-                                    currentDate={currentDate}
-                                    onPreviousWeek={handlePreviousWeek}
-                                    onNextWeek={handleNextWeek}
-                                />
-                            </div>
-                        )}
-
-                        {/* View Mode Toggle */}
-                         <div className="flex flex-col items-center space-y-1">
-                            <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                                <SelectTrigger className="w-[120px]">
-                                    <SelectValue placeholder="Vista" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="day">Día</SelectItem>
-                                    <SelectItem value="week">Semana</SelectItem>
-                                </SelectContent>
-                            </Select>
-                         </div>
-
-                         {/* Configuration Button */}
-                         <div className="flex flex-col items-center space-y-1">
+                        {/* Configuration Button */}
+                        <div className="flex flex-col items-center space-y-1">
                              <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                  <DialogTrigger asChild>
                                      <Button variant="outline" size="icon"> {/* Icon button */}
@@ -1329,6 +1265,68 @@ export default function SchedulePage() {
                                 </DialogContent>
                             </Dialog>
                          </div>
+
+                        {/* --- Day View Date Selector --- */}
+                         {viewMode === 'day' && (
+                             <div className="flex flex-col items-center space-y-1">
+                                 <Popover>
+                                     <PopoverTrigger asChild>
+                                         <Button
+                                             variant={'outline'}
+                                             className={cn(
+                                                 'w-[280px] justify-start text-left font-normal',
+                                                 !targetDate && 'text-muted-foreground',
+                                                  isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday (use primary color)
+                                             )}
+                                              disabled={isCheckingHoliday} // Disable while checking holiday
+                                         >
+                                             <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> {/* Modern Calendar Icon */}
+                                             {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                             {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
+                                             {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
+                                         </Button>
+                                     </PopoverTrigger>
+                                     <PopoverContent className="w-auto p-0">
+                                         <Calendar
+                                             mode="single"
+                                             selected={targetDate}
+                                             onSelect={(date) => { if (date) setTargetDate(date) }} // Update targetDate for day view
+                                             initialFocus
+                                             locale={es}
+                                             modifiers={{ holiday: (date) => isHoliday(date) }}
+                                             modifiersClassNames={{
+                                                   holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
+                                             }}
+                                         />
+                                     </PopoverContent>
+                                 </Popover>
+                            </div>
+                         )}
+
+                        {/* --- Week View Navigator --- */}
+                        {viewMode === 'week' && (
+                             <div className="flex flex-col items-center space-y-1">
+                                <WeekNavigator
+                                    currentDate={currentDate}
+                                    onPreviousWeek={handlePreviousWeek}
+                                    onNextWeek={handleNextWeek}
+                                />
+                            </div>
+                        )}
+
+                        {/* View Mode Toggle */}
+                         <div className="flex flex-col items-center space-y-1">
+                            <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="Vista" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="day">Día</SelectItem>
+                                    <SelectItem value="week">Semana</SelectItem>
+                                </SelectContent>
+                            </Select>
+                         </div>
+
                  </CardContent>
             </Card>
 
@@ -1574,3 +1572,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
