@@ -1,7 +1,7 @@
 
 'use client'; // Ensure this directive is present
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react'; // Added useRef, ChangeEvent
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -13,7 +13,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check } from 'lucide-react'; // Added Loader2, Check
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check, FileUp } from 'lucide-react'; // Added Loader2, Check, FileUp
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,12 +54,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate, DailyAssignments, WeeklyAssignments } from '@/types/schedule';
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay } from 'date-fns'; // Added isSameDay
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval } from 'date-fns'; // Added isSameDay, isWithinInterval
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportScheduleToPDF } from '@/lib/schedule-pdf-exporter';
 import { formatTo12Hour } from '@/lib/time-utils';
+import { z } from 'zod'; // Import Zod for CSV validation
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -320,6 +321,34 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
      }
 };
 
+// Define a Zod schema for basic CSV row validation
+const csvRowSchema = z.object({
+    ID_Empleado: z.string().min(1, "ID_Empleado es requerido"),
+    Fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de Fecha debe ser AAAA-MM-DD"),
+    Departamento: z.string().min(1, "Departamento es requerido"),
+    Hora_Inicio: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Hora_Inicio formato inválido (HH:MM)"),
+    Hora_Fin: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Hora_Fin formato inválido (HH:MM)"),
+    Incluye_Descanso: z.string().optional(), // Make optional
+    Inicio_Descanso: z.string().optional(),
+    Fin_Descanso: z.string().optional(),
+}).refine(data => {
+    const includesBreakRaw = data.Incluye_Descanso?.trim().toLowerCase();
+    const includeBreakParsed = includesBreakRaw === 'sí' || includesBreakRaw === 'si' || includesBreakRaw === 'true' || includesBreakRaw === '1';
+    if (includeBreakParsed) {
+        const isBreakStartValid = data.Inicio_Descanso && /^([01]\d|2[0-3]):([0-5]\d)$/.test(data.Inicio_Descanso);
+        const isBreakEndValid = data.Fin_Descanso && /^([01]\d|2[0-3]):([0-5]\d)$/.test(data.Fin_Descanso);
+        if (!isBreakStartValid || !isBreakEndValid) return false; // Fail if break included but times invalid
+        // Check if break end is after break start
+        return data.Fin_Descanso > data.Inicio_Descanso;
+    }
+    return true;
+}, {
+    message: "Si Incluye_Descanso es Sí/True/1, Inicio_Descanso y Fin_Descanso son requeridos (HH:MM) y Fin debe ser mayor que Inicio.",
+    path: ["Inicio_Descanso"], // Associate error with break times
+});
+
+type CsvRowData = z.infer<typeof csvRowSchema>;
+
 
 export default function SchedulePage() {
     // --- State Initialization using localStorage loaders ---
@@ -370,6 +399,11 @@ export default function SchedulePage() {
 
     const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
+
+    // Ref for hidden file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    // State for CSV import loading
+    const [isImportingCSV, setIsImportingCSV] = useState<boolean>(false);
 
 
     const isMobile = useIsMobile();
@@ -475,16 +509,16 @@ export default function SchedulePage() {
      useEffect(() => {
         if (typeof window !== 'undefined') {
             try {
-                console.log("[SAVE] Attempting to save templates:", savedTemplates);
-                localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
-                console.log("[SAVE] Templates supposedly saved.");
+                 console.log("[SAVE] Attempting to save templates:", savedTemplates);
+                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
+                 console.log("[SAVE] Templates supposedly saved.");
             } catch (error) {
-                console.error("Error saving templates to localStorage:", error);
-                toast({
-                    title: 'Error al Guardar Templates',
-                    description: 'No se pudieron guardar los templates localmente.',
-                    variant: 'destructive',
-                });
+                 console.error("Error saving templates to localStorage:", error);
+                 toast({
+                     title: 'Error al Guardar Templates',
+                     description: 'No se pudieron guardar los templates localmente.',
+                     variant: 'destructive',
+                 });
             }
         }
      }, [savedTemplates, toast]); // Add toast as a dependency
@@ -759,7 +793,7 @@ export default function SchedulePage() {
     const handleDragEnd = (event: DragEndEvent) => {
         const { over, active } = event;
 
-        if (!over || !active || isMobile) return; // Disable drag on mobile
+        if (isMobile || !over || !active) return; // Disable drag on mobile, ensure valid event
 
         const employeeId = active.id as string;
         const targetData = over.data.current as { type: string; id: string; date?: string };
@@ -1339,7 +1373,14 @@ export default function SchedulePage() {
           setSavedTemplates(prev => {
               const validPrev = Array.isArray(prev) ? prev : [];
               const updatedTemplates = [...validPrev, newTemplate];
-              console.log("[SAVE TEMPLATE] Updated templates:", updatedTemplates);
+               console.log("[SAVE TEMPLATE] Updated templates:", updatedTemplates);
+               // Attempt to save immediately after state update (might still be async)
+               try {
+                   localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
+                   console.log("[SAVE TEMPLATE] Immediately saved to localStorage.");
+               } catch (e) {
+                   console.error("[SAVE TEMPLATE] Error immediately saving:", e);
+               }
               return updatedTemplates;
           });
          toast({ title: 'Template Guardado', description: `El template "${newTemplate.name}" (${templateType === 'daily' ? 'Diario' : 'Semanal'}) se ha guardado.` });
@@ -1535,6 +1576,202 @@ export default function SchedulePage() {
         // Saving happens via useEffect
         toast({ title: 'Notas Guardadas', description: 'Tus notas han sido guardadas localmente.' });
     };
+
+    // --- CSV Import Handlers ---
+    // Helper function to parse CSV content
+    const parseScheduleCSV = (content: string): CsvRowData[] => {
+        const rows = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
+        if (rows.length < 2) return []; // Need header + data
+
+        const headers = rows[0].split(',').map(h => h.trim());
+        const data: CsvRowData[] = [];
+
+        // Expected headers (case-insensitive)
+        const expectedHeadersMap = {
+            id_empleado: 'ID_Empleado',
+            fecha: 'Fecha',
+            departamento: 'Departamento',
+            hora_inicio: 'Hora_Inicio',
+            hora_fin: 'Hora_Fin',
+            incluye_descanso: 'Incluye_Descanso',
+            inicio_descanso: 'Inicio_Descanso',
+            fin_descanso: 'Fin_Descanso',
+        };
+        const requiredHeaders = ['ID_Empleado', 'Fecha', 'Departamento', 'Hora_Inicio', 'Hora_Fin'];
+
+        // Find which header name is used in the CSV for each expected field
+        const headerMapping: { [key: string]: string | null } = {};
+        Object.keys(expectedHeadersMap).forEach(key => {
+            const expectedName = expectedHeadersMap[key as keyof typeof expectedHeadersMap];
+            const foundHeader = headers.find(h => h.toLowerCase() === expectedName.toLowerCase()) || null;
+            headerMapping[expectedName] = foundHeader;
+        });
+
+        // Check if required headers are present
+        const missingHeaders = requiredHeaders.filter(reqHeader => !headerMapping[reqHeader]);
+        if (missingHeaders.length > 0) {
+            throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}`);
+        }
+
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue; // Skip empty lines
+
+            const values = rows[i].split(',');
+            const rowObject: any = {};
+            headers.forEach((header, index) => {
+                const standardHeader = Object.keys(headerMapping).find(stdKey => headerMapping[stdKey] === header);
+                if (standardHeader) {
+                    rowObject[standardHeader] = values[index]?.trim() || '';
+                }
+            });
+
+            try {
+                // Validate row using Zod schema
+                const validatedRow = csvRowSchema.parse(rowObject);
+                data.push(validatedRow);
+            } catch (error) {
+                console.warn(`Saltando fila CSV ${i + 1} por error de validación:`, error instanceof z.ZodError ? error.errors : error);
+                // Optionally collect errors to show the user
+            }
+        }
+        return data;
+    };
+
+
+     // Process the parsed CSV data
+    const processParsedCSV = useCallback((parsedData: CsvRowData[]) => {
+        if (parsedData.length === 0) {
+             toast({ title: 'Sin Datos Válidos', description: 'No se encontraron filas válidas en el archivo CSV.', variant: 'destructive' });
+             return;
+        }
+
+        let importedCount = 0;
+        let skippedCount = 0; // For shifts outside current location/employee list or already assigned
+        let errorCount = 0; // For invalid data like non-existent department
+        const newScheduleAssignments: { [dateKey: string]: ScheduleData } = {};
+
+        parsedData.forEach(row => {
+            // Find employee
+            const employee = employees.find(emp => emp.id === row.ID_Empleado);
+            if (!employee) {
+                console.warn(`Empleado ID ${row.ID_Empleado} no encontrado, saltando turno.`);
+                skippedCount++;
+                return;
+            }
+
+            // Find department based on name and *currently selected location*
+            // Important: This assumes CSV structure doesn't specify location, relying on current context.
+            const department = filteredDepartments.find(dep => dep.name.toLowerCase() === row.Departamento.toLowerCase());
+            if (!department) {
+                 console.warn(`Departamento "${row.Departamento}" no encontrado en la sede actual (${selectedLocationId}), saltando turno.`);
+                 errorCount++;
+                 return;
+            }
+
+             // Check if employee belongs to the current location
+             if (!employee.locationIds.includes(selectedLocationId)) {
+                console.warn(`Empleado ${employee.name} no pertenece a la sede ${selectedLocationId}, saltando turno.`);
+                skippedCount++;
+                return;
+             }
+
+
+            const shiftDate = parseDateFnsInternal(row.Fecha, 'yyyy-MM-dd', new Date());
+            if (!isValid(shiftDate)) {
+                console.warn(`Fecha inválida "${row.Fecha}", saltando turno.`);
+                errorCount++;
+                return;
+            }
+            const dateKey = row.Fecha;
+
+            // Initialize day if not present
+            if (!newScheduleAssignments[dateKey]) {
+                newScheduleAssignments[dateKey] = { date: shiftDate, assignments: {} };
+            }
+            // Initialize department array if not present
+            if (!newScheduleAssignments[dateKey].assignments[department.id]) {
+                newScheduleAssignments[dateKey].assignments[department.id] = [];
+            }
+
+            // Check for duplicate assignment for this employee on this day
+            const existingAssignmentsForDay = Object.values(newScheduleAssignments[dateKey].assignments).flat();
+            if (existingAssignmentsForDay.some(a => a.employee.id === employee.id)) {
+                console.warn(`Empleado ${employee.name} ya tiene un turno asignado el ${dateKey}, saltando duplicado.`);
+                skippedCount++;
+                return;
+            }
+
+            const includesBreakRaw = row.Incluye_Descanso?.trim().toLowerCase();
+            const includeBreakParsed = includesBreakRaw === 'sí' || includesBreakRaw === 'si' || includesBreakRaw === 'true' || includesBreakRaw === '1';
+
+            const newAssignment: ShiftAssignment = {
+                id: `shift_${employee.id}_${dateKey}_${row.Hora_Inicio.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`,
+                employee: employee,
+                startTime: row.Hora_Inicio,
+                endTime: row.Hora_Fin,
+                includeBreak: includeBreakParsed,
+                breakStartTime: includeBreakParsed ? row.Inicio_Descanso : undefined,
+                breakEndTime: includeBreakParsed ? row.Fin_Descanso : undefined,
+            };
+
+            newScheduleAssignments[dateKey].assignments[department.id].push(newAssignment);
+            importedCount++;
+        });
+
+         // Merge the new assignments with the existing schedule data
+         // Prioritize new data in case of conflict (though duplicate check should prevent most)
+         setScheduleData(prevData => ({
+             ...prevData,
+             ...newScheduleAssignments
+         }));
+
+
+         // Show summary toast
+         let toastDescription = `${importedCount} turno(s) importado(s).`;
+         if (skippedCount > 0) toastDescription += ` ${skippedCount} omitido(s) (empleado no encontrado/asignado, etc.).`;
+         if (errorCount > 0) toastDescription += ` ${errorCount} error(es) de datos (fecha/depto inválido).`;
+
+         toast({
+             title: 'Importación CSV Completa',
+             description: toastDescription,
+             variant: errorCount > 0 ? 'destructive' : 'default',
+             duration: 7000,
+         });
+
+    }, [employees, filteredDepartments, selectedLocationId, setScheduleData, toast]); // Added dependencies
+
+
+     // Handle file selection from input
+     const handleCSVFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+         const file = event.target.files?.[0];
+         if (!file) return;
+
+         setIsImportingCSV(true);
+         try {
+             const content = await file.text();
+             const parsedData = parseScheduleCSV(content); // Reuse parsing logic
+             processParsedCSV(parsedData); // Process the parsed data
+         } catch (error) {
+             console.error("Error procesando archivo CSV:", error);
+             toast({
+                 title: 'Error al Importar CSV',
+                 description: error instanceof Error ? error.message : 'No se pudo leer o procesar el archivo.',
+                 variant: 'destructive',
+             });
+         } finally {
+             setIsImportingCSV(false);
+             // Reset file input
+             if (fileInputRef.current) {
+                 fileInputRef.current.value = '';
+             }
+         }
+     }, [processParsedCSV, toast]); // Depend on processParsedCSV
+
+     // Trigger file input click
+     const triggerCSVFileInput = () => {
+         fileInputRef.current?.click();
+     };
+
 
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         // Disable DndContext entirely if on mobile
@@ -1750,8 +1987,18 @@ export default function SchedulePage() {
                  <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
+              {/* Hidden File Input for CSV */}
+              <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleCSVFileChange}
+                  accept=".csv"
+                  className="hidden"
+              />
+
 
               {/* Controls Section - Transparent background */}
+              {/* Removed Card wrapper, applying styles directly to flex container */}
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 mb-6 md:mb-8 p-0 bg-transparent">
                  {/* Location Selector */}
                  <div className="flex items-center gap-2">
@@ -1914,7 +2161,6 @@ export default function SchedulePage() {
                                                           className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                                           onClick={() => handleLoadTemplate(template.id)}
                                                           title={`Cargar Template (${template.type === 'daily' ? 'Diario' : 'Semanal'})`}
-                                                          // Removed explicit disabled prop
                                                       >
                                                           <Upload className="h-4 w-4" />
                                                       </Button>
@@ -2018,20 +2264,44 @@ export default function SchedulePage() {
                          </SelectContent>
                      </Select>
                  </div>
+
+                  {/* CSV Import Button */}
+                  <div className="flex items-center gap-2">
+                     <Button
+                         variant="outline"
+                         onClick={triggerCSVFileInput}
+                         disabled={isImportingCSV}
+                         title="Importar Horario desde CSV"
+                     >
+                         {isImportingCSV ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         ) : (
+                             <FileUp className="mr-2 h-4 w-4" />
+                         )}
+                         Importar CSV
+                     </Button>
+                 </div>
+
              </div> {/* End Controls Section */}
 
 
               {/* Main content grid */}
              <DndWrapper>
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6">
+                 {/* Adjust grid columns: 2 for employees, 10 for schedule */}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start mb-6">
 
                      {/* --- Available Employees --- */}
-                      <div className="lg:col-span-2 space-y-6">
-                          <EmployeeList employees={availableEmployees} />
-                     </div>
+                     {/* Only show if not mobile */}
+                      {!isMobile && (
+                           <div className="lg:col-span-2 space-y-4">
+                               <EmployeeList employees={availableEmployees} />
+                           </div>
+                      )}
+
 
                      {/* --- Schedule View --- */}
-                     <div className="lg:col-span-10 overflow-x-auto">
+                      {/* Adjust column span based on mobile view */}
+                     <div className={cn("lg:col-span-10", isMobile && "lg:col-span-12", "overflow-x-auto")}>
                          <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
