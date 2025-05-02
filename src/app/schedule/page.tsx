@@ -1017,8 +1017,9 @@ export default function SchedulePage() {
                      {/* Configuration Button */}
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
-                             <Button variant="outline">
-                                <Settings className="mr-2 h-4 w-4"/> Configuración
+                             <Button variant="outline" size="icon"> {/* Changed to icon size */}
+                                <Settings className="h-4 w-4"/> {/* Removed text */}
+                                 <span className="sr-only">Configuración</span> {/* Added screen reader text */}
                              </Button>
                          </DialogTrigger>
                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Even Wider modal, scrollable */}
@@ -1412,3 +1413,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
