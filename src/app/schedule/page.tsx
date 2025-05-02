@@ -1322,8 +1322,40 @@ export default function SchedulePage() {
                  </div>
              </div>
 
-            {/* --- Actions Row - Moved to the bottom, aligned to the right --- */}
-            <div className="mb-6 flex flex-wrap justify-end gap-2">
+
+              {/* Main content grid */}
+             <DndWrapper> {/* Conditionally wrap with DndContext */}
+                 {/* Adjusted grid layout: 2 columns for employees, 10 for schedule on large screens */}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6"> {/* Add margin-bottom */}
+
+                     {/* --- Available Employees (Takes 2/12 width on lg) --- */}
+                      <div className="lg:col-span-2 space-y-6">
+                          <EmployeeList employees={availableEmployees} />
+                     </div>
+
+
+                     {/* --- Schedule View (Takes remaining 10/12 width on lg) --- */}
+                     <div className="lg:col-span-10">
+                        <ScheduleView
+                            departments={filteredDepartments}
+                            scheduleData={scheduleData}
+                            onRemoveShift={handleRemoveShift}
+                            viewMode={viewMode}
+                            weekDates={weekDates} // Pass week dates
+                            currentDate={targetDate} // Pass target date for single day view
+                            onAddShiftRequest={handleOpenEmployeeSelectionModal} // Pass the handler to open employee selection
+                            onShiftClick={handleShiftClick} // Pass the handler for clicking a shift card
+                            getScheduleForDate={getScheduleForDate} // Pass helper function
+                            onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
+                            onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
+                            isHoliday={isHoliday} // Pass the holiday check function
+                        />
+                     </div>
+                 </div>
+             </DndWrapper>
+
+             {/* --- Actions Row - Moved below the main grid, aligned to the right --- */}
+            <div className="flex flex-wrap justify-end gap-2">
                  {/* PDF Export */}
                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white">
                      <FileDown className="mr-2 h-4 w-4" /> PDF
@@ -1372,37 +1404,6 @@ export default function SchedulePage() {
                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
              </div>
-
-              {/* Main content grid */}
-             <DndWrapper> {/* Conditionally wrap with DndContext */}
-                 {/* Adjusted grid layout: 2 columns for employees, 10 for schedule on large screens */}
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-                     {/* --- Available Employees (Takes 2/12 width on lg) --- */}
-                      <div className="lg:col-span-2 space-y-6">
-                          <EmployeeList employees={availableEmployees} />
-                     </div>
-
-
-                     {/* --- Schedule View (Takes remaining 10/12 width on lg) --- */}
-                     <div className="lg:col-span-10">
-                        <ScheduleView
-                            departments={filteredDepartments}
-                            scheduleData={scheduleData}
-                            onRemoveShift={handleRemoveShift}
-                            viewMode={viewMode}
-                            weekDates={weekDates} // Pass week dates
-                            currentDate={targetDate} // Pass target date for single day view
-                            onAddShiftRequest={handleOpenEmployeeSelectionModal} // Pass the handler to open employee selection
-                            onShiftClick={handleShiftClick} // Pass the handler for clicking a shift card
-                            getScheduleForDate={getScheduleForDate} // Pass helper function
-                            onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
-                            onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
-                            isHoliday={isHoliday} // Pass the holiday check function
-                        />
-                     </div>
-                 </div>
-             </DndWrapper>
 
 
              {/* --- Modals --- */}
