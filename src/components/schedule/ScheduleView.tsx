@@ -93,7 +93,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             // Card represents a single day column in the week view
             return (
                 <Card key={dateKey} className={cn(
-                    "shadow-sm bg-card border flex flex-col min-w-[140px]", // Adjusted min-width
+                    "shadow-sm bg-card border flex flex-col min-w-[140px]", // Kept min-width for content legibility
                     isCurrentHoliday ? "border-primary" : "border-border/50" // Highlight border with primary color
                 )}>
                     <CardHeader className={cn(
@@ -171,10 +171,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             );
          });
 
-         // Use CSS Grid for the container to manage column widths
+         // Use a flex container with overflow-x-auto and whitespace-nowrap
          return (
-            <div className="grid grid-cols-7 gap-2 w-full"> {/* Grid with 7 columns and smaller gap */}
-                {weekViewContent}
+            <div className="w-full overflow-x-auto pb-4"> {/* Enable horizontal scroll */}
+                <div className="flex space-x-2 whitespace-nowrap"> {/* Prevent wrapping, add small gap */}
+                    {weekViewContent}
+                </div>
             </div>
         );
     }
