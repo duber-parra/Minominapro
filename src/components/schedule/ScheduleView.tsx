@@ -140,12 +140,29 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                     <CardContent className="p-1.5 space-y-2 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
                         {departments.length > 0 ? (
                             departments.map((department) => (
-                                <div key={department.id} className="border rounded-md p-1.5 bg-muted/10"> {/* Reduced padding, lighter bg */}
+                                <div key={department.id} className="border rounded-md p-1.5 bg-muted/10 relative"> {/* Reduced padding, lighter bg, relative positioning */}
                                     <div className="flex justify-between items-center mb-1">
-                                        <h4 className="text-[11px] font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis"> {/* Smaller title, ellipsis */}
+                                        <h4 className="text-[11px] font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis pr-5"> {/* Added padding-right for icon */}
                                              {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
                                              <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
                                         </h4>
+                                        {/* Add + Button for Mobile/Tablet */}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary absolute top-1 right-1 md:hidden" // Position top-right, hide on md and up
+                                            onClick={() => {
+                                                console.log(`Add clicked for Dept: ${department.name} (${department.id}) on Date: ${format(date, 'yyyy-MM-dd')}`);
+                                                // TODO: Implement employee selection mechanism here before calling onAssign
+                                                // Example placeholder:
+                                                // openEmployeeSelectionModal(department.id, date);
+                                                // In the modal selection, then call:
+                                                // onAssign(selectedEmployee, department.id, date);
+                                            }}
+                                            title="Añadir Colaborador"
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                        </Button>
                                     </div>
                                     <DepartmentColumn
                                         department={department}
@@ -153,7 +170,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                         onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
                                         isWeekView // Indicate week view for potentially different rendering
                                         date={date}
-                                        onAssign={onAssign}
+                                        onAssign={onAssign} // Pass assign handler (primarily for DND drop)
                                     />
                                 </div>
                             ))
