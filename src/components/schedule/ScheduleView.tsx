@@ -27,12 +27,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     viewMode,
     weekDates,
     currentDate,
-    onAssign, // Receive assignment handler
+    onAssign,
     getScheduleForDate, // Receive helper function
 }) => {
 
     if (viewMode === 'day') {
-        // --- Day View ---
+         // --- Day View ---
         const daySchedule = getScheduleForDate(currentDate);
         const dynamicGridClass = `grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(departments.length, 4)} xl:grid-cols-${Math.min(departments.length, 5)}`; // Adjust as needed
 
@@ -64,12 +64,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          </p>
                     )}
                 </CardContent>
-            </Card>
+            </Card> // Removed semicolon here
         );
     } else {
         // --- Week View ---
-        // Map the dates to Card components first
-        const weekViewContent = weekDates.map((date) => {
+         // Map the dates to Card components first
+         const weekViewContent = weekDates.map((date) => {
             const daySchedule = getScheduleForDate(date);
             const dateKey = format(date, 'yyyy-MM-dd');
             const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
@@ -94,7 +94,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                              {department.name}
                                         </h4>
                                          {/* Add shift button - potentially simplified view for week */}
-                                         {/* <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAssign( /* needs employee info*/ , department.id, date)}>
+                                         {/* <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAssign( /* needs employee info* / , department.id, date)}>
                                              <Plus className="h-3 w-3" />
                                          </Button> */}
                                     </div>
@@ -116,10 +116,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                     </CardContent>
                 </Card>
             );
-        });
+         });
 
-        // Then return the container div rendering the mapped content
-        return (
+         // Then return the container div rendering the mapped content
+         return (
             <div className="flex space-x-4 overflow-x-auto pb-4">
                 {weekViewContent}
             </div>
