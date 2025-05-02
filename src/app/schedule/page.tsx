@@ -198,6 +198,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
     }
     try {
         const savedData = localStorage.getItem(key);
+        console.log(`[loadFromLocalStorage] Raw data for key ${key}:`, savedData); // Add logging
 
         // Handle notes specifically as a string
         if (key === SCHEDULE_NOTES_KEY) {
@@ -207,6 +208,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
 
         if (savedData) {
              const parsed = JSON.parse(savedData);
+             console.log(`[loadFromLocalStorage] Parsed data for key ${key}:`, parsed); // Add logging
              // Basic check to see if parsed data looks like the expected type (array for lists)
              if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY || key === SCHEDULE_TEMPLATES_KEY) {
                  if (Array.isArray(parsed)) {
@@ -256,6 +258,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              console.error(`Error loading ${key} from localStorage:`, error);
          }
     }
+    console.log(`[loadFromLocalStorage] Returning default value for key ${key}.`); // Add logging
     return defaultValue; // Return default if nothing saved or error occurred
 };
 
@@ -418,7 +421,7 @@ export default function SchedulePage() {
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
         setSavedTemplates(loadedTemps);
-        console.log("Loaded templates from localStorage on mount:", loadedTemps);
+        console.log("[Load Effect] Loaded templates from localStorage on mount:", loadedTemps); // Add logging
         setNotes(loadedNotesStr);
 
         // Set initial selected location and update form defaults accordingly
@@ -522,7 +525,7 @@ export default function SchedulePage() {
     useEffect(() => {
        if (isClient) {
            try {
-               console.log("[Save Effect] Saving templates:", savedTemplates); // Log before saving
+               console.log("[Save Effect] Saving templates to localStorage:", savedTemplates); // Log before saving
                localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
                console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
            } catch (error) {
@@ -573,15 +576,15 @@ export default function SchedulePage() {
 
     // Filter templates based on current location and view mode
     const filteredTemplates = useMemo(() => {
-        console.log("[Filter Memo] All templates in state:", savedTemplates);
+        console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
             const locationMatch = temp.locationId === selectedLocationId;
             const typeMatch = temp.type === viewMode;
-            console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
+            console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // Log individual check
             return locationMatch && typeMatch;
         });
-        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
+        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log the result
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -2140,85 +2143,8 @@ export default function SchedulePage() {
                         onLocationChange={handleLocationChange}
                     />
                  </div>
-
-                 {/* --- Day View Date Selector OR Week View Navigator --- */}
-                 <div className="flex items-center justify-center gap-2">
-                     {viewMode === 'day' ? (
-                         <Popover>
-                             <PopoverTrigger asChild>
-                                 <Button
-                                     variant={'outline'}
-                                     className={cn(
-                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
-                                         !targetDate && 'text-muted-foreground',
-                                         isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
-                                     )}
-                                     disabled={isCheckingHoliday}
-                                 >
-                                     {isCheckingHoliday ? (
-                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                     ) : (
-                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
-                                     )}
-                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
-                                 </Button>
-                             </PopoverTrigger>
-                             <PopoverContent className="w-auto p-0">
-                                 <Calendar
-                                     mode="single"
-                                     selected={targetDate}
-                                     onSelect={(date) => { if (date) setTargetDate(date) }}
-                                     initialFocus
-                                     locale={es}
-                                     modifiers={{ holiday: (date) => isHoliday(date) }}
-                                     modifiersClassNames={{
-                                          holiday: 'text-primary font-medium border border-primary', // Style holiday
-                                     }}
-                                 />
-                             </PopoverContent>
-                         </Popover>
-                     ) : (
-                         <WeekNavigator
-                             currentDate={currentDate}
-                             onPreviousWeek={handlePreviousWeek}
-                             onNextWeek={handleNextWeek}
-                         />
-                     )}
-                 </div>
-
-                 {/* View Mode Toggle */}
-                 <div className="flex items-center justify-center gap-2">
-                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                         <SelectTrigger className="w-[120px]">
-                             <SelectValue placeholder="Vista" />
-                         </SelectTrigger>
-                         <SelectContent>
-                             <SelectItem value="day">Día</SelectItem>
-                             <SelectItem value="week">Semana</SelectItem>
-                         </SelectContent>
-                     </Select>
-                 </div>
-
-                  {/* CSV Import Button */}
-                  <div className="flex items-center gap-2">
-                     <Button
-                         variant="outline"
-                         onClick={triggerCSVFileInput}
-                         disabled={isImportingCSV}
-                         title="Importar Horario desde CSV (como Template)"
-                     >
-                         {isImportingCSV ? (
-                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         ) : (
-                             <FileUp className="mr-2 h-4 w-4" />
-                         )}
-                         Importar CSV
-                     </Button>
-                 </div>
-
-                 {/* Configuration Button */}
-                  <div className="flex items-center gap-2">
+                   {/* Configuration Button */}
+                 <div className="flex items-center gap-2">
                       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                           <DialogTrigger asChild>
                               <Button variant="outline" size="icon" title="Configuración">
@@ -2420,7 +2346,85 @@ export default function SchedulePage() {
                               </DialogFooter>
                           </DialogContent>
                       </Dialog>
-                   </div>
+                 </div>
+
+
+                 {/* --- Day View Date Selector OR Week View Navigator --- */}
+                 <div className="flex items-center justify-center gap-2">
+                     {viewMode === 'day' ? (
+                         <Popover>
+                             <PopoverTrigger asChild>
+                                 <Button
+                                     variant={'outline'}
+                                     className={cn(
+                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
+                                         !targetDate && 'text-muted-foreground',
+                                         isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
+                                     )}
+                                     disabled={isCheckingHoliday}
+                                 >
+                                     {isCheckingHoliday ? (
+                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                     ) : (
+                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                     )}
+                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
+                                 </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-0">
+                                 <Calendar
+                                     mode="single"
+                                     selected={targetDate}
+                                     onSelect={(date) => { if (date) setTargetDate(date) }}
+                                     initialFocus
+                                     locale={es}
+                                     modifiers={{ holiday: (date) => isHoliday(date) }}
+                                     modifiersClassNames={{
+                                          holiday: 'text-primary font-medium border border-primary', // Style holiday
+                                     }}
+                                 />
+                             </PopoverContent>
+                         </Popover>
+                     ) : (
+                         <WeekNavigator
+                             currentDate={currentDate}
+                             onPreviousWeek={handlePreviousWeek}
+                             onNextWeek={handleNextWeek}
+                         />
+                     )}
+                 </div>
+
+                 {/* View Mode Toggle */}
+                 <div className="flex items-center justify-center gap-2">
+                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                         <SelectTrigger className="w-[120px]">
+                             <SelectValue placeholder="Vista" />
+                         </SelectTrigger>
+                         <SelectContent>
+                             <SelectItem value="day">Día</SelectItem>
+                             <SelectItem value="week">Semana</SelectItem>
+                         </SelectContent>
+                     </Select>
+                 </div>
+
+                  {/* CSV Import Button */}
+                  <div className="flex items-center gap-2">
+                     <Button
+                         variant="outline"
+                         onClick={triggerCSVFileInput}
+                         disabled={isImportingCSV}
+                         title="Importar Horario desde CSV (como Template)"
+                     >
+                         {isImportingCSV ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         ) : (
+                             <FileUp className="mr-2 h-4 w-4" />
+                         )}
+                         Importar CSV
+                     </Button>
+                 </div>
+
 
 
              </div>
@@ -2467,7 +2471,7 @@ export default function SchedulePage() {
                   <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                       <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
                   </Button>
-                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red Hover */}
+                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-destructive hover:text-destructive-foreground"> {/* Red Hover */}
                       <FileDown className="mr-2 h-4 w-4" /> PDF
                   </Button>
                   <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green Hover */}
