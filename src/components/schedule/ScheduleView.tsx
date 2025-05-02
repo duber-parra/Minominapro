@@ -68,56 +68,60 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     } else {
         // --- Week View ---
+        // Separate mapping logic from return statement to potentially help parser
+        const weekViewContent = weekDates.map((date) => {
+            const daySchedule = getScheduleForDate(date);
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
+
+            return (
+                <Card key={dateKey} className="shadow-md bg-card border border-border min-w-[300px] sm:min-w-[350px] flex flex-col">
+                    <CardHeader className="pb-3 pt-4 px-4 border-b">
+                        <CardTitle className="text-base font-medium text-foreground text-center">
+                            {format(date, 'EEE d', { locale: es })}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground text-center">
+                            {format(date, 'MMMM', { locale: es })} ({totalAssignmentsForDay} turnos)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-3 space-y-3 flex-grow overflow-y-auto">
+                        {departments.length > 0 ? (
+                            departments.map((department) => (
+                                <div key={department.id} className="border rounded-md p-2 bg-muted/20">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                             {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />}
+                                             {department.name}
+                                        </h4>
+                                         {/* Add shift button - potentially simplified view for week */}
+                                         {/* <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAssign( /* needs employee info*/ , department.id, date)}>
+                                             <Plus className="h-3 w-3" />
+                                         </Button> */}
+                                    </div>
+                                    <DepartmentColumn
+                                        department={department}
+                                        assignments={daySchedule.assignments[department.id] || []}
+                                        onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
+                                        isWeekView // Indicate week view for potentially different rendering
+                                        date={date}
+                                        onAssign={onAssign}
+                                    />
+                                </div>
+                            ))
+                         ) : (
+                              <p className="text-center text-xs text-muted-foreground italic pt-4">
+                                  No hay departamentos.
+                              </p>
+                         )}
+                    </CardContent>
+                </Card>
+            );
+        });
+
+        // Return the container with the mapped content
         return (
             <div className="flex space-x-4 overflow-x-auto pb-4">
-                {weekDates.map((date) => {
-                    const daySchedule = getScheduleForDate(date);
-                    const dateKey = format(date, 'yyyy-MM-dd');
-                    const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
-
-                    return (
-                        <Card key={dateKey} className="shadow-md bg-card border border-border min-w-[300px] sm:min-w-[350px] flex flex-col">
-                            <CardHeader className="pb-3 pt-4 px-4 border-b">
-                                <CardTitle className="text-base font-medium text-foreground text-center">
-                                    {format(date, 'EEE d', { locale: es })}
-                                </CardTitle>
-                                <CardDescription className="text-xs text-muted-foreground text-center">
-                                    {format(date, 'MMMM', { locale: es })} ({totalAssignmentsForDay} turnos)
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-3 space-y-3 flex-grow overflow-y-auto">
-                                {departments.length > 0 ? (
-                                    departments.map((department) => (
-                                        <div key={department.id} className="border rounded-md p-2 bg-muted/20">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                                     {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />}
-                                                     {department.name}
-                                                </h4>
-                                                 {/* Add shift button - potentially simplified view for week */}
-                                                 {/* <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAssign( /* needs employee info*/ , department.id, date)}>
-                                                     <Plus className="h-3 w-3" />
-                                                 </Button> */}
-                                            </div>
-                                            <DepartmentColumn
-                                                department={department}
-                                                assignments={daySchedule.assignments[department.id] || []}
-                                                onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
-                                                isWeekView // Indicate week view for potentially different rendering
-                                                date={date}
-                                                onAssign={onAssign}
-                                            />
-                                        </div>
-                                    ))
-                                 ) : (
-                                      <p className="text-center text-xs text-muted-foreground italic pt-4">
-                                          No hay departamentos.
-                                      </p>
-                                 )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
+                {weekViewContent}
             </div>
         );
     }
