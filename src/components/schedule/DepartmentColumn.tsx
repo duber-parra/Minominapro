@@ -8,6 +8,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { Department, ShiftAssignment, Employee } from '@/types/schedule'; // Assuming types exist
 import { ShiftCard } from './ShiftCard'; // Assuming ShiftCard component exists
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils'; // Added cn
 
 interface DepartmentColumnProps {
   department: Department;
@@ -50,6 +51,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   // Simplified rendering for week view
   if (isWeekView) {
     return (
+      // Ensure this div correctly wraps the content
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
           {assignments.length > 0 ? (
               assignments.map((assignment) => (
