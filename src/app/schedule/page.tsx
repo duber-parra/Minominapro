@@ -918,7 +918,7 @@ export default function SchedulePage() {
                  // Regenerate assignment IDs and find employee objects
                  const loadedAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                  Object.keys(templateToLoad.assignments).forEach(deptId => {
-                     loadedAssignments[deptId] = templateToLoad.assignments[deptId]
+                     loadedAssignments[deptId] = (templateToLoad.assignments as DailyAssignments)[deptId]
                          .map((assignTemplate: Omit<ShiftAssignment, 'id'>) => {
                              const employee = employees.find(emp => emp.id === (typeof assignTemplate.employee === 'string' ? assignTemplate.employee : assignTemplate.employee.id));
                              if (employee) {
@@ -943,7 +943,7 @@ export default function SchedulePage() {
              } else { // Weekly template
                  weekDates.forEach(date => {
                      const dateKey = format(date, 'yyyy-MM-dd');
-                     const dailyAssignmentsFromTemplate = (templateToLoad.assignments as { [dateKey: string]: any })[dateKey] || {};
+                     const dailyAssignmentsFromTemplate = (templateToLoad.assignments as WeeklyAssignments)[dateKey] || {};
 
                      const loadedDailyAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                      Object.keys(dailyAssignmentsFromTemplate).forEach(deptId => {
@@ -1303,20 +1303,17 @@ export default function SchedulePage() {
                  </div>
              </div>
 
-            {/* --- Actions Row --- */}
-            <div className="mb-6 flex flex-wrap justify-center gap-2">
-                 <Button onClick={handleSaveSchedule} variant="outline">
-                     <Save className="mr-2 h-4 w-4" /> Guardar Horario
+            {/* --- Actions Row - Moved to the bottom, aligned to the right --- */}
+            <div className="mb-6 flex flex-wrap justify-end gap-2">
+                 {/* Buttons moved here and reversed */}
+                 <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red hover */}
+                     <FileDown className="mr-2 h-4 w-4" /> PDF
                  </Button>
-                 {/* Conditionally render Duplicate Day button based on viewMode */}
-                 {viewMode === 'day' && (
-                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
-                        <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
-                    </Button>
-                 )}
+                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green hover */}
+                     <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
+                 </Button>
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                     <DialogTrigger asChild>
-                         {/* Button enabled in both views */}
                         <Button variant="outline" onClick={handleOpenTemplateModal}>
                             <Download className="mr-2 h-4 w-4" /> Guardar como Template
                         </Button>
@@ -1343,13 +1340,13 @@ export default function SchedulePage() {
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
-                 {/* Export Hours to CSV Button */}
-                <Button onClick={handleExportCSV} variant="outline">
-                     <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
-                 </Button>
-                 {/* Export Schedule to PDF Button */}
-                <Button onClick={handleExportPDF} variant="outline">
-                     <FileDown className="mr-2 h-4 w-4" /> PDF {/* Changed text */}
+                 {viewMode === 'day' && (
+                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
+                        <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
+                    </Button>
+                 )}
+                 <Button onClick={handleSaveSchedule} variant="outline">
+                     <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
              </div>
 
@@ -1543,3 +1540,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
