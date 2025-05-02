@@ -1,4 +1,3 @@
-
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -12,7 +11,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2 } from 'lucide-react'; // Added Save, CopyPlus, Library, Eraser, Download, Upload, FileX2
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet icon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,7 +43,7 @@ import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionM
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid } from 'date-fns'; // Added endOfWeek, parseISO, getYear, isValid
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns'; // Added differenceInMinutes, parseDateFnsInternal
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
@@ -122,6 +121,54 @@ const initialEmployees: Employee[] = [
   { id: 'emp-5', name: 'Diego Torres', primaryLocationId: 'loc-3' },
   { id: 'emp-6', name: 'Isabel Castro', primaryLocationId: 'loc-3' },
 ];
+
+// Helper function to parse HH:MM time into minutes from midnight
+const parseTimeToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Helper function to calculate shift duration in hours
+const calculateShiftDuration = (assignment: ShiftAssignment, shiftDate: Date): number => {
+    try {
+        const startDateStr = format(shiftDate, 'yyyy-MM-dd');
+        const startTime = parseDateFnsInternal(`${startDateStr} ${assignment.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+
+        // Determine end date/time, considering overnight shifts
+        const startTimeMinutes = parseTimeToMinutes(assignment.startTime);
+        const endTimeMinutes = parseTimeToMinutes(assignment.endTime);
+        let endTime = parseDateFnsInternal(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        if (endTimeMinutes < startTimeMinutes) { // Shift ends on the next day
+            endTime = addDays(endTime, 1);
+        }
+
+        if (!isValid(startTime) || !isValid(endTime)) {
+            console.warn('Invalid start or end time for duration calculation:', assignment);
+            return 0;
+        }
+
+        let totalShiftMinutes = differenceInMinutes(endTime, startTime);
+
+        // Subtract break duration if applicable
+        let breakMinutes = 0;
+        if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
+            const breakStartMinutes = parseTimeToMinutes(assignment.breakStartTime);
+            const breakEndMinutes = parseTimeToMinutes(assignment.breakEndTime);
+            if (breakEndMinutes > breakStartMinutes) { // Ensure break end is after start
+                 // Complex check: Does the break interval actually fall within the shift interval?
+                 // For simplicity now, assume the entered break happens during the shift if includeBreak is true.
+                 breakMinutes = breakEndMinutes - breakStartMinutes;
+            }
+        }
+
+        const netMinutes = totalShiftMinutes - breakMinutes;
+        return Math.max(0, netMinutes) / 60; // Return hours, ensure non-negative
+    } catch (error) {
+        console.error("Error calculating shift duration:", error, assignment);
+        return 0;
+    }
+};
+
 
 export default function SchedulePage() {
     const [locations, setLocations] = useState<Location[]>(initialLocations);
@@ -267,10 +314,16 @@ export default function SchedulePage() {
     }, [scheduleData, targetDate, shiftRequestContext]);
 
 
+    // Available employees calculation now considers view mode
     const availableEmployees = useMemo(() => {
-        // Always filter out assigned employees for the *specific date* being considered (targetDate or shiftRequestContext.date)
-        return filteredEmployees.filter(emp => !assignedEmployeeIdsForTargetDate.has(emp.id));
-    }, [filteredEmployees, assignedEmployeeIdsForTargetDate]);
+        if (viewMode === 'week') {
+            // In week view, show all employees filtered by location, regardless of assignment on a specific day
+            return filteredEmployees;
+        } else {
+            // In day view, filter out employees already assigned on the targetDate
+            return filteredEmployees.filter(emp => !assignedEmployeeIdsForTargetDate.has(emp.id));
+        }
+    }, [filteredEmployees, assignedEmployeeIdsForTargetDate, viewMode]);
 
 
     useEffect(() => {
@@ -705,6 +758,7 @@ export default function SchedulePage() {
 
     // Wrapper component to conditionally provide DndContext
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+        // Only enable DND on non-mobile devices
         if (isMobile) {
             return <>{children}</>; // Render children directly without DndContext on mobile
         } else {
@@ -715,6 +769,74 @@ export default function SchedulePage() {
             );
         }
     };
+
+    // --- CSV Export Handler ---
+    const handleExportCSV = () => {
+        const dataToExport: any[] = [];
+        const headers = [
+            'ID_Empleado',
+            'Nombre_Empleado',
+            'Fecha',
+            'Departamento',
+            'Hora_Inicio',
+            'Hora_Fin',
+            'Incluye_Descanso',
+            'Inicio_Descanso',
+            'Fin_Descanso',
+            'Horas_Trabajadas',
+        ];
+        dataToExport.push(headers);
+
+        // Collect data for the current week
+        weekDates.forEach(date => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const daySchedule = scheduleData[dateKey];
+
+            if (daySchedule) {
+                Object.entries(daySchedule.assignments).forEach(([deptId, assignments]) => {
+                    const department = departments.find(d => d.id === deptId);
+                    assignments.forEach(assignment => {
+                        const durationHours = calculateShiftDuration(assignment, date); // Calculate duration
+                        dataToExport.push([
+                            assignment.employee.id,
+                            assignment.employee.name,
+                            dateKey,
+                            department?.name || deptId,
+                            assignment.startTime,
+                            assignment.endTime,
+                            assignment.includeBreak ? 'Sí' : 'No',
+                            assignment.includeBreak ? assignment.breakStartTime : '',
+                            assignment.includeBreak ? assignment.breakEndTime : '',
+                            durationHours.toFixed(2), // Format hours to 2 decimal places
+                        ]);
+                    });
+                });
+            }
+        });
+
+        if (dataToExport.length <= 1) {
+            toast({ title: 'Sin Datos', description: 'No hay turnos asignados en la semana actual para exportar.', variant: 'default' });
+            return;
+        }
+
+        // Format as CSV string
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + dataToExport.map(e => e.join(",")).join("\n");
+
+        // Trigger download
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        const weekStartFormatted = format(weekDates[0], 'yyyyMMdd');
+        const weekEndFormatted = format(weekDates[6], 'yyyyMMdd');
+        link.setAttribute("download", `Horario_${selectedLocationId}_${weekStartFormatted}-${weekEndFormatted}.csv`);
+        document.body.appendChild(link); // Required for FF
+        link.click();
+        document.body.removeChild(link);
+
+        toast({ title: 'Exportación CSV Exitosa', description: 'Se ha descargado el archivo de horas trabajadas.' });
+    };
+
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
@@ -729,11 +851,15 @@ export default function SchedulePage() {
                                      variant={'outline'}
                                      className={cn(
                                          'w-[280px] justify-start text-left font-normal',
-                                         !targetDate && 'text-muted-foreground'
+                                         !targetDate && 'text-muted-foreground',
+                                         isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday
                                      )}
+                                      disabled={isCheckingHoliday} // Disable while checking holiday
                                  >
                                      <CalendarIcon className="mr-2 h-4 w-4" />
                                      {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
+                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
                                  </Button>
                              </PopoverTrigger>
                              <PopoverContent className="w-auto p-0">
@@ -745,7 +871,7 @@ export default function SchedulePage() {
                                      locale={es}
                                      modifiers={{ holiday: (date) => isHoliday(date) }}
                                      modifiersClassNames={{
-                                         holiday: 'border-primary', // Apply primary border for holiday
+                                         holiday: 'border-primary text-primary', // Apply primary border and text for holiday
                                      }}
                                  />
                              </PopoverContent>
@@ -962,12 +1088,10 @@ export default function SchedulePage() {
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
-                 {/* Load Template Button (Placeholder/Example) - Actual load happens from config modal */}
-                  {/*
-                 <Button variant="outline" disabled={viewMode !== 'day'}>
-                     <Upload className="mr-2 h-4 w-4" /> Cargar Formación
+                 {/* Export Hours to CSV Button */}
+                <Button onClick={handleExportCSV} variant="outline">
+                     <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
-                  */}
              </div>
 
               {/* Main content grid */}
@@ -1157,3 +1281,5 @@ export default function SchedulePage() {
         </main>
     );
 }
+
+    

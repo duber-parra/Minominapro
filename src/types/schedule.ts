@@ -1,4 +1,3 @@
-
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -75,3 +74,4 @@ export interface PayrollCalculationInput {
   }[];
 }
 
+    
