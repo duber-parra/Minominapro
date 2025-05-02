@@ -25,6 +25,19 @@ interface PayrollPageData {
     auxTransporteAplicado: number; // Amount of transport allowance applied
 }
 
+// Helper to add the watermark header
+function addWatermarkHeader(doc: jsPDF, initialY: number = 10): number {
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const watermarkText = "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos";
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150); // Set text color to light gray (opacity is harder)
+    doc.text(watermarkText, pageWidth / 2, initialY, { align: 'center' });
+    doc.setTextColor(0); // Reset text color to black for the rest of the content
+    return initialY + 5; // Return the Y position below the watermark
+}
 
 // Helper function to draw a single payroll report page (Kept for single export)
 function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
@@ -34,8 +47,10 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     const leftMargin = 14;
     const rightMargin = 14;
 
+    // --- Watermark Header ---
+    currentY = addWatermarkHeader(doc, 10); // Add watermark header at the top
 
-    // --- Header ---
+    // --- Main Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Comprobante de Nómina Quincenal', pageWidth / 2, currentY, { align: 'center' });
@@ -100,7 +115,13 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
             1: { halign: 'right' },
             2: { halign: 'right' },
         },
-        didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
+        didDrawPage: (hookData) => {
+            currentY = hookData.cursor?.y ?? currentY;
+             // Add watermark to subsequent pages
+             if (hookData.pageNumber > 1) {
+                addWatermarkHeader(doc, 10);
+             }
+        },
         didParseCell: (hookData) => {
              // Style separator rows
              if (hookData.cell.raw === '-') {
@@ -148,7 +169,13 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
         startY: currentY,
         theme: 'plain',
         columnStyles: { 1: { halign: 'right' } },
-        didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
+        didDrawPage: (hookData) => {
+            currentY = hookData.cursor?.y ?? currentY;
+             // Add watermark to subsequent pages
+             if (hookData.pageNumber > 1) {
+                 addWatermarkHeader(doc, 10);
+             }
+         },
         didParseCell: (hookData) => {
             // Style separator rows
              if (hookData.cell.raw === '-') {
@@ -187,7 +214,13 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
         startY: currentY,
         theme: 'plain',
         columnStyles: { 1: { halign: 'right' } },
-        didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
+        didDrawPage: (hookData) => {
+            currentY = hookData.cursor?.y ?? currentY;
+             // Add watermark to subsequent pages
+             if (hookData.pageNumber > 1) {
+                 addWatermarkHeader(doc, 10);
+             }
+        },
     });
 
     currentY += 5; // Add space
@@ -213,7 +246,13 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
             startY: currentY,
             theme: 'plain',
             columnStyles: { 1: { halign: 'right', textColor: [200, 0, 0] } }, // Reddish color
-            didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; },
+            didDrawPage: (hookData) => {
+                currentY = hookData.cursor?.y ?? currentY;
+                 // Add watermark to subsequent pages
+                 if (hookData.pageNumber > 1) {
+                     addWatermarkHeader(doc, 10);
+                 }
+            },
         });
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
@@ -235,7 +274,8 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     // Check if signature area fits on the current page, add new page if necessary
     if (signatureY > pageHeight - 35) {
         doc.addPage();
-        signatureY = 15; // Reset Y for new page
+        addWatermarkHeader(doc, 10); // Add watermark to new page
+        signatureY = 25; // Reset Y for new page, below watermark
     }
     const signatureXMargin = 30;
     const signatureWidth = (pageWidth - signatureXMargin * 2) / 2 - 10;
@@ -252,6 +292,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     // Check if footer note fits, add new page if necessary BEFORE drawing
      if (currentY > pageHeight - 10) {
         doc.addPage();
+        addWatermarkHeader(doc, 10); // Add watermark to new page
         currentY = pageHeight - 10; // Position at bottom of new page
      } else {
          currentY = pageHeight - 10; // Position at bottom of current page
@@ -339,7 +380,10 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const signatureColumnWidth = 35; // Reduced signature column width
     const firmaHeight = 15; // Height reserved for signature line/space
 
-    // --- Header ---
+    // --- Watermark Header for first page ---
+    currentY = addWatermarkHeader(doc, 10);
+
+    // --- Main Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' });
@@ -350,7 +394,7 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     currentY += 15;
 
     // --- Table Setup ---
-    const head = [['Empleado', 'Periodo', 'T. Horas', 'Base', 'Recargos', 'Ded.', 'Total', 'Firma']]; // Added T. Horas, Ded., removed Sucursal
+    const head = [['Empleado', 'Periodo', 'T. Horas', 'Base', 'Recargos', 'Ded.', 'Total', 'Firma']]; // Added T. Horas, Ded.
 
     let totalBase = 0;
     let totalRecargos = 0;
@@ -365,7 +409,7 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         const periodoStr = `${format(payroll.periodStart, 'd')} - ${format(payroll.periodEnd, 'd MMM', { locale: es })}`; // Shortened period
 
         const base = payroll.summary.salarioBaseQuincenal;
-        // Calculate 'Recargos' as extras + other income
+        // Calculate 'Recargos' as extras + other income + transport
         const auxTransporteAplicado = payroll.incluyeAuxTransporte ? 100000 : 0;
         const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((s, i) => s + i.monto, 0);
         const recargos = payroll.summary.totalPagoRecargosExtrasQuincena + auxTransporteAplicado + totalOtrosIngresos; // Include transport and other income here
@@ -427,10 +471,13 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         },
         didDrawPage: (hookData) => {
             currentY = hookData.cursor?.y ?? currentY;
-            // Add page numbers
+            // Add page numbers and watermark to all pages (including subsequent ones)
             const pageNum = doc.internal.getNumberOfPages();
+            addWatermarkHeader(doc, 10); // Add watermark near top
             doc.setFontSize(8);
+            doc.setTextColor(150); // Keep footer text gray
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
+            doc.setTextColor(0); // Reset text color
         },
         willDrawCell: (data) => {
              // Prevent drawing borders for plain theme
@@ -470,6 +517,3 @@ const parseTimeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
 };
-    
-
-    
