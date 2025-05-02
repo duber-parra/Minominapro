@@ -1,4 +1,6 @@
 
+// src/components/schedule/DepartmentColumn.tsx
+
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -50,8 +52,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
 
   // Simplified rendering for week view
   if (isWeekView) {
-    return (
-      // Ensure this div correctly wraps the content
+    return ( // Line 53
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
           {assignments.length > 0 ? (
               assignments.map((assignment) => (
@@ -103,3 +104,4 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
     </Card>
   );
 };
+
