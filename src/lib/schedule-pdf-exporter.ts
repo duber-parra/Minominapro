@@ -111,14 +111,9 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
 
                 if (assignment) {
                     let cellContent = `${assignment.startTime} - ${assignment.endTime}`;
+                    // Append break time if included
                     if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                        // Calculate break duration in minutes
-                        const breakStartMins = parseTimeToMinutes(assignment.breakStartTime);
-                        const breakEndMins = parseTimeToMinutes(assignment.breakEndTime);
-                        const breakDurationMins = breakEndMins > breakStartMins ? breakEndMins - breakStartMins : 0;
-                        if(breakDurationMins > 0) {
-                            cellContent += `\nDescanso: ${breakDurationMins}min`;
-                        }
+                        cellContent += `\nD: ${assignment.breakStartTime}-${assignment.breakEndTime}`; // Add break time on new line
                     }
                      employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
                 } else {
