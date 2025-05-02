@@ -1127,19 +1127,13 @@ export default function SchedulePage() {
                                                 <li key={template.id} className="flex items-center justify-between group py-1 border-b">
                                                     <span className="truncate text-muted-foreground">{template.name}</span>
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                        {/* Enable load button regardless of viewMode, but warn if not day view */}
+                                                        {/* Enable load button regardless of viewMode */}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => {
-                                                                if (viewMode !== 'day') {
-                                                                     toast({title: 'Vista Inválida', description: 'Cambia a vista de "Día" para cargar una formación.', variant: 'destructive'});
-                                                                } else {
-                                                                    handleLoadTemplate(template.id);
-                                                                }
-                                                            }}
-                                                            title="Cargar Formación (Solo en vista de Día)"
+                                                            onClick={() => handleLoadTemplate(template.id)}
+                                                            title="Cargar Formación (Aplicar a fecha actual)"
                                                         >
                                                             <Upload className="h-4 w-4" />
                                                         </Button>
