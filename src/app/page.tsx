@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'react';
-import { WorkdayForm } from '@/components/workday-form';
+import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef } from 'react';
+import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
 import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, parse as dateFnsParse, isWithinInterval } from 'date-fns'; // Added addDays and isSameDay, dateFnsParse, isWithinInterval
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval } from 'date-fns'; // Removed duplicate parse import
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +39,7 @@ import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the s
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
+import { z } from 'zod'; // Import zod for CSV validation
 
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
@@ -116,8 +117,8 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                     const employeeId = match[1];
                     const startStr = match[2];
                     const endStr = match[3];
-                    const startDate = dateFnsParse(startStr, 'yyyy-MM-dd', new Date());
-                    const endDate = dateFnsParse(endStr, 'yyyy-MM-dd', new Date());
+                    const startDate = parseDateFns(startStr, 'yyyy-MM-dd', new Date());
+                    const endDate = parseDateFns(endStr, 'yyyy-MM-dd', new Date());
 
                     // Validate parsed data
                     if (!employeeId || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -199,7 +200,7 @@ export default function Home() {
     const [editedHours, setEditedHours] = useState<CalculationResults['horasDetalladas'] | null>(null); // Temp state for edited hours
     const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
     const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false); // Loading state for individual day calculation/duplication
-    const [isImporting, setIsImporting] = useState<boolean>(false); // Loading state for importing schedule
+    const [isImporting, setIsImporting] = useState<boolean>(false); // Loading state for importing schedule or CSV
     const [errorDay, setErrorDay] = useState<string | null>(null);
     const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load for current employee/period
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]); // State for the list of all saved payrolls
@@ -215,6 +216,9 @@ export default function Home() {
 
     // State for Transportation Allowance
     const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
+
+    // Ref for the hidden file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
 
     const { toast } = useToast();
@@ -396,7 +400,7 @@ export default function Home() {
                         if (employeeShift) {
                             // Convert ShiftAssignment to WorkdayFormValues
                             const shiftValues: WorkdayFormValues = {
-                                startDate: dateFnsParse(dateKey, 'yyyy-MM-dd', new Date()),
+                                startDate: parseDateFns(dateKey, 'yyyy-MM-dd', new Date()),
                                 startTime: employeeShift.startTime,
                                 endTime: employeeShift.endTime,
                                 // Calculate endsNextDay based on times
@@ -461,6 +465,150 @@ export default function Home() {
             setIsImporting(false); // Turn off loading state
         }
     }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]); // Added dependencies
+
+
+     // --- Function to Import from CSV ---
+     const handleImportCSV = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+        if (!employeeId || !payPeriodStart || !payPeriodEnd) {
+            toast({
+                title: 'Información Incompleta',
+                description: 'Selecciona colaborador y período antes de importar CSV.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+
+        try {
+            const fileContent = await file.text();
+            // Placeholder for CSV parsing logic (e.g., using papaparse or similar)
+            console.log('CSV Content:', fileContent);
+            // 1. Parse CSV content
+            // 2. Identify rows matching the current employeeId and within the payPeriod
+            // 3. Map rows to WorkdayFormValues
+            // 4. Loop through mapped values and call calculateSingleWorkday
+            // 5. Merge results with setCalculatedDays
+
+            // Example Placeholder Logic (replace with actual parsing and calculation)
+            // const parsedData = parseCSV(fileContent); // Assume parseCSV function exists
+            const parsedData = [ // Dummy data - replace with actual parsed CSV
+                 { ID_Empleado: '101', Fecha: '2025-04-16', Hora_Inicio: '08:00', Hora_Fin: '17:00', Incluye_Descanso: 'Sí', Inicio_Descanso: '12:00', Fin_Descanso: '13:00' },
+                 { ID_Empleado: '101', Fecha: '2025-04-17', Hora_Inicio: '14:00', Hora_Fin: '23:00', Incluye_Descanso: 'No', Inicio_Descanso: '', Fin_Descanso: '' }
+            ];
+
+            let importedCount = 0;
+            let skippedCount = 0;
+            let errorCount = 0;
+            const newCalculatedDays: CalculationResults[] = [];
+
+            for (const row of parsedData) {
+                if (row.ID_Empleado !== employeeId) continue; // Skip rows for other employees
+
+                const shiftDate = parseDateFns(row.Fecha, 'yyyy-MM-dd', new Date());
+
+                 // Skip if outside pay period or already calculated
+                if (!isWithinInterval(shiftDate, { start: payPeriodStart, end: payPeriodEnd }) || isDateCalculated(shiftDate)) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Convert CSV row to WorkdayFormValues
+                const shiftValues: WorkdayFormValues = {
+                    startDate: shiftDate,
+                    startTime: row.Hora_Inicio, // Assuming HH:mm format in CSV
+                    endTime: row.Hora_Fin,     // Assuming HH:mm format in CSV
+                    // Calculate endsNextDay based on times
+                    endsNextDay: parseInt(row.Hora_Fin.split(':')[0]) < parseInt(row.Hora_Inicio.split(':')[0]),
+                    includeBreak: row.Incluye_Descanso === 'Sí',
+                    breakStartTime: row.Incluye_Descanso === 'Sí' ? row.Inicio_Descanso : undefined,
+                    breakEndTime: row.Incluye_Descanso === 'Sí' ? row.Fin_Descanso : undefined,
+                };
+
+                 // Validate shiftValues using Zod schema before calculating
+                 try {
+                    formSchema.parse(shiftValues); // Validate the structure and times
+                 } catch (validationError) {
+                     console.error(`Error validando datos de CSV para ${row.Fecha}:`, validationError);
+                     errorCount++;
+                     toast({
+                         title: `Error Datos CSV Inválidos (${format(shiftDate, 'dd/MM')})`,
+                         description: `Los datos del turno en el CSV no son válidos. ${validationError instanceof z.ZodError ? validationError.errors.map(e => e.message).join(', ') : ''}`,
+                         variant: 'destructive',
+                         duration: 7000
+                     });
+                     continue; // Skip this row
+                 }
+
+
+                // Calculate this shift
+                const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                const result = await calculateSingleWorkday(shiftValues, calculationId);
+
+                if (isCalculationError(result)) {
+                    console.error(`Error calculando turno importado de CSV para ${row.Fecha}:`, result.error);
+                    errorCount++;
+                    toast({
+                        title: `Error Importando CSV (${format(shiftDate, 'dd/MM')})`,
+                        description: result.error,
+                        variant: 'destructive',
+                        duration: 5000
+                    });
+                } else {
+                    newCalculatedDays.push(result);
+                    importedCount++;
+                }
+            }
+
+            // Merge new calculations with existing ones and sort
+             setCalculatedDays(prevDays =>
+                [...prevDays, ...newCalculatedDays].sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime())
+             );
+
+            // Show summary toast
+             let toastDescription = `${importedCount} turno(s) importado(s) de CSV y calculado(s).`;
+             if (skippedCount > 0) toastDescription += ` ${skippedCount} día(s) omitido(s) (fuera de período o ya calculado).`;
+             if (errorCount > 0) toastDescription += ` ${errorCount} error(es) al calcular o validar.`;
+
+            toast({
+                title: 'Importación de CSV Completa',
+                description: toastDescription,
+                variant: errorCount > 0 ? 'destructive' : 'default',
+                duration: 7000
+            });
+
+
+        } catch (error) {
+            console.error("Error importando CSV:", error);
+            toast({
+                title: 'Error al Importar CSV',
+                description: error instanceof Error ? error.message : 'No se pudo procesar el archivo CSV.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsImporting(false);
+             // Reset file input to allow selecting the same file again
+             if (fileInputRef.current) {
+                 fileInputRef.current.value = '';
+             }
+        }
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays, formSchema]);
+
+    // Trigger file input click
+    const triggerFileInput = () => {
+         if (!employeeId || !payPeriodStart || !payPeriodEnd) {
+             toast({
+                 title: 'Información Incompleta',
+                 description: 'Selecciona colaborador y período antes de importar CSV.',
+                 variant: 'destructive',
+             });
+             return;
+         }
+         fileInputRef.current?.click();
+    };
+
 
 
     const handleClearPeriodData = () => {
@@ -1036,11 +1184,25 @@ export default function Home() {
 
                 {/* Action Buttons for Load/Clear */}
                 <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> {/* Changed to 4 columns */}
+                    {/* Hidden File Input */}
+                   <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImportCSV}
+                        accept=".csv"
+                        className="hidden"
+                    />
+                   {/* Import CSV Button */}
                    <Button
-                     onClick={handleLoadData}
+                     onClick={triggerFileInput} // Call function to trigger click
                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" // Use theme color
-                     disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
-                       <FolderSync className="mr-2 h-4 w-4" /> Cargar/Actualizar Turnos
+                     disabled={isFormDisabled || isImporting}>
+                        {isImporting ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                             <FileUp className="mr-2 h-4 w-4" />
+                        )}
+                        Importar CSV
                    </Button>
 
                    {/* Import Schedule Button */}
@@ -1048,7 +1210,7 @@ export default function Home() {
                         onClick={handleImportSchedule}
                         variant="outline"
                         className="w-full hover:bg-accent hover:text-accent-foreground"
-                        disabled={!employeeId || !payPeriodStart || !payPeriodEnd || isImporting}
+                        disabled={isFormDisabled || isImporting}
                     >
                         {isImporting ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1405,4 +1567,3 @@ export default function Home() {
     </main>
   );
 }
-

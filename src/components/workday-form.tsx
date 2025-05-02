@@ -39,7 +39,8 @@ import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const timeErrorMessage = 'Formato de hora inválido (HH:mm).';
 
-const formSchema = z.object({
+// Export the schema
+export const formSchema = z.object({
   startDate: z.date({
     required_error: 'La fecha de inicio es requerida.',
   }),
@@ -310,8 +311,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                             'w-full pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
                              // Conditional border for holiday and Sunday
-                             isHoliday && 'border-primary border', // Use primary border for holiday
-                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border' // Keep primary border for Sunday
+                             isHoliday && 'border-primary border-2', // Use primary border for holiday
+                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border-2' // Keep primary border for Sunday
                           )}
                           disabled={isCheckingHoliday} // Disable while checking
                         >
