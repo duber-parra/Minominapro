@@ -1,7 +1,7 @@
 
-'use client';
+'use client'; // Ensure this directive is present
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Imported useMemo
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -12,11 +12,11 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings } from 'lucide-react'; // Added Settings icon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Import Label
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,19 +29,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog"; // Use DialogPrimitiveTrigger to avoid conflict
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
-import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
+import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 
-import type { Location, Department, Employee, ShiftAssignment, ScheduleData } from '@/types/schedule'; // Assuming types exist
+import type { Location, Department, Employee, ShiftAssignment, ScheduleData } from '@/types/schedule';
 import { v4 as uuidv4 } from 'uuid';
-import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns'; // Import date-fns functions
-import { es } from 'date-fns/locale'; // Import Spanish locale
-import { cn } from '@/lib/utils'; // Import cn
+import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -57,7 +57,7 @@ const initialLocations: Location[] = [
 ];
 
 const initialDepartments: Department[] = [
-  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: Building }, // Use Building or similar
+  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: Building },
   { id: 'dep-2', name: 'Salón', locationId: 'loc-1', icon: Users },
   { id: 'dep-3', name: 'Caja & Barra', locationId: 'loc-2', icon: Edit },
   { id: 'dep-4', name: 'Bodega', locationId: 'loc-2', icon: Building2 },
@@ -89,7 +89,7 @@ export default function SchedulePage() {
     const [targetDate, setTargetDate] = useState<Date>(new Date()); // Track the date for shift assignment
 
     // State for managing Location, Department, and Employee CRUD modals
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false); // Changed from isLocationModalOpen etc.
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
     const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
@@ -104,9 +104,6 @@ export default function SchedulePage() {
     const [employeeFormData, setEmployeeFormData] = useState({ name: '', primaryLocationId: selectedLocationId });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null);
-
-    // Removed state for configuration collapse
-    // const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
 
 
     const weekDates = getWeekDates(currentDate);
@@ -376,9 +373,6 @@ export default function SchedulePage() {
         setCurrentDate(prevDate => addWeeks(prevDate, 1));
      };
 
-     // Removed toggleConfigCollapse
-
-
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
              <div className="flex justify-between items-center mb-6 gap-4 flex-wrap"> {/* Added flex-wrap */}
@@ -622,7 +616,7 @@ export default function SchedulePage() {
                     <DialogFooter>
                          <DialogClose asChild>
                             <Button variant="outline">Cancelar</Button>
-                         </DialogClose>
+                          </DialogClose>
                         <Button onClick={handleSaveEmployee}>Guardar</Button>
                     </DialogFooter>
                 </DialogContent>
