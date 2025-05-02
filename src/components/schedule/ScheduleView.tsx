@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { Department, ScheduleData } from '@/types/schedule'; // Assuming types exist
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
@@ -126,3 +127,4 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     }
 };
+
