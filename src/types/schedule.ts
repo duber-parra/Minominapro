@@ -1,3 +1,4 @@
+
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -12,6 +13,7 @@ export interface Department {
   name: string;
   locationId: string; // Link to Location
   icon?: LucideIcon; // Optional icon component
+  iconName?: string; // Optional: Store the name of the icon for serialization
 }
 
 export interface Employee {
@@ -67,7 +69,6 @@ export interface ShiftTemplate {
 
 
 // Interface for data sent to Payroll Calculator
-// TODO: Update this interface if the payroll calculator needs the break start/end times
 export interface PayrollCalculationInput {
   employeeId: string; // This should be the user-defined Employee ID
   periodoInicio: string; // Format "YYYY-MM-DD"
@@ -84,5 +85,6 @@ export interface PayrollCalculationInput {
     finDescanso?: string;   // Optional "HH:MM"
   }[];
 }
+
 
     
