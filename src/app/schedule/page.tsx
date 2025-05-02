@@ -13,7 +13,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2 } from 'lucide-react'; // Added Loader2
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check } from 'lucide-react'; // Added Loader2, Check
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,6 +33,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
@@ -124,9 +134,10 @@ const initialDepartments: Department[] = [
 
 
 const initialEmployees: Employee[] = [
-  { id: '101', name: 'Carlos Pérez', primaryLocationId: 'loc-1' },
-  { id: '102', name: 'Ana Rodriguez', primaryLocationId: 'loc-1' },
-  { id: '201', name: 'Luis Gómez', primaryLocationId: 'loc-2' },
+  { id: '101', name: 'Carlos Pérez', locationIds: ['loc-1'] },
+  { id: '102', name: 'Ana Rodriguez', locationIds: ['loc-1'] },
+  { id: '201', name: 'Luis Gómez', locationIds: ['loc-2'] },
+  { id: '202', name: 'Maria García', locationIds: ['loc-1', 'loc-2'] }, // Example multi-location employee
 ];
 
 const defaultNotesText = `Lun a Jue: Parrillazo y Gauchos 12am. - Gaucho 11pm. | Vie a Sab: Parrillazo y Gauchos 1am. - Gaucho 12am. | Dom: Todos 11 pm`;
@@ -198,6 +209,15 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY || key === SCHEDULE_TEMPLATES_KEY) {
                  if (Array.isArray(parsed)) {
                       console.log(`[loadFromLocalStorage] Loaded ${parsed.length} items for key: ${key}`); // Add logging
+                      // Ensure employees have locationIds array
+                       if (key === EMPLOYEES_KEY) {
+                           return parsed.map((emp: any) => ({
+                               ...emp,
+                               locationIds: Array.isArray(emp.locationIds)
+                                   ? emp.locationIds
+                                   : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
+                           })) as T;
+                       }
                       return parsed as T;
                  } else {
                      console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
@@ -274,7 +294,7 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
                                      return { ...assign, employee: fullEmployee };
                                  } else {
                                      console.warn(`Employee ID ${assign.employee.id} not found while loading schedule for assignment ${assign.id}`);
-                                     return { ...assign, employee: { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, primaryLocationId: '' } }; // Placeholder if employee not found
+                                     return { ...assign, employee: { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] } }; // Placeholder if employee not found
                                  }
                              }
                              return assign; // Should not happen if saved correctly
@@ -328,7 +348,9 @@ export default function SchedulePage() {
     const [departmentFormData, setDepartmentFormData] = useState<{name: string, locationId: string, iconName?: string}>({ name: '', locationId: selectedLocationId, iconName: undefined }); // Add iconName
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [employeeFormData, setEmployeeFormData] = useState({ id: '', name: '', primaryLocationId: selectedLocationId });
+    // Initialize employee form data with locationIds as an array
+    const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[] }>({ id: '', name: '', locationIds: [selectedLocationId] });
+
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null);
 
@@ -480,7 +502,7 @@ export default function SchedulePage() {
                         // Handle case where employee might be missing (e.g., deleted)
                         console.warn(`Employee with ID ${assign.employee?.id || 'undefined'} not found for assignment ${assign.id}`);
                         // Return a placeholder or handle as needed
-                         return { ...assign, employee: { id: assign.employee?.id || 'unknown', name: `(ID: ${assign.employee?.id || '??'})`, primaryLocationId: '' } };
+                         return { ...assign, employee: { id: assign.employee?.id || 'unknown', name: `(ID: ${assign.employee?.id || '??'})`, locationIds: [] } };
                     }
                  }).filter(assign => assign !== null); // Filter out nulls if you returned null above
              });
@@ -494,7 +516,11 @@ export default function SchedulePage() {
     }, [scheduleData, employees]); // Added employees dependency
 
 
-    const filteredEmployees = useMemo(() => employees.filter(emp => emp.primaryLocationId === selectedLocationId), [employees, selectedLocationId]);
+    // Filter employees based on the currently selected location ID
+    const filteredEmployees = useMemo(() => employees.filter(emp =>
+        Array.isArray(emp.locationIds) && emp.locationIds.includes(selectedLocationId)
+    ), [employees, selectedLocationId]);
+
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
 
     // Filter templates based on selected location and current view mode
@@ -550,22 +576,39 @@ export default function SchedulePage() {
     }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isEmployeeSelectionModalOpen]); // Dependencies adjusted
 
 
-    // Ensure form data defaults are updated when selectedLocationId changes
+    // Ensure department form data defaults are updated when selectedLocationId changes
     useEffect(() => {
         if (!departmentFormData.locationId || departmentFormData.locationId !== selectedLocationId) {
            setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
         }
-        if (!employeeFormData.primaryLocationId || employeeFormData.primaryLocationId !== selectedLocationId) {
-            setEmployeeFormData(prev => ({ ...prev, primaryLocationId: selectedLocationId }));
-        }
-    }, [selectedLocationId, departmentFormData.locationId, employeeFormData.primaryLocationId]);
+    }, [selectedLocationId, departmentFormData.locationId]);
+
+    // Ensure employee form data defaults locationIds has selectedLocationId when it changes
+    useEffect(() => {
+        // Ensure locationIds is always an array and includes the selected location
+        setEmployeeFormData(prev => ({
+            ...prev,
+            locationIds: Array.isArray(prev.locationIds)
+                ? (prev.locationIds.includes(selectedLocationId) ? prev.locationIds : [selectedLocationId]) // Ensure current is present or reset
+                : [selectedLocationId] // Initialize if not an array
+        }));
+    }, [selectedLocationId]);
 
 
     const handleLocationChange = (locationId: string) => {
         setSelectedLocationId(locationId);
          // Also update form defaults when location changes interactively
          setDepartmentFormData(prev => ({ ...prev, locationId: locationId }));
-         setEmployeeFormData(prev => ({ ...prev, primaryLocationId: locationId }));
+         // For employee, maybe just ensure the new location is added or becomes the default if array is empty?
+         setEmployeeFormData(prev => {
+            const currentLocationIds = Array.isArray(prev.locationIds) ? prev.locationIds : [];
+            return {
+                ...prev,
+                // If editing, keep existing locations; if adding, default to the new one
+                // This logic might need refinement based on desired UX for "primary" location concept
+                locationIds: currentLocationIds.length > 0 ? currentLocationIds : [locationId]
+            };
+         });
     };
 
     const handleOpenEmployeeSelectionModal = (departmentId: string, date: Date) => {
@@ -810,16 +853,42 @@ export default function SchedulePage() {
 
     const handleOpenEmployeeModal = (employee: Employee | null) => {
         setEditingEmployee(employee);
-        setEmployeeFormData({ id: employee?.id || '', name: employee?.name || '', primaryLocationId: employee?.primaryLocationId || selectedLocationId });
+        // Initialize form data with locationIds array, ensure it's always an array
+        setEmployeeFormData({
+            id: employee?.id || '',
+            name: employee?.name || '',
+            locationIds: Array.isArray(employee?.locationIds) ? employee.locationIds : [selectedLocationId]
+        });
         setIsEmployeeModalOpen(true);
     };
+
+    // Function to toggle location ID in employee form state
+    const handleToggleEmployeeLocation = (locationId: string) => {
+        setEmployeeFormData(prev => {
+            const currentIds = Array.isArray(prev.locationIds) ? prev.locationIds : [];
+            let newLocationIds;
+            if (currentIds.includes(locationId)) {
+                // Remove location if already present (only if more than one location exists)
+                newLocationIds = currentIds.length > 1 ? currentIds.filter(id => id !== locationId) : currentIds;
+            } else {
+                // Add location if not present
+                newLocationIds = [...currentIds, locationId];
+            }
+            return { ...prev, locationIds: newLocationIds };
+        });
+    };
+
 
     const handleSaveEmployee = () => {
          const id = employeeFormData.id.trim();
          const name = employeeFormData.name.trim();
-         const primaryLocationId = employeeFormData.primaryLocationId;
-          if (!id || !name || !primaryLocationId) {
-             toast({ title: 'Datos Incompletos', description: 'El ID, nombre y la sede principal del colaborador son requeridos.', variant: 'destructive' });
+         // Ensure locationIds is always an array and has at least one item
+         const locationIds = Array.isArray(employeeFormData.locationIds) && employeeFormData.locationIds.length > 0
+                             ? employeeFormData.locationIds
+                             : [selectedLocationId]; // Default to current location if empty
+
+          if (!id || !name || locationIds.length === 0) {
+             toast({ title: 'Datos Incompletos', description: 'El ID, nombre y al menos una sede son requeridos.', variant: 'destructive' });
              return;
           }
 
@@ -829,7 +898,7 @@ export default function SchedulePage() {
              return;
          }
 
-         const updatedEmployeeData = { id, name, primaryLocationId };
+         const updatedEmployeeData: Employee = { id, name, locationIds };
 
         if (editingEmployee) {
              // Update existing employee
@@ -880,10 +949,15 @@ export default function SchedulePage() {
                         }
                         return remaining;
                     });
-                    // Cascade delete: remove departments, employees (reset location), templates, and schedule data associated with the location
+                    // Cascade delete: remove departments, remove location from employees, remove templates, and schedule data associated with the location
                     const depsToDelete = departments.filter(dep => dep.locationId === itemToDelete.id).map(d => d.id);
                     setDepartments(prevDeps => prevDeps.filter(dep => dep.locationId !== itemToDelete.id));
-                    setEmployees(prevEmps => prevEmps.map(emp => emp.primaryLocationId === itemToDelete.id ? {...emp, primaryLocationId: '' } : emp)); // Reset primary location or remove? Reset seems safer.
+                    // Remove the deleted location ID from employees' locationIds array
+                    setEmployees(prevEmps => prevEmps.map(emp => ({
+                        ...emp,
+                        locationIds: emp.locationIds.filter(locId => locId !== itemToDelete.id)
+                    })).filter(emp => emp.locationIds.length > 0)); // Optional: Remove employee if they have no locations left? Decide based on business logic.
+
                     setSavedTemplates(prevTemplates => (Array.isArray(prevTemplates) ? prevTemplates : []).filter(t => t.locationId !== itemToDelete.id)); // Ensure array before filtering
                     // Remove schedule entries that only contain assignments from the deleted departments
                      setScheduleData(prevSchedule => {
@@ -1073,7 +1147,7 @@ export default function SchedulePage() {
                   } else {
                        console.warn(`Employee ${assign.employee.id} not found during duplication.`);
                        // Assign a placeholder to avoid errors, though this indicates data inconsistency
-                       assign.employee = { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, primaryLocationId: '' };
+                       assign.employee = { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] };
                   }
              });
          });
@@ -1308,10 +1382,10 @@ export default function SchedulePage() {
 
                 // Load assignments from the template
                 Object.keys(templateToLoad.assignments).forEach(sourceDateKey => {
-                    const templateDate = parseISO(sourceDateKey);
+                    const templateDate = parseDateFnsInternal(sourceDateKey, 'yyyy-MM-dd', new Date()); // Parse date from template key
                     console.log(`Processing date from template: ${sourceDateKey}, Parsed: ${templateDate}`); // Log date processing
                     // Find the corresponding date object in the current weekDates array based on day matching
-                    const targetWeekDate = weekDates.find(weekDate => format(weekDate, 'yyyy-MM-dd') === sourceDateKey); // Direct date match
+                    const targetWeekDate = weekDates.find(weekDate => isSameDay(weekDate, templateDate)); // Use isSameDay for comparison
 
                     if (isValid(templateDate) && targetWeekDate) {
                          console.log(`Date ${sourceDateKey} is valid and within the current week.`); // Log valid date
@@ -1591,17 +1665,17 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
-             {/* Title - Removed specific styling, rely on global/Tailwind */}
-             <div className="text-center mb-8">
-                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+             {/* Title */}
+             <div className="text-center mb-6 md:mb-8">
+                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
                     Planificador de Horarios
                  </h1>
-                 <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
+                 <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
 
-              {/* Controls Section - Removed Card wrapper */}
-             <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 p-4 bg-transparent"> {/* Made background transparent */}
+              {/* Controls Section - Transparent background */}
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 mb-6 md:mb-8 p-4 bg-transparent"> {/* Reduced gaps */}
                  {/* Location Selector */}
                  <div className="flex items-center gap-2">
                      <LocationSelector
@@ -1610,209 +1684,208 @@ export default function SchedulePage() {
                          onLocationChange={handleLocationChange}
                      />
                  </div>
-
-                 {/* Configuration Button */}
-                  <div className="flex items-center gap-2">
-                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-                          <DialogTrigger asChild>
-                              <Button variant="outline" size="icon" title="Configuración">
-                                  <Settings className="h-5 w-5"/> {/* Standard icon size */}
-                                  <span className="sr-only">Configuración</span>
-                              </Button>
-                          </DialogTrigger>
-                         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
-                             <DialogHeader>
-                                 <DialogTitle>Configuración General</DialogTitle>
-                                 <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
-                             </DialogHeader>
-                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
-                                 {/* Locations Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                     </div>
-                                     <ul className="space-y-2 text-sm">
-                                         {locations.map((loc) => (
-                                             <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
-                                                 <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
-                                                     <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
-                                                         </AlertDialogTrigger>
-                                                         <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>
-                                                                     Eliminar Sede "{itemToDelete?.name}"? Se eliminarán los departamentos, colaboradores (se desvincularán de la sede) y templates asociados. Los turnos existentes se mantendrán pero desvinculados de la sede eliminada. Esta acción no se puede deshacer.
-                                                                 </AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
-                                                     </AlertDialog>
-                                                 </div>
-                                             </li>
-                                         ))}
-                                     </ul>
-                                 </div>
-                                 {/* Departments Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                     </div>
-                                     <ul className="space-y-2 text-sm">
-                                         {departments.map((dep) => (
-                                             <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
-                                                 <span className="truncate text-muted-foreground">{dep.name} <span className="text-xs italic">({locations.find(l => l.id === dep.locationId)?.name || 'Sede inválida'})</span></span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
-                                                     <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                         </AlertDialogTrigger>
-                                                         <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>
-                                                                     Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
-                                                                 </AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
-                                                     </AlertDialog>
-                                                 </div>
-                                             </li>
-                                         ))}
-                                     </ul>
-                                 </div>
-                                 {/* Employees Column */}
-                                 <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                     <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                     </div>
-                                     <ul className="space-y-2 text-sm">
-                                         {employees.map((emp) => (
-                                             <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                 <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
-                                                     <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                         </AlertDialogTrigger>
-                                                         <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>
-                                                                     Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
-                                                                 </AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
-                                                     </AlertDialog>
-                                                 </div>
-                                             </li>
-                                         ))}
-                                     </ul>
-                                 </div>
-                                 {/* Saved Templates Column */}
-                                 <div className="space-y-4">
-                                     <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1">
-                                             <Library className="h-4 w-4 text-muted-foreground"/>
-                                             Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
-                                         </h4>
-                                         {/* Button to save current view as template */}
-                                         <Button
-                                             variant="outline"
-                                             size="sm"
-                                             onClick={handleOpenTemplateModal}
-                                             title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
-                                         >
-                                             <Download className="h-4 w-4" />
-                                         </Button>
-                                     </div>
-                                     <ul className="space-y-2 text-sm">
-                                         {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
-                                             <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                 <span className="truncate text-muted-foreground">{template.name}</span>
-                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                      {/* Load Template Button */}
-                                                     <Button
-                                                         variant="ghost"
-                                                         size="icon"
-                                                         className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                         onClick={() => handleLoadTemplate(template.id)}
-                                                         title={`Cargar Template (${template.type === 'daily' ? 'Diario' : 'Semanal'})`}
-                                                         // Removed explicit disabled prop
-                                                     >
-                                                         <Upload className="h-4 w-4" />
-                                                     </Button>
-                                                     <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                         </AlertDialogTrigger>
-                                                         <AlertDialogContent>
-                                                             <AlertDialogHeader>
-                                                                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                 <AlertDialogDescription>
-                                                                     Eliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
-                                                                 </AlertDialogDescription>
-                                                             </AlertDialogHeader>
-                                                             <AlertDialogFooter>
-                                                                 <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                 <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                             </AlertDialogFooter>
-                                                         </AlertDialogContent>
-                                                     </AlertDialog>
-                                                 </div>
-                                             </li>
-                                         )) : (
-                                             <p className="text-xs text-muted-foreground italic text-center pt-2">
-                                                 No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
-                                             </p>
-                                         )}
-                                     </ul>
-                                 </div>
-                             </div>
-                             <DialogFooter>
-                                 <DialogClose asChild>
-                                     <Button variant="secondary">Cerrar</Button>
-                                 </DialogClose>
-                             </DialogFooter>
-                         </DialogContent>
-                     </Dialog>
-                  </div>
+                   {/* Configuration Button */}
+                   <div className="flex items-center gap-2">
+                       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+                           <DialogTrigger asChild>
+                               <Button variant="outline" size="icon" title="Configuración">
+                                   <Settings className="h-5 w-5"/> {/* Standard icon size */}
+                                   <span className="sr-only">Configuración</span>
+                               </Button>
+                           </DialogTrigger>
+                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+                              <DialogHeader>
+                                  <DialogTitle>Configuración General</DialogTitle>
+                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
+                              </DialogHeader>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
+                                  {/* Locations Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <ul className="space-y-2 text-sm">
+                                          {locations.map((loc) => (
+                                              <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
+                                                  <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
+                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
+                                                      <AlertDialog>
+                                                          <AlertDialogTrigger asChild>
+                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent>
+                                                              <AlertDialogHeader>
+                                                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                  <AlertDialogDescription>
+                                                                      Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán, y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.
+                                                                  </AlertDialogDescription>
+                                                              </AlertDialogHeader>
+                                                              <AlertDialogFooter>
+                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                              </AlertDialogFooter>
+                                                          </AlertDialogContent>
+                                                      </AlertDialog>
+                                                  </div>
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                                  {/* Departments Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <ul className="space-y-2 text-sm">
+                                          {departments.map((dep) => (
+                                              <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
+                                                  <span className="truncate text-muted-foreground">{dep.name} <span className="text-xs italic">({locations.find(l => l.id === dep.locationId)?.name || 'Sede inválida'})</span></span>
+                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
+                                                      <AlertDialog>
+                                                          <AlertDialogTrigger asChild>
+                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent>
+                                                              <AlertDialogHeader>
+                                                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                  <AlertDialogDescription>
+                                                                      Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
+                                                                  </AlertDialogDescription>
+                                                              </AlertDialogHeader>
+                                                              <AlertDialogFooter>
+                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                              </AlertDialogFooter>
+                                                          </AlertDialogContent>
+                                                      </AlertDialog>
+                                                  </div>
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                                  {/* Employees Column */}
+                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                      <div className="flex justify-between items-center">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <ul className="space-y-2 text-sm">
+                                          {employees.map((emp) => (
+                                              <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
+                                                  <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
+                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
+                                                      <AlertDialog>
+                                                          <AlertDialogTrigger asChild>
+                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent>
+                                                              <AlertDialogHeader>
+                                                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                  <AlertDialogDescription>
+                                                                      Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
+                                                                  </AlertDialogDescription>
+                                                              </AlertDialogHeader>
+                                                              <AlertDialogFooter>
+                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                              </AlertDialogFooter>
+                                                          </AlertDialogContent>
+                                                      </AlertDialog>
+                                                  </div>
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                                  {/* Saved Templates Column */}
+                                  <div className="space-y-4">
+                                      <div className="flex justify-between items-center">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1">
+                                              <Library className="h-4 w-4 text-muted-foreground"/>
+                                              Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
+                                          </h4>
+                                          {/* Button to save current view as template */}
+                                          <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={handleOpenTemplateModal}
+                                              title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
+                                          >
+                                              <Download className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <ul className="space-y-2 text-sm">
+                                          {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
+                                              <li key={template.id} className="flex items-center justify-between group py-1 border-b">
+                                                  <span className="truncate text-muted-foreground">{template.name}</span>
+                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                       {/* Load Template Button */}
+                                                      <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                          onClick={() => handleLoadTemplate(template.id)}
+                                                          title={`Cargar Template (${template.type === 'daily' ? 'Diario' : 'Semanal'})`}
+                                                          // Removed explicit disabled prop
+                                                      >
+                                                          <Upload className="h-4 w-4" />
+                                                      </Button>
+                                                      <AlertDialog>
+                                                          <AlertDialogTrigger asChild>
+                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
+                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent>
+                                                              <AlertDialogHeader>
+                                                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                  <AlertDialogDescription>
+                                                                      Eliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
+                                                                  </AlertDialogDescription>
+                                                              </AlertDialogHeader>
+                                                              <AlertDialogFooter>
+                                                                  <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                              </AlertDialogFooter>
+                                                          </AlertDialogContent>
+                                                      </AlertDialog>
+                                                  </div>
+                                              </li>
+                                          )) : (
+                                              <p className="text-xs text-muted-foreground italic text-center pt-2">
+                                                  No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
+                                              </p>
+                                          )}
+                                      </ul>
+                                  </div>
+                              </div>
+                              <DialogFooter>
+                                  <DialogClose asChild>
+                                      <Button variant="secondary">Cerrar</Button>
+                                  </DialogClose>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                   </div>
 
 
                  {/* --- Day View Date Selector --- */}
                  {viewMode === 'day' && (
-                     <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2"> {/* Centered for mobile */}
                          <Popover>
                              <PopoverTrigger asChild>
                                  <Button
                                      variant={'outline'}
                                      className={cn(
-                                         'w-[240px] sm:w-[280px] justify-start text-left font-normal', // Adjusted width for better fit
+                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal', // Adjusted width
                                          !targetDate && 'text-muted-foreground',
                                          isHoliday(targetDate) && 'border-primary' // Highlight border only
                                      )}
@@ -1823,7 +1896,7 @@ export default function SchedulePage() {
                                      ) : (
                                          <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" />
                                      )}
-                                     {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
                                      {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold text-primary">(Festivo)</span>}
                                  </Button>
                              </PopoverTrigger>
@@ -1846,7 +1919,7 @@ export default function SchedulePage() {
 
                  {/* --- Week View Navigator --- */}
                  {viewMode === 'week' && (
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center justify-center gap-2"> {/* Centered */}
                          <WeekNavigator
                              currentDate={currentDate}
                              onPreviousWeek={handlePreviousWeek}
@@ -1856,7 +1929,7 @@ export default function SchedulePage() {
                  )}
 
                  {/* View Mode Toggle */}
-                 <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2"> {/* Centered */}
                      <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
                          <SelectTrigger className="w-[120px]">
                              <SelectValue placeholder="Vista" />
@@ -1900,7 +1973,7 @@ export default function SchedulePage() {
              </DndWrapper>
 
               {/* --- Actions Row (Moved Below Schedule) --- */}
-             <div className="flex flex-wrap justify-end gap-2 mt-6">
+              <div className="flex flex-wrap justify-end gap-2 mt-6">
                  {/* Share Button */}
                  <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                      <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -1918,6 +1991,7 @@ export default function SchedulePage() {
                     variant="outline"
                     onClick={handleOpenTemplateModal}
                     title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}
+                    className="hover:bg-primary hover:text-primary-foreground"
                  >
                     <Download className="mr-2 h-4 w-4" /> Guardar Template
                  </Button>
@@ -2027,19 +2101,37 @@ export default function SchedulePage() {
                              <Label htmlFor="employee-name">Nombre</Label>
                              <Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre Completo" />
                           </div>
-                         <div>
-                              <Label htmlFor="employee-location">Sede Principal</Label>
-                              <Select value={employeeFormData.primaryLocationId} onValueChange={(value) => setEmployeeFormData(prev => ({ ...prev, primaryLocationId: value }))}>
-                                  <SelectTrigger id="employee-location">
-                                      <SelectValue placeholder="Selecciona sede" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      {locations.map(loc => (
-                                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
-                         </div>
+                          <div>
+                               <Label htmlFor="employee-locations">Sedes Asignadas</Label>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-start">
+                                            {employeeFormData.locationIds.length > 0
+                                                ? employeeFormData.locationIds
+                                                      .map(id => locations.find(l => l.id === id)?.name)
+                                                      .filter(Boolean)
+                                                      .join(', ')
+                                                : 'Selecciona sedes'}
+                                            <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-full">
+                                        <DropdownMenuLabel>Selecciona Sedes</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {locations.map(loc => (
+                                            <DropdownMenuCheckboxItem
+                                                key={loc.id}
+                                                checked={employeeFormData.locationIds.includes(loc.id)}
+                                                onCheckedChange={() => handleToggleEmployeeLocation(loc.id)}
+                                                onSelect={(e) => e.preventDefault()} // Prevent closing on select
+                                            >
+                                                {loc.name}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                {employeeFormData.locationIds.length === 0 && <p className="text-xs text-destructive mt-1">Debes seleccionar al menos una sede.</p>}
+                           </div>
                      </div>
                     <DialogFooter>
                          <DialogClose asChild>
@@ -2083,7 +2175,7 @@ export default function SchedulePage() {
                       <AlertDialogHeader>
                           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, empleados asociados se desvincularán, y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.`}
+                              {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'department' && `Eliminar Departamento "${itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'employee' && `Eliminar Colaborador "${itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
                               {itemToDelete?.type === 'template' && `Eliminar Template "${itemToDelete?.name}"? Esta acción no se puede deshacer.`}
@@ -2164,3 +2256,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+

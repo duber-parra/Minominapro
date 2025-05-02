@@ -1,4 +1,3 @@
-
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -19,7 +18,8 @@ export interface Department {
 export interface Employee {
   id: string; // User-defined or managed Employee ID (e.g., payroll ID)
   name: string;
-  primaryLocationId: string; // Link to primary Location
+  // Changed primaryLocationId to locationIds array
+  locationIds: string[]; // Array of location IDs the employee is associated with
   // Add other relevant employee details if needed (e.g., role, skills)
 }
 
