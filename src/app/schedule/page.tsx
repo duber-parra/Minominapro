@@ -13,7 +13,7 @@ import {
   CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine } from 'lucide-react'; // Added FileDown icon, PencilLine, CalendarModernIcon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2 } from 'lucide-react'; // Added FileDown icon, PencilLine, CalendarModernIcon, Share2
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1137,6 +1137,74 @@ export default function SchedulePage() {
         }
     };
 
+    // --- Share Schedule Handler ---
+     const handleShareSchedule = async () => {
+        let textToCopy = "";
+        const locationName = locations.find(l => l.id === selectedLocationId)?.name || selectedLocationId;
+
+        if (viewMode === 'day') {
+            const dateStr = format(targetDate, 'EEEE dd \'de\' MMMM', { locale: es });
+            textToCopy = `*Horario ${locationName} - ${dateStr}*\n\n`;
+            const daySchedule = getScheduleForDate(targetDate);
+            filteredDepartments.forEach(dept => {
+                const assignments = daySchedule.assignments[dept.id] || [];
+                if (assignments.length > 0) {
+                    textToCopy += `*${dept.name}*\n`;
+                    assignments.forEach(a => {
+                        textToCopy += `- ${a.employee.name}: ${formatTo12Hour(a.startTime)} - ${formatTo12Hour(a.endTime)}`;
+                        if (a.includeBreak && a.breakStartTime && a.breakEndTime) {
+                             textToCopy += ` (D: ${formatTo12Hour(a.breakStartTime)}-${formatTo12Hour(a.breakEndTime)})`;
+                        }
+                        textToCopy += "\n";
+                    });
+                    textToCopy += "\n";
+                }
+            });
+        } else { // Week view
+            const weekStartFormatted = format(weekDates[0], 'dd MMM', { locale: es });
+            const weekEndFormatted = format(weekDates[6], 'dd MMM yyyy', { locale: es });
+            textToCopy = `*Horario ${locationName} - Semana ${weekStartFormatted} al ${weekEndFormatted}*\n\n`;
+            weekDates.forEach(date => {
+                const dateStr = format(date, 'EEEE dd', { locale: es });
+                const daySchedule = getScheduleForDate(date);
+                let dayHasAssignments = false;
+                let dayText = `*${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}:*\n`; // Capitalize day name
+
+                filteredDepartments.forEach(dept => {
+                     const assignments = daySchedule.assignments[dept.id] || [];
+                     if (assignments.length > 0) {
+                         dayHasAssignments = true;
+                         dayText += `_${dept.name}_\n`;
+                         assignments.forEach(a => {
+                             dayText += `- ${a.employee.name}: ${formatTo12Hour(a.startTime)} - ${formatTo12Hour(a.endTime)}`;
+                            if (a.includeBreak && a.breakStartTime && a.breakEndTime) {
+                                dayText += ` (D: ${formatTo12Hour(a.breakStartTime)}-${formatTo12Hour(a.breakEndTime)})`;
+                            }
+                             dayText += "\n";
+                         });
+                     }
+                });
+
+                if (dayHasAssignments) {
+                    textToCopy += dayText + "\n";
+                }
+            });
+        }
+
+        if (textToCopy.trim().split('\n').length <= 2) { // Only header lines
+            toast({ title: 'Sin Horario', description: 'No hay turnos asignados para compartir.', variant: 'default' });
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            toast({ title: 'Horario Copiado', description: 'El horario ha sido copiado al portapapeles. Puedes pegarlo en WhatsApp.' });
+        } catch (err) {
+            console.error('Error al copiar al portapapeles:', err);
+            toast({ title: 'Error al Copiar', description: 'No se pudo copiar el horario.', variant: 'destructive' });
+        }
+     };
+
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
@@ -1166,8 +1234,8 @@ export default function SchedulePage() {
                              />
                          </div>
 
-                        {/* Configuration Button */}
-                        <div className="flex flex-col items-center space-y-1">
+                          {/* Configuration Button */}
+                         <div className="flex flex-col items-center space-y-1">
                              <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                  <DialogTrigger asChild>
                                      <Button variant="outline" size="icon"> {/* Icon button */}
@@ -1402,6 +1470,10 @@ export default function SchedulePage() {
 
              {/* --- Actions Row - Moved below the main grid, aligned to the right --- */}
             <div className="flex flex-wrap justify-end gap-2 mt-6">
+                 {/* Share Button */}
+                 <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-blue-500 hover:text-white">
+                     <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
+                 </Button>
                  {/* PDF Export */}
                  <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white">
                      <FileDown className="mr-2 h-4 w-4" /> PDF
