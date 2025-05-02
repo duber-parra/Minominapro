@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ScheduleData, Department, Employee, ShiftAssignment } from '@/types/schedule';
+import { formatTo12Hour } from './time-utils'; // Import the helper
 
 // Extend jsPDF interface for autoTable
 declare module 'jspdf' {
@@ -110,10 +111,11 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
                 const assignment = (daySchedule.assignments[dept.id] || []).find(a => a.employee.id === emp.id);
 
                 if (assignment) {
-                    let cellContent = `${assignment.startTime} - ${assignment.endTime}`;
+                    // Format times using the helper
+                    let cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
                     // Append break time if included
                     if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                        cellContent += `\nD: ${assignment.breakStartTime}-${assignment.breakEndTime}`; // Add break time on new line
+                        cellContent += `\nD: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`; // Add break time on new line
                     }
                      employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
                 } else {

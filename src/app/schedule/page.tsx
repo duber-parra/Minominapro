@@ -49,6 +49,7 @@ import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
 import { exportScheduleToPDF } from '@/lib/schedule-pdf-exporter'; // Import the new PDF exporter
+import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 
 
 // Helper to generate dates for the current week
@@ -902,11 +903,11 @@ export default function SchedulePage() {
                             assignment.employee.name,
                             dateKey,
                             department?.name || deptId,
-                            assignment.startTime,
-                            assignment.endTime,
+                            formatTo12Hour(assignment.startTime), // Use 12-hour format
+                            formatTo12Hour(assignment.endTime), // Use 12-hour format
                             assignment.includeBreak ? 'Sí' : 'No',
-                            assignment.includeBreak ? assignment.breakStartTime : '',
-                            assignment.includeBreak ? assignment.breakEndTime : '',
+                            assignment.includeBreak && assignment.breakStartTime ? formatTo12Hour(assignment.breakStartTime) : '', // Use 12-hour format
+                            assignment.includeBreak && assignment.breakEndTime ? formatTo12Hour(assignment.breakEndTime) : '', // Use 12-hour format
                             durationHours.toFixed(2), // Format hours to 2 decimal places
                         ]);
                     });

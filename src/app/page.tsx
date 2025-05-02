@@ -37,6 +37,7 @@ import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter';
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
+import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
@@ -683,7 +684,7 @@ export default function Home() {
   // Determine if form or summary should be disabled
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
   // Determine if summary section should be visible
-  const showSummary = quincenalSummary !== null;
+  const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte;
 
 
   // --- PDF Export Handler ---
@@ -827,7 +828,7 @@ export default function Home() {
       {/* Section for Employee ID and Pay Period Selection */}
       <Card className="mb-8 shadow-lg bg-card">
           <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl text-foreground">
+              <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size */}
                   <User className="h-5 w-5" /> Selección de Colaborador y Período
               </CardTitle>
               <CardDescription>
@@ -1006,7 +1007,7 @@ export default function Home() {
                     <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
                       {calculatedDays // Already sorted by the update/add handler
                         .map((day, index) => (
-                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-card'}`}> {/* Use bg-card */}
+                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-primary' : 'bg-card'}`}> {/* Use bg-card */}
                            <div className="flex items-start justify-between mb-3">
                              <div>
                                <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
@@ -1016,22 +1017,23 @@ export default function Home() {
                                </div>
                                <div className="flex items-center text-sm text-muted-foreground gap-2">
                                    <Clock className="h-4 w-4" />
-                                   {day.inputData.startTime} - {day.inputData.endTime}
-                                   {day.inputData.endsNextDay ? ' (+1d)' : ''}
+                                    {/* Format times using helper */}
+                                    {formatTo12Hour(day.inputData.startTime)} - {formatTo12Hour(day.inputData.endTime)}
+                                    {day.inputData.endsNextDay ? ' (+1d)' : ''}
                                </div>
                              </div>
                              <div className="text-right flex-shrink-0 ml-4">
                                  <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
-                                 <div className="font-semibold text-accent text-lg flex items-center justify-end gap-1">
+                                 <div className="font-semibold text-primary text-lg flex items-center justify-end gap-1">
                                     {formatCurrency(day.pagoTotalRecargosExtras)}
                                  </div>
                                 <div className="flex items-center justify-end gap-1 mt-2">
                                    {/* Button to edit INPUTS (date/time) */}
-                                   <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingResultsId === day.id}>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingResultsId === day.id}>
                                      <Edit className="h-4 w-4" />
                                    </Button>
                                    {/* Button to edit RESULTS (hours) */}
-                                   <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-accent bg-accent/10' : ''}`} disabled={editingDayId === day.id}>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingDayId === day.id}>
                                       <PencilLine className="h-4 w-4" />
                                    </Button>
                                    {/* Delete Button */}
@@ -1257,4 +1259,3 @@ export default function Home() {
     </main>
   );
 }
-

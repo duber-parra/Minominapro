@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from '@/components/ui/switch';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
+import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const timeErrorMessage = 'Formato de hora inválido (HH:mm).';
@@ -367,7 +368,27 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   <FormItem>
                     <FormLabel>Hora de Inicio</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} className="text-base"/>
+                       {/* Use a text input to display 12-hour format, but store 24-hour */}
+                        <Input
+                            type="text"
+                            value={formatTo12Hour(field.value)}
+                            onFocus={(e) => { e.target.type = 'time' }}
+                            onBlur={(e) => {
+                                if (timeRegex.test(e.target.value)) {
+                                    field.onChange(e.target.value);
+                                }
+                                e.target.type = 'text'; // Revert back to text to show 12-hour format
+                            }}
+                            onChange={(e) => {
+                                // Allow direct changes if type is time
+                                if (e.target.type === 'time') {
+                                     field.onChange(e.target.value);
+                                }
+                                // Basic parsing attempt if user types in text field (less robust)
+                                // Might need a dedicated time picker component for better UX
+                            }}
+                            className="text-base"
+                        />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -380,7 +401,24 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   <FormItem>
                     <FormLabel>Hora de Fin</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} className="text-base"/>
+                       {/* Use a text input to display 12-hour format, but store 24-hour */}
+                        <Input
+                            type="text"
+                            value={formatTo12Hour(field.value)}
+                             onFocus={(e) => { e.target.type = 'time' }}
+                             onBlur={(e) => {
+                                if (timeRegex.test(e.target.value)) {
+                                    field.onChange(e.target.value);
+                                }
+                                e.target.type = 'text';
+                            }}
+                            onChange={(e) => {
+                                if (e.target.type === 'time') {
+                                    field.onChange(e.target.value);
+                                }
+                            }}
+                            className="text-base"
+                        />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -440,8 +478,25 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                        <FormItem>
                          <FormLabel>Inicio Descanso</FormLabel>
                          <FormControl>
-                           {/* Ensure value is controlled and never null/undefined for input[type=time] */}
-                           <Input type="time" {...field} value={field.value ?? ''} className="text-base" />
+                            <Input
+                                type="text"
+                                value={field.value ? formatTo12Hour(field.value) : ''}
+                                onFocus={(e) => { e.target.type = 'time' }}
+                                onBlur={(e) => {
+                                    if (timeRegex.test(e.target.value)) {
+                                        field.onChange(e.target.value);
+                                    } else if (e.target.value === '') {
+                                        field.onChange(undefined); // Clear if empty
+                                    }
+                                    e.target.type = 'text';
+                                }}
+                                onChange={(e) => {
+                                    if (e.target.type === 'time') {
+                                         field.onChange(e.target.value);
+                                    }
+                                }}
+                                className="text-base"
+                            />
                          </FormControl>
                          <FormMessage />
                        </FormItem>
@@ -454,8 +509,25 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                        <FormItem>
                          <FormLabel>Fin Descanso</FormLabel>
                          <FormControl>
-                           {/* Ensure value is controlled and never null/undefined for input[type=time] */}
-                           <Input type="time" {...field} value={field.value ?? ''} className="text-base" />
+                             <Input
+                                type="text"
+                                value={field.value ? formatTo12Hour(field.value) : ''}
+                                onFocus={(e) => { e.target.type = 'time' }}
+                                onBlur={(e) => {
+                                    if (timeRegex.test(e.target.value)) {
+                                        field.onChange(e.target.value);
+                                    } else if (e.target.value === '') {
+                                        field.onChange(undefined);
+                                    }
+                                    e.target.type = 'text';
+                                }}
+                                onChange={(e) => {
+                                     if (e.target.type === 'time') {
+                                        field.onChange(e.target.value);
+                                     }
+                                }}
+                                className="text-base"
+                            />
                          </FormControl>
                          <FormMessage />
                        </FormItem>

@@ -18,6 +18,7 @@ import { Save, X, PencilLine } from 'lucide-react'; // Added PencilLine
 import type { ShiftDetails } from '@/types/schedule'; // Assuming type exists
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // Import cn
+import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 
 interface ShiftDetailModalProps {
   isOpen: boolean;
@@ -143,6 +144,18 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   const saveButtonText = isEditing ? 'Guardar Cambios' : 'Guardar Turno';
   const SaveIcon = isEditing ? PencilLine : Save; // Use different icon for editing
 
+  // Helper function to handle input changes and keep 24-hour format internally
+  const handleTimeChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    if (timeRegex.test(value)) {
+      setter(value);
+    } else {
+      // Handle potential partial input or conversion if needed
+      // For now, just update if valid 24-hour format
+      setter(value); // Allow intermediate typing
+    }
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
@@ -159,12 +172,12 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
             <Label htmlFor="start-time" className="text-right">
               Inicio Turno
             </Label>
-            <Input
-              id="start-time"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className={cn("col-span-3", startTimeError && 'border-destructive ring-destructive')}
+             <Input
+                id="start-time"
+                type="time" // Use type="time" for the native picker
+                value={startTime} // Bind directly to the 24-hour state
+                onChange={(e) => handleTimeChange(setStartTime, e.target.value)}
+                className={cn("col-span-3", startTimeError && 'border-destructive ring-destructive')}
             />
              {startTimeError && <p className="col-span-4 text-xs text-destructive text-right">{startTimeError}</p>}
           </div>
@@ -173,13 +186,13 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
             <Label htmlFor="end-time" className="text-right">
               Fin Turno
             </Label>
-            <Input
-              id="end-time"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className={cn("col-span-3", endTimeError && 'border-destructive ring-destructive')}
-            />
+             <Input
+                id="end-time"
+                type="time"
+                value={endTime}
+                onChange={(e) => handleTimeChange(setEndTime, e.target.value)}
+                className={cn("col-span-3", endTimeError && 'border-destructive ring-destructive')}
+             />
              {endTimeError && <p className="col-span-4 text-xs text-destructive text-right">{endTimeError}</p>}
           </div>
 
@@ -207,7 +220,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
                   id="break-start-time"
                   type="time"
                   value={breakStartTime}
-                  onChange={(e) => setBreakStartTime(e.target.value)}
+                  onChange={(e) => handleTimeChange(setBreakStartTime, e.target.value)}
                   className={cn("col-span-3", breakStartTimeError && 'border-destructive ring-destructive')}
                 />
                  {breakStartTimeError && <p className="col-span-4 text-xs text-destructive text-right">{breakStartTimeError}</p>}
@@ -220,7 +233,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
                   id="break-end-time"
                   type="time"
                   value={breakEndTime}
-                  onChange={(e) => setBreakEndTime(e.target.value)}
+                  onChange={(e) => handleTimeChange(setBreakEndTime, e.target.value)}
                   className={cn("col-span-3", breakEndTimeError && 'border-destructive ring-destructive')}
                 />
                  {breakEndTimeError && <p className="col-span-4 text-xs text-destructive text-right">{breakEndTimeError}</p>}

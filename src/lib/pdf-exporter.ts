@@ -6,6 +6,7 @@ import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
 import { labelMap, displayOrder, formatCurrency, formatHours } from '@/components/results-display'; // Import helpers
+import { formatTo12Hour } from './time-utils'; // Import the helper
 
 // Extend jsPDF interface for autoTable
 declare module 'jspdf' {
@@ -81,7 +82,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
          [
              { content: 'Total Recargos y Horas Extras Quincenales:', styles: { fontStyle: 'bold' } },
              '',
-             { content: formatCurrency(data.summary.totalPagoRecargosExtrasQuincena), styles: { halign: 'right', fontStyle: 'bold', textColor: [0, 128, 128] } } // Teal color
+             { content: formatCurrency(data.summary.totalPagoRecargosExtrasQuincena), styles: { halign: 'right', fontStyle: 'bold', textColor: [76, 67, 223] } } // Use primary color
          ]
     );
 
@@ -90,7 +91,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
         body: bodyHours,
         startY: currentY,
         theme: 'grid',
-        headStyles: { fillColor: [210, 221, 234], textColor: [40, 54, 123] }, // Light blue header, dark blue text
+        headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59] }, // Adjusted colors (example: slate)
         columnStyles: {
             0: { cellWidth: 'auto' },
             1: { halign: 'right' },
@@ -328,6 +329,3 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const filename = `Reporte_Nominas_${timestamp}.pdf`;
     doc.save(filename);
 }
-
-
-    
