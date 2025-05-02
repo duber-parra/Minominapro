@@ -20,8 +20,8 @@ body {
     --secondary-foreground: 240 10% 3.9%; /* Default Dark */
     --muted: 0 0% 100%; /* Set to white */
     --muted-foreground: 240 5% 64.9%; /* Lighter gray for muted text */
-    --accent: 174 63% 40%; /* Teal - Kept as accent */
-    --accent-foreground: 0 0% 98%; /* White/Light text on Teal */
+    --accent: 210 17% 85%; /* Neutral Gray (was Teal) - Same as border */
+    --accent-foreground: 240 10% 3.9%; /* Default Dark (was White/Light) */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 210 17% 85%; /* Adjusted border */
@@ -33,6 +33,16 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Sidebar specific colors */
+    --sidebar-background: hsl(var(--background));
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--primary) / 0.1); /* Primary with low opacity */
+    --sidebar-accent-foreground: hsl(var(--primary)); /* Primary */
+    --sidebar-border: hsl(var(--border));
+    --sidebar-ring: hsl(var(--ring));
   }
 
   .dark {
@@ -48,8 +58,8 @@ body {
     --secondary-foreground: 210 40% 98%; /* Light Gray */
     --muted: 242 40% 18%; /* Match secondary */
     --muted-foreground: 210 40% 60%; /* Grayer text */
-    --accent: 174 63% 50%; /* Brighter Teal - Kept as accent */
-    --accent-foreground: 0 0% 9%; /* Dark text on Teal */
+    --accent: 242 40% 25%; /* Dark Neutral Gray (was Teal) - Same as dark border */
+    --accent-foreground: 210 40% 98%; /* Light Gray (was Dark) */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 242 40% 25%; /* Darker border based on new blue */
@@ -60,6 +70,16 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Sidebar specific colors */
+    --sidebar-background: hsl(var(--background));
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--primary) / 0.15); /* Primary with slightly higher opacity */
+    --sidebar-accent-foreground: hsl(var(--primary)); /* Lighter Primary */
+    --sidebar-border: hsl(var(--border));
+    --sidebar-ring: hsl(var(--ring));
   }
 }
 

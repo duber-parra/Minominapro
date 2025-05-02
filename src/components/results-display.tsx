@@ -288,7 +288,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
              <Separator className="my-2" />
              <div className="flex justify-between font-semibold text-lg">
                <span className="text-foreground">Total Recargos y Horas Extras {isSummary ? 'Quincenales' : 'del Día'}:</span>
-               <span className="text-accent">{formatCurrency(totalRecargosExtras)}</span>
+               <span className="text-primary">{formatCurrency(totalRecargosExtras)}</span> {/* Changed from text-accent */}
              </div>
              {isSummary && ( // Only show breakdown in summary view
                 <>
@@ -406,7 +406,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                            size="sm"
                            onClick={onAddDeduccion}
                            disabled={!onAddDeduccion}
-                           className="hover:bg-destructive hover:text-destructive-foreground" // Restored red hover for deduction button
+                           className="hover:bg-destructive hover:text-destructive-foreground" // Red hover for deduction button
                        >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
@@ -475,4 +475,3 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
 }
 
 
-    

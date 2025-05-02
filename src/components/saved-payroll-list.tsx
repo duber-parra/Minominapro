@@ -79,7 +79,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                         </p>
                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena + (payroll.incluyeAuxTransporte ? 100000 : 0) + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) )}</span>
-                            <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-accent text-right">{formatCurrency(netoFinal)}</span>
+                            <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-primary text-right">{formatCurrency(netoFinal)}</span> {/* Changed from text-accent */}
                          </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
