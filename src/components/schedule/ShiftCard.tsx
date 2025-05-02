@@ -54,6 +54,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
              className={cn(
                  "text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity", // Hide by default, show on group hover, add transition
                  isCompact ? "h-4 w-4" : "h-7 w-7" // Smaller button if compact
+                 // Removed hover:bg-destructive/10
              )}
              onClick={onRemove}
           >
