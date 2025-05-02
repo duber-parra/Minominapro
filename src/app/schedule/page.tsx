@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine } from 'lucide-react'; // Added FileDown icon, PencilLine
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine } from 'lucide-react'; // Added FileDown icon, PencilLine, CalendarModernIcon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -419,6 +419,19 @@ export default function SchedulePage() {
                     a.id === editingShift.assignment.id ? assignmentPayload : a
                 );
             } else {
+                 // Check if employee is already assigned in ANY department on this date
+                 const isAlreadyAssigned = Object.values(dayData.assignments)
+                                                .flat()
+                                                .some(a => a.employee.id === employeeForShift.id);
+
+                 if (isAlreadyAssigned) {
+                     toast({
+                         title: 'Asignación Duplicada',
+                         description: `${employeeForShift.name} ya tiene un turno asignado para el ${format(date, 'PPP', { locale: es })}.`,
+                         variant: 'destructive',
+                     });
+                     return prevData; // Do not update schedule if duplicate
+                 }
                 // Add new assignment
                 updatedAssignments = [...departmentAssignments, assignmentPayload];
             }
@@ -1092,12 +1105,18 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
-             <h1 className="text-2xl md:text-3xl font-bold text-center mb-8 text-foreground">Planificador de Horarios</h1> {/* Centered title */}
+             {/* Modern Title */}
+             <div className="text-center mb-8">
+                 <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                    Planificador de Horarios
+                 </h1>
+                 <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
+             </div>
+
              <div className="flex flex-wrap md:flex-nowrap justify-between items-center mb-6 gap-4"> {/* flex-wrap for mobile, flex-nowrap for larger */}
 
-
-                 {/* --- Central Controls (Week/Day View) --- */}
-                 <div className="flex justify-center items-center gap-4 order-3 md:order-none w-full md:w-auto mt-4 md:mt-0"> {/* Center on mobile, order-3 */}
+                {/* --- Central Controls (Week/Day View) - Centered --- */}
+                <div className="flex justify-center items-center gap-4 order-3 md:order-none w-full md:w-auto mt-4 md:mt-0">
                      {/* --- Day View Date Selector --- */}
                      {viewMode === 'day' && (
                          <div >
@@ -1108,11 +1127,11 @@ export default function SchedulePage() {
                                           className={cn(
                                               'w-[280px] justify-start text-left font-normal',
                                               !targetDate && 'text-muted-foreground',
-                                              isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday
+                                               isHoliday(targetDate) && 'border-primary text-primary font-semibold' // Highlight if holiday (use primary color)
                                           )}
                                            disabled={isCheckingHoliday} // Disable while checking holiday
                                       >
-                                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" /> {/* Style CalendarIcon */}
+                                          <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> {/* Modern Calendar Icon */}
                                           {targetDate ? format(targetDate, 'PPPP', { locale: es }) : <span>Selecciona fecha</span>}
                                           {isCheckingHoliday && <span className="ml-2 text-xs italic">(Verificando...)</span>}
                                           {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold">(Festivo)</span>}
@@ -1127,7 +1146,7 @@ export default function SchedulePage() {
                                           locale={es}
                                           modifiers={{ holiday: (date) => isHoliday(date) }}
                                           modifiersClassNames={{
-                                              holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
+                                                holiday: 'border-primary text-primary font-semibold', // Apply primary text color and border for holiday
                                           }}
                                       />
                                   </PopoverContent>
@@ -1146,15 +1165,15 @@ export default function SchedulePage() {
 
                  {/* --- Right Controls (Config, View Mode, Location) --- */}
                  <div className="flex items-center gap-2 flex-shrink-0 order-2 md:order-last"> {/* Order-2 on mobile */}
-                     {/* Configuration Button */}
+                     {/* Configuration Button - Now Triggers a Dialog */}
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
-                             <Button variant="outline" size="icon"> {/* Changed to icon size */}
-                                <Settings className="h-4 w-4"/> {/* Removed text */}
-                                 <span className="sr-only">Configuración</span> {/* Added screen reader text */}
+                             <Button variant="outline" size="icon"> {/* Icon button */}
+                                <Settings className="h-4 w-4"/>
+                                 <span className="sr-only">Configuración</span>
                              </Button>
                          </DialogTrigger>
-                         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Even Wider modal, scrollable */}
+                         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Wide modal, scrollable */}
                               <DialogHeader>
                                   <DialogTitle>Configuración General</DialogTitle>
                                   <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
@@ -1238,7 +1257,6 @@ export default function SchedulePage() {
                                   {/* Saved Templates Column */}
                                   <div className="space-y-4">
                                       <div className="flex justify-between items-center">
-                                          {/* Filter title based on view mode */}
                                            <h4 className="font-semibold text-foreground flex items-center gap-1">
                                                <Library className="h-4 w-4 text-muted-foreground"/>
                                                Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
@@ -1246,12 +1264,10 @@ export default function SchedulePage() {
                                           {/* Add Template button moved to Actions Row */}
                                       </div>
                                        <ul className="space-y-2 text-sm">
-                                            {/* Display filtered templates */}
                                             {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
                                                 <li key={template.id} className="flex items-center justify-between group py-1 border-b">
                                                     <span className="truncate text-muted-foreground">{template.name}</span>
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                        {/* Enable load button regardless of viewMode */}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -1297,7 +1313,6 @@ export default function SchedulePage() {
                      </Select>
                      {/* Location Selector */}
                      <div className="space-y-1">
-                        {/* <Label htmlFor="location-select" className="text-xs font-medium text-muted-foreground">Sede</Label> */}
                          <LocationSelector
                             locations={locations}
                             selectedLocationId={selectedLocationId}
@@ -1309,18 +1324,21 @@ export default function SchedulePage() {
 
             {/* --- Actions Row - Moved to the bottom, aligned to the right --- */}
             <div className="mb-6 flex flex-wrap justify-end gap-2">
-                 {/* Buttons moved here */}
-                 <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white"> {/* Red hover */}
+                 {/* PDF Export */}
+                 <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-500 hover:text-white">
                      <FileDown className="mr-2 h-4 w-4" /> PDF
                  </Button>
-                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white"> {/* Green hover */}
+                 {/* CSV Export */}
+                 <Button onClick={handleExportCSV} variant="outline" className="hover:bg-green-500 hover:text-white">
                      <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Horas (CSV)
                  </Button>
+                 {/* Duplicate Day (Only in Day View) */}
                  {viewMode === 'day' && (
                     <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
                     </Button>
                  )}
+                 {/* Save as Template */}
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
@@ -1349,6 +1367,7 @@ export default function SchedulePage() {
                          </DialogFooter>
                      </DialogContent>
                  </Dialog>
+                  {/* Save Schedule */}
                  <Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
@@ -1360,7 +1379,6 @@ export default function SchedulePage() {
 
                      {/* --- Available Employees (Takes 2/12 width) --- */}
                       <div className="lg:col-span-2 space-y-6">
-                         {/* Available Employees Card */}
                           <EmployeeList employees={availableEmployees} />
                      </div>
 
