@@ -28,7 +28,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
         // ref={setNodeRef} // For sortable
         // style={style} // For sortable
         className={cn(
-            "group bg-background border shadow-sm transition-colors duration-150", // Add 'group' class, transition
+            "group bg-background border shadow-sm transition-colors duration-150 relative", // Add 'group' class, transition, and relative positioning
             isCompact ? "border-none shadow-none bg-transparent p-0 hover:bg-accent/50 cursor-pointer" : "hover:border-primary", // Remove borders/padding if compact, add hover background and cursor
             onClick && "cursor-pointer" // Add cursor pointer if onClick is provided
         )}
@@ -37,10 +37,11 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
         onClick={onClick} // Add onClick handler to the card
      >
        <CardContent className={cn(
-           "flex items-center justify-between",
+           "flex items-start justify-between", // Changed items-center to items-start
            isCompact ? "p-0.5" : "p-3" // Smaller padding if compact
        )}>
-         <div className="flex-grow min-w-0 overflow-hidden mr-1"> {/* Allow shrinking and hide overflow, add margin */}
+         {/* Content Wrapper */}
+         <div className="flex-grow min-w-0 overflow-hidden mr-1 pr-4"> {/* Add padding-right to prevent overlap with absolute button */}
              <p className={cn(
                  "font-medium truncate",
                  isCompact ? "text-xs" : "text-sm" // Increased compact font size back to xs
@@ -67,13 +68,15 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({ assignment, onRemove, isCo
                  )}
              </div>
          </div>
+          {/* Delete Button - Positioned absolute top-right */}
          <Button
              variant="ghost"
              size="icon"
              className={cn(
+                 "absolute top-1 right-1", // Position top-right
                  "text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-transparent", // Hide by default, show on group hover, add transition, transparent hover bg
                  isCompact ? "h-4 w-4" : "h-7 w-7", // Smaller button if compact
-                 // Hide the button only when NOT hovering for compact view
+                 // Keep the button hidden on mobile/tablet for compact view unless hovering
                  isCompact && "group-hover:opacity-100 md:opacity-0"
              )}
              onClick={handleRemoveClick} // Use the new handler
