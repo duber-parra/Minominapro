@@ -1092,8 +1092,9 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full"> {/* Use max-w-full for wider layout */}
+             <h1 className="text-2xl md:text-3xl font-bold text-center mb-8 text-foreground">Planificador de Horarios</h1> {/* Centered title */}
              <div className="flex flex-wrap md:flex-nowrap justify-between items-center mb-6 gap-4"> {/* flex-wrap for mobile, flex-nowrap for larger */}
-                 <h1 className="text-2xl md:text-3xl font-bold text-foreground flex-shrink-0 order-1 md:order-none mr-auto">Planificador de Horarios</h1> {/* Responsive title size, adjust order */}
+
 
                  {/* --- Central Controls (Week/Day View) --- */}
                  <div className="flex justify-center items-center gap-4 order-3 md:order-none w-full md:w-auto mt-4 md:mt-0"> {/* Center on mobile, order-3 */}
