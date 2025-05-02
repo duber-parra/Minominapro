@@ -52,6 +52,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
   // Simplified rendering for week view
   if (isWeekView) {
     return ( // Start of return statement for week view
+      // Ensure this div correctly wraps the content
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5"> {/* Reduced padding and space */}
           {assignments.length > 0 ? (
               assignments.map((assignment) => (
@@ -77,10 +78,23 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
              {department.icon && <department.icon className="h-3.5 w-3.5 text-muted-foreground" />}
              {department.name} ({assignments.length})
          </CardTitle>
-        {/* Add shift button - Logic needed: needs a way to select employee */}
-        {/* <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => console.log("Add shift clicked")}>
+        {/* Add shift button - Now enabled also for Day View */}
+        <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => {
+                // Placeholder action for Day View '+' click
+                // The current onAssign requires an Employee, which we don't have here.
+                // We need a mechanism to select an employee *after* clicking this button.
+                console.log(`(+) Clicked for Dept: ${department.name} (${department.id}) on Date: ${format(date, 'yyyy-MM-dd')}. Need to implement employee selection.`);
+                // Future: Trigger a modal or sidebar to select an employee, then call:
+                // onAssign(selectedEmployee, department.id, date);
+            }}
+            title="Añadir Colaborador (Selección pendiente)"
+        >
           <Plus className="h-4 w-4" />
-        </Button> */}
+        </Button>
       </CardHeader>
       <CardContent className="flex-grow p-3 space-y-2 overflow-y-auto"> {/* Adjusted padding */}
         {/* Use SortableContext if items within the column need to be sortable */}
