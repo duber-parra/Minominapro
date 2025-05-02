@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, FileSpreadsheet } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp, FileSpreadsheet
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval } from 'date-fns'; // Removed duplicate parse import, added isSameDay
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -129,7 +130,7 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                      // Get adjustments and transport flag too
                     const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport } = parseStoredData(storedData);
 
-                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0) { // Check if there's any data
+                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport) { // Check if there's any data OR transport flag is true
                         // Calculate summary for the loaded days
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                         // Summary can be null if parsedDays is empty, handle this case
@@ -153,7 +154,10 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                             otrosIngresosLista: parsedIncome, // Store loaded income adjustments
                             otrasDeduccionesLista: parsedDeductions, // Store loaded deduction adjustments
                             incluyeAuxTransporte: parsedIncludeTransport, // Store transport flag
-                            createdAt: parsedDays[0]?.inputData?.startDate ? new Date(parsedDays[0].inputData.startDate) : new Date()
+                            // Use period start date as a reasonable approximation for createdAt if actual day data is missing
+                            createdAt: (parsedDays.length > 0 && parsedDays[0]?.inputData?.startDate)
+                                       ? new Date(parsedDays[0].inputData.startDate)
+                                       : startDate // Fallback to period start date
                          };
 
                         savedPayrolls.push(savedPayrollItem);
@@ -244,7 +248,7 @@ export default function Home() {
                 setIncluyeAuxTransporte(parsedIncludeTransport); // Load transport allowance flag
                 setIsDataLoaded(true); // Mark data as loaded (or attempted)
                  // Only toast if user explicitly selected employee/period
-                 if (employeeId && payPeriodStart && payPeriodEnd) {
+                 if (employeeId && payPeriodStart && payPeriodEnd && !isDataLoaded) { // Show load toast only on first load/manual change
                      toast({
                          title: storedData ? 'Datos Cargados' : 'Datos No Encontrados',
                          description: storedData ? `Se cargaron turnos, ajustes y estado de auxilio para ${employeeId}.` : `No se encontraron datos guardados para ${employeeId} en este período.`,
@@ -269,7 +273,7 @@ export default function Home() {
              setIsIncomeModalOpen(false);
              setIsDeductionModalOpen(false);
         }
-    }, [employeeId, payPeriodStart, payPeriodEnd, toast]); // Add toast to dependency array
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDataLoaded]); // Removed toast from dependency array if it causes loops
 
     // Save current employee/period data to localStorage whenever calculatedDays, otrosIngresos, otrasDeducciones, or incluyeAuxTransporte changes (after initial load)
     useEffect(() => {
@@ -298,10 +302,13 @@ export default function Home() {
                 }
             // Remove from storage only if ALL data is cleared AND transport flag is false
             } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte) {
-                localStorage.removeItem(storageKey);
-                console.log(`Clave ${storageKey} eliminada porque no hay datos ni auxilio de transporte activo.`);
-                // Refresh saved list after deletion
-                setSavedPayrolls(loadAllSavedPayrolls());
+                // Check if item exists before attempting removal
+                if (localStorage.getItem(storageKey)) {
+                    localStorage.removeItem(storageKey);
+                    console.log(`Clave ${storageKey} eliminada porque no hay datos ni auxilio de transporte activo.`);
+                    // Refresh saved list after deletion
+                    setSavedPayrolls(loadAllSavedPayrolls());
+                }
             }
         }
     }, [calculatedDays, otrosIngresos, otrasDeducciones, incluyeAuxTransporte, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Add incluyeAuxTransporte to dependencies
@@ -1133,6 +1140,101 @@ export default function Home() {
         }
     };
 
+   // --- Export Single Payroll to CSV Handler ---
+   const handleExportSingleCSV = (payrollKey: string) => {
+       const payrollToExport = savedPayrolls.find(p => p.key === payrollKey);
+       if (!payrollToExport) {
+           toast({
+               title: 'Nómina No Encontrada',
+               description: 'No se pudo encontrar la nómina seleccionada para exportar a CSV.',
+               variant: 'destructive',
+           });
+           return;
+       }
+
+       try {
+            const csvRows: string[][] = [];
+            // Headers
+            csvRows.push([
+               'ID Colaborador',
+               'Período Inicio',
+               'Período Fin',
+               'Salario Base',
+               ...displayOrder.map(key => `Horas: ${abbreviatedLabelMap[key]}`),
+               'Total Horas',
+               'Total Recargos/Extras',
+               'Aux. Transporte',
+               'Otros Ingresos',
+               'Total Devengado Bruto',
+               'Ded. Salud (4%)',
+               'Ded. Pensión (4%)',
+               'Otras Deducciones',
+               'Neto a Pagar'
+            ]);
+
+            // Data Row
+            const auxTransporteAplicado = payrollToExport.incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
+            const totalOtrosIngresos = (payrollToExport.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
+            const totalOtrasDeducciones = (payrollToExport.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
+            const baseMasExtras = payrollToExport.summary.pagoTotalConSalarioQuincena;
+            const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
+            const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+            const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
+            const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
+            const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
+            const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
+            const netoAPagar = subtotalNetoParcial - totalOtrasDeducciones;
+            const hourValues = displayOrder.map(key => formatHours(payrollToExport.summary.totalHorasDetalladas[key]));
+
+            csvRows.push([
+               payrollToExport.employeeId,
+               format(payrollToExport.periodStart, 'yyyy-MM-dd'),
+               format(payrollToExport.periodEnd, 'yyyy-MM-dd'),
+               payrollToExport.summary.salarioBaseQuincenal.toFixed(0),
+               ...hourValues,
+               formatHours(payrollToExport.summary.totalDuracionTrabajadaHorasQuincena),
+               payrollToExport.summary.totalPagoRecargosExtrasQuincena.toFixed(0),
+               auxTransporteAplicado.toFixed(0),
+               totalOtrosIngresos.toFixed(0),
+               totalDevengadoBruto.toFixed(0),
+               deduccionSaludQuincenal.toFixed(0),
+               deduccionPensionQuincenal.toFixed(0),
+               totalOtrasDeducciones.toFixed(0),
+               netoAPagar.toFixed(0)
+            ]);
+
+            // Generate CSV content
+            const csvContent = "data:text/csv;charset=utf-8,"
+               + csvRows.map(row =>
+                    row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(",")
+                ).join("\n");
+
+            // Trigger download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const filename = `Nomina_${payrollToExport.employeeId}_${format(payrollToExport.periodStart, 'yyyyMMdd')}-${format(payrollToExport.periodEnd, 'yyyyMMdd')}.csv`;
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast({
+                title: 'Exportación CSV Exitosa',
+                description: `Se generó el CSV para ${payrollToExport.employeeId}.`,
+            });
+
+       } catch (error) {
+           console.error("Error exportando nómina individual a CSV:", error);
+           toast({
+               title: 'Error en Exportación CSV',
+               description: 'Ocurrió un error al intentar generar el archivo CSV.',
+               variant: 'destructive',
+           });
+       }
+   };
+
+
 
    // --- Load Saved Payroll Handler ---
    const handleLoadSavedPayroll = (payrollKey: string) => {
@@ -1155,43 +1257,44 @@ export default function Home() {
    };
 
    // --- Delete Saved Payroll Handler ---
-   const handleDeleteSavedPayroll = () => {
-     if (!payrollToDeleteKey || typeof window === 'undefined') return;
+    const handleDeleteSavedPayroll = () => {
+      if (!payrollToDeleteKey || typeof window === 'undefined') return;
 
-     try {
-        const payrollInfo = savedPayrolls.find(p => p.key === payrollToDeleteKey);
-        localStorage.removeItem(payrollToDeleteKey);
-        setSavedPayrolls(loadAllSavedPayrolls()); // Refresh the list
-        setPayrollToDeleteKey(null); // Close dialog
-        toast({
-            title: 'Nómina Guardada Eliminada',
-            description: payrollInfo
-                         ? `La nómina de ${payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.`
-                         : 'La nómina seleccionada fue eliminada.',
-            variant: 'destructive',
-        });
-        // If the deleted payroll was the one currently loaded, clear the form/results
-        const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
-        if (currentKey === payrollToDeleteKey) {
-            setCalculatedDays([]);
-            setOtrosIngresos([]); // Clear adjustments too
-            setOtrasDeducciones([]);
-            setIncluyeAuxTransporte(false); // Reset transport flag
-            setEmployeeId(''); // Optionally clear selection
-            setPayPeriodStart(undefined);
-            setPayPeriodEnd(undefined);
-        }
-
-     } catch (error) {
-         console.error("Error deleting saved payroll from localStorage:", error);
+      try {
+         const payrollInfo = savedPayrolls.find(p => p.key === payrollToDeleteKey);
+         localStorage.removeItem(payrollToDeleteKey);
+         // Update state immediately to reflect deletion in UI
+         setSavedPayrolls(prevPayrolls => prevPayrolls.filter(p => p.key !== payrollToDeleteKey));
+         setPayrollToDeleteKey(null); // Close dialog
          toast({
-             title: 'Error al Eliminar',
-             description: 'No se pudo eliminar la nómina guardada.',
+             title: 'Nómina Guardada Eliminada',
+             description: payrollInfo
+                          ? `La nómina de ${payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.`
+                          : 'La nómina seleccionada fue eliminada.',
              variant: 'destructive',
          });
-         setPayrollToDeleteKey(null); // Still close dialog
-     }
-   };
+         // If the deleted payroll was the one currently loaded, clear the form/results
+         const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+         if (currentKey === payrollToDeleteKey) {
+             setCalculatedDays([]);
+             setOtrosIngresos([]); // Clear adjustments too
+             setOtrasDeducciones([]);
+             setIncluyeAuxTransporte(false); // Reset transport flag
+             setEmployeeId(''); // Optionally clear selection
+             setPayPeriodStart(undefined);
+             setPayPeriodEnd(undefined);
+         }
+
+      } catch (error) {
+          console.error("Error deleting saved payroll from localStorage:", error);
+          toast({
+              title: 'Error al Eliminar',
+              description: 'No se pudo eliminar la nómina guardada.',
+              variant: 'destructive',
+          });
+          setPayrollToDeleteKey(null); // Still close dialog
+      }
+    };
 
 
 
@@ -1342,9 +1445,9 @@ export default function Home() {
                          </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
-                   {/* Bulk Export Button */}
-                    <Button onClick={handleBulkExportPDF} variant="outline" className="w-full lg:col-span-1" disabled={savedPayrolls.length === 0}>
-                        <Library className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
+                   {/* Bulk Export CSV Button */}
+                    <Button onClick={handleBulkExportCSV} variant="outline" className="w-full lg:col-span-1" disabled={savedPayrolls.length === 0}>
+                       <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Todo (CSV)
                     </Button>
 
                </div>
@@ -1575,6 +1678,7 @@ export default function Home() {
                    onDelete={(key) => setPayrollToDeleteKey(key)} // Trigger confirmation dialog
                    onBulkExport={handleBulkExportPDF}
                    onBulkExportCSV={handleBulkExportCSV} // Pass CSV export handler
+                   onExportSingleCSV={handleExportSingleCSV} // Pass single CSV export handler
                />
 
 
@@ -1666,3 +1770,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

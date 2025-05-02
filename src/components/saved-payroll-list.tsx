@@ -1,3 +1,4 @@
+
 // src/components/saved-payroll-list.tsx
 'use client';
 
@@ -14,12 +15,20 @@ import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; 
 interface SavedPayrollListProps {
   payrolls: SavedPayrollData[];
   onLoad: (key: string) => void;
-  onDelete: (key: string) => void; // Changed to accept key for deletion confirmation
+  onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog
   onBulkExport: () => void; // For PDF
   onBulkExportCSV: () => void; // Add prop for CSV export
+  onExportSingleCSV: (key: string) => void; // Prop for exporting a single CSV
 }
 
-export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, onDelete, onBulkExport, onBulkExportCSV }) => { // Added onBulkExportCSV
+export const SavedPayrollList: FC<SavedPayrollListProps> = ({
+    payrolls,
+    onLoad,
+    onDelete, // Receives the function to initiate deletion (open dialog)
+    onBulkExport,
+    onBulkExportCSV,
+    onExportSingleCSV // Receive single CSV export handler
+}) => {
 
     // Helper function to calculate final net pay for display
     const calculateNetoAPagar = (payroll: SavedPayrollData): number => {
@@ -89,21 +98,30 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
                             <span className="text-muted-foreground">Neto Estimado:</span><span className="font-semibold text-primary text-right">{formatCurrency(netoFinal)}</span>
                          </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Guardado: {format(payroll.createdAt || new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
+                           {/* Check if createdAt exists before formatting */}
+                          Guardado: {payroll.createdAt ? format(payroll.createdAt, 'dd/MM/yyyy HH:mm', { locale: es }) : 'Fecha no disponible'}
                         </p>
                       </div>
                       <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0"> {/* Changed to flex-row */}
+                        {/* Export Single CSV Button */}
+                        <Button variant="ghost" size="icon" onClick={() => onExportSingleCSV(payroll.key)} title="Exportar CSV Individual" className="h-8 w-8">
+                          <FileSpreadsheet className="h-4 w-4" />
+                        </Button>
+                        {/* Load Button */}
                         <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
                           <FileSearch className="h-4 w-4" />
                         </Button>
+                        {/* Delete Button Trigger */}
                         <AlertDialog>
-                           {/* Ensure AlertDialogTrigger is inside AlertDialog */}
                           <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                              <Button variant="ghost" size="icon" title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                                  // Call the onDelete prop which should open the dialog in the parent
+                                  onClick={() => onDelete(payroll.key)}
+                              >
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </AlertDialogTrigger>
-                           {/* Content is defined elsewhere in page.tsx */}
+                           {/* The AlertDialogContent is defined in page.tsx, triggered by this button */}
                         </AlertDialog>
                       </div>
                     </li>
@@ -117,3 +135,4 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({ payrolls, onLoad, 
     </Card>
   );
 };
+    
