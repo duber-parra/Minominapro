@@ -49,9 +49,14 @@ export interface ShiftTemplate {
   name: string;
   locationId: string;
   assignments: {
-    [departmentId: string]: Pick<ShiftAssignment, 'employee' | 'startTime' | 'endTime' | 'includeBreak' | 'breakStartTime' | 'breakEndTime'>[];
+    // Use Omit to exclude 'id' and 'employee' from the saved assignment structure in the template
+    [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
+    // Alternatively, if you want to save employee ID but not the full object:
+    // [departmentId: string]: (Omit<ShiftAssignment, 'id' | 'employee'> & { employeeId: string })[];
   };
+   createdAt: string; // ISO Date string when the template was created
 }
+
 
 // Interface for data sent to Payroll Calculator
 // TODO: Update this interface if the payroll calculator needs the break start/end times
