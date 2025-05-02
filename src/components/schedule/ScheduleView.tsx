@@ -84,104 +84,101 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             </Card>
         );
     } else {
-        // --- Week View ---
-         // Restore original grid setup for week view
-         const weekViewContent = weekDates.map((date, index) => {
-            const daySchedule = getScheduleForDate(date);
-            const dateKey = format(date, 'yyyy-MM-dd');
-            const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
-            const isLastDayOfWeek = index === weekDates.length - 1; // Check if it's the last day
-            const isCurrentHoliday = isHoliday(date); // Check if this specific date is a holiday
+         // --- Week View ---
+         // Wrapper div to enable horizontal scrolling on smaller screens
+         const weekViewContent = (
+           <div className="grid grid-cols-7 gap-2 min-w-[1000px]"> {/* Set min-width for horizontal scroll */}
+             {weekDates.map((date, index) => {
+                 const daySchedule = getScheduleForDate(date);
+                 const dateKey = format(date, 'yyyy-MM-dd');
+                 const totalAssignmentsForDay = Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0);
+                 const isLastDayOfWeek = index === weekDates.length - 1; // Check if it's the last day
+                 const isCurrentHoliday = isHoliday(date); // Check if this specific date is a holiday
 
-            // Card represents a single day column in the week view
-            return (
-                <div key={dateKey} className={cn(
-                    "flex flex-col",
-                     // Removed explicit width styling
-                )}>
-                    <Card className={cn(
-                        "shadow-sm bg-card border flex flex-col flex-grow", // Use flex-grow
-                        isCurrentHoliday ? "border-primary" : "border-border/50" // Highlight border with primary color
-                    )}>
-                        <CardHeader className={cn(
-                            "pb-2 pt-3 px-3 border-b relative",
-                            isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
-                        )}>
-                            <CardTitle className={cn(
-                                "text-base font-medium text-center whitespace-nowrap", // Adjusted size back to base
-                                isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight title text with primary color
-                            )}>
-                                {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
-                            </CardTitle>
-                            <CardDescription className="text-xs text-muted-foreground text-center"> {/* Increased size back to xs */}
-                                {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
-                                {isCurrentHoliday && <span className="text-primary block text-[10px] font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
-                            </CardDescription>
-                             {/* Action Buttons: Duplicate and Clear */}
-                            <div className="absolute top-1 right-1 flex flex-col gap-0.5">
-                                {/* Duplicate button for all days except the last one */}
-                                {!isLastDayOfWeek && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
-                                        onClick={() => onDuplicateDay(date)}
-                                        title="Duplicar al día siguiente"
-                                    >
-                                        <Copy className="h-3 w-3" />
-                                    </Button>
-                                )}
-                                {/* Clear Day Button */}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
-                                    onClick={() => onClearDay(date)} // Trigger clear confirmation
-                                    title="Limpiar turnos del día"
-                                    disabled={totalAssignmentsForDay === 0} // Disable if no assignments
-                                >
-                                    <Eraser className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-1.5 space-y-2 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
-                            {departments.length > 0 ? (
-                                departments.map((department) => (
-                                    <div key={department.id} className="border rounded-md p-1.5 bg-muted/10 relative"> {/* Reduced padding, lighter bg, relative positioning */}
-                                        <div className="flex justify-between items-center mb-1">
-                                            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis pr-5"> {/* Increased size back to xs */}
-                                                 {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />} {/* Slightly larger icon */}
-                                                 <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
-                                            </h4>
-                                             {/* Add + Button for Mobile/Tablet - Moved to DepartmentColumn */}
-                                        </div>
-                                        <DepartmentColumn
-                                            department={department}
-                                            assignments={daySchedule.assignments[department.id] || []}
-                                            onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
-                                            isWeekView // Indicate week view for potentially different rendering
-                                            date={date}
-                                            onAddShiftRequest={onAddShiftRequest} // Pass new assign handler
-                                            onShiftClick={onShiftClick} // Pass shift click handler
-                                        />
-                                    </div>
-                                ))
-                             ) : (
-                                  <p className="text-center text-xs text-muted-foreground italic pt-2"> {/* Smaller padding */}
-                                      No hay deptos.
-                                  </p>
-                             )}
-                        </CardContent>
-                    </Card>
-                </div>
-            );
-         });
-
-         // Restore the original grid layout instead of flex with scroll
-         return (
-             <div className="grid grid-cols-1 md:grid-cols-7 gap-2"> {/* Reverted to grid with 7 columns on medium screens and up */}
-                 {weekViewContent}
-             </div>
+                 // Card represents a single day column in the week view
+                 return (
+                     <div key={dateKey} className="flex flex-col h-full"> {/* Ensure day column takes height */}
+                         <Card className={cn(
+                             "shadow-sm bg-card border flex flex-col flex-grow", // Use flex-grow
+                             isCurrentHoliday ? "border-primary" : "border-border/50" // Highlight border with primary color
+                         )}>
+                             <CardHeader className={cn(
+                                 "pb-2 pt-3 px-3 border-b relative",
+                                 isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
+                             )}>
+                                 <CardTitle className={cn(
+                                     "text-sm font-medium text-center whitespace-nowrap", // Adjusted size back to sm
+                                     isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight title text with primary color
+                                 )}>
+                                     {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
+                                 </CardTitle>
+                                 <CardDescription className="text-xs text-muted-foreground text-center"> {/* Keep xs */}
+                                     {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
+                                     {isCurrentHoliday && <span className="text-primary block text-[10px] font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
+                                 </CardDescription>
+                                 {/* Action Buttons: Duplicate and Clear */}
+                                 <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+                                     {/* Duplicate button for all days except the last one */}
+                                     {!isLastDayOfWeek && (
+                                         <Button
+                                             variant="ghost"
+                                             size="icon"
+                                             className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
+                                             onClick={() => onDuplicateDay(date)}
+                                             title="Duplicar al día siguiente"
+                                         >
+                                             <Copy className="h-3 w-3" />
+                                         </Button>
+                                     )}
+                                     {/* Clear Day Button */}
+                                     <Button
+                                         variant="ghost"
+                                         size="icon"
+                                         className="h-5 w-5 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
+                                         onClick={() => onClearDay(date)} // Trigger clear confirmation
+                                         title="Limpiar turnos del día"
+                                         disabled={totalAssignmentsForDay === 0} // Disable if no assignments
+                                     >
+                                         <Eraser className="h-3 w-3" />
+                                     </Button>
+                                 </div>
+                             </CardHeader>
+                             <CardContent className="p-1.5 space-y-2 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
+                                 {departments.length > 0 ? (
+                                     departments.map((department) => (
+                                         <div key={department.id} className="border rounded-md p-1.5 bg-muted/10 relative"> {/* Reduced padding, lighter bg, relative positioning */}
+                                             <div className="flex justify-between items-center mb-1">
+                                                 <h4 className="text-xs font-semibold text-foreground flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis pr-5"> {/* Increased size back to xs */}
+                                                      {department.icon && <department.icon className="h-3 w-3 text-muted-foreground" />} {/* Slightly larger icon */}
+                                                      <span className="overflow-hidden text-ellipsis">{department.name}</span> {/* Ellipsis for name */}
+                                                 </h4>
+                                                  {/* Add + Button for Mobile/Tablet - Moved to DepartmentColumn */}
+                                             </div>
+                                             <DepartmentColumn
+                                                 department={department}
+                                                 assignments={daySchedule.assignments[department.id] || []}
+                                                 onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
+                                                 isWeekView // Indicate week view for potentially different rendering
+                                                 date={date}
+                                                 onAddShiftRequest={onAddShiftRequest} // Pass new assign handler
+                                                 onShiftClick={onShiftClick} // Pass shift click handler
+                                             />
+                                         </div>
+                                     ))
+                                  ) : (
+                                       <p className="text-center text-xs text-muted-foreground italic pt-2"> {/* Smaller padding */}
+                                           No hay deptos.
+                                       </p>
+                                  )}
+                             </CardContent>
+                         </Card>
+                     </div>
+                 );
+             })}
+           </div>
          );
+
+         // Return the scrollable container wrapping the week view content
+         return weekViewContent;
     }
 };

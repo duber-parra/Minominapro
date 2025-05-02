@@ -1,3 +1,4 @@
+
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine } from 'lucide-react'; // Added FileDown icon, PencilLine, CalendarModernIcon
@@ -1195,7 +1197,7 @@ export default function SchedulePage() {
                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
                                                              <AlertDialog>
                                                                  <AlertDialogTrigger asChild>
-                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                                  </AlertDialogTrigger>
                                                                  {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                              </AlertDialog>
@@ -1219,9 +1221,9 @@ export default function SchedulePage() {
                                                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
                                                               <AlertDialog>
-                                                                 <AlertDialogTrigger asChild>
+                                                                  <AlertDialogTrigger asChild>
                                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                                 </AlertDialogTrigger>
+                                                                  </AlertDialogTrigger>
                                                                  {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                               </AlertDialog>
                                                          </div>
@@ -1244,9 +1246,9 @@ export default function SchedulePage() {
                                                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
                                                                <AlertDialog>
-                                                                  <AlertDialogTrigger asChild>
-                                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                                  </AlertDialogTrigger>
+                                                                   <AlertDialogTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                                   </AlertDialogTrigger>
                                                                   {/* AlertDialogContent for Delete Confirmation is defined below */}
                                                                </AlertDialog>
                                                           </div>
@@ -1379,7 +1381,7 @@ export default function SchedulePage() {
 
 
                      {/* --- Schedule View (Takes remaining 10/12 width on lg) --- */}
-                     <div className="lg:col-span-10">
+                     <div className="lg:col-span-10 overflow-x-auto"> {/* Add horizontal scroll on main view area */}
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
