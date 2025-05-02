@@ -65,6 +65,9 @@ const getWeekDates = (currentDate: Date): Date[] => {
 const SCHEDULE_DATA_KEY = 'schedulePlannerData';
 const SCHEDULE_TEMPLATES_KEY = 'scheduleTemplates';
 const SCHEDULE_NOTES_KEY = 'schedulePlannerNotes'; // Key for notes
+const LOCATIONS_KEY = 'schedulePlannerLocations'; // Key for locations
+const DEPARTMENTS_KEY = 'schedulePlannerDepartments'; // Key for departments
+const EMPLOYEES_KEY = 'schedulePlannerEmployees'; // Key for employees
 
 // Cache for holidays
 let holidaysCache: { [year: number]: Set<string> } = {};
@@ -198,7 +201,7 @@ export default function SchedulePage() {
     const [currentDate, setCurrentDate] = useState(new Date()); // Track current date for week/day view navigation
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({}); // Store data per date key "yyyy-MM-dd"
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week'); // Default to week view
-    const [selectedLocationId, setSelectedLocationId] = useState<string>(initialLocations[0].id);
+    const [selectedLocationId, setSelectedLocationId] = useState<string>(''); // Initialize empty, load from storage
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false); // Shift details modal
     // State for selecting employee via '+' button
     const [isEmployeeSelectionModalOpen, setIsEmployeeSelectionModalOpen] = useState(false);
@@ -219,11 +222,12 @@ export default function SchedulePage() {
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-    const [departmentFormData, setDepartmentFormData] = useState({ name: '', locationId: selectedLocationId });
+    // Ensure locationId defaults correctly later
+    const [departmentFormData, setDepartmentFormData] = useState({ name: '', locationId: '' });
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    // Add 'id' field to employee form data
-    const [employeeFormData, setEmployeeFormData] = useState({ id: '', name: '', primaryLocationId: selectedLocationId });
+    // Add 'id' field to employee form data and default locationId
+    const [employeeFormData, setEmployeeFormData] = useState({ id: '', name: '', primaryLocationId: '' });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null); // Added 'template' type
 
@@ -268,9 +272,48 @@ export default function SchedulePage() {
             });
     }, [currentDate]); // Re-run when the navigated date changes
 
-    // Load schedule data, templates, and notes from localStorage on mount
+    // --- Load Data from localStorage on Mount ---
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            // Load Locations
+            const savedLocations = localStorage.getItem(LOCATIONS_KEY);
+            let loadedLocations: Location[] = initialLocations; // Default to initial if nothing saved
+            if (savedLocations) {
+                try {
+                    const parsed = JSON.parse(savedLocations);
+                    if (Array.isArray(parsed)) loadedLocations = parsed;
+                } catch (e) { console.error("Error parsing locations:", e); }
+            }
+            setLocations(loadedLocations);
+
+            // Load Departments
+            const savedDepartments = localStorage.getItem(DEPARTMENTS_KEY);
+            let loadedDepartments: Department[] = initialDepartments;
+            if (savedDepartments) {
+                try {
+                    const parsed = JSON.parse(savedDepartments);
+                    if (Array.isArray(parsed)) loadedDepartments = parsed;
+                } catch (e) { console.error("Error parsing departments:", e); }
+            }
+            setDepartments(loadedDepartments);
+
+            // Load Employees
+            const savedEmployees = localStorage.getItem(EMPLOYEES_KEY);
+            let loadedEmployees: Employee[] = initialEmployees;
+            if (savedEmployees) {
+                try {
+                    const parsed = JSON.parse(savedEmployees);
+                    if (Array.isArray(parsed)) loadedEmployees = parsed;
+                } catch (e) { console.error("Error parsing employees:", e); }
+            }
+            setEmployees(loadedEmployees);
+
+            // Set initial selected location (use first loaded location or default)
+            if (loadedLocations.length > 0) {
+                setSelectedLocationId(loadedLocations[0].id);
+            }
+
+            // Load Schedule Data
             const savedSchedule = localStorage.getItem(SCHEDULE_DATA_KEY);
             if (savedSchedule) {
                 try {
@@ -279,6 +322,18 @@ export default function SchedulePage() {
                     Object.keys(parsedData).forEach(key => {
                         if (parsedData[key] && typeof parsedData[key].date === 'string') {
                             parsedData[key].date = parseISO(parsedData[key].date);
+                        }
+                        // Revive employee objects within assignments
+                        if (parsedData[key] && parsedData[key].assignments) {
+                            Object.keys(parsedData[key].assignments).forEach(deptId => {
+                                parsedData[key].assignments[deptId].forEach((assign: any) => {
+                                    // Find the full employee object from the loaded employees list
+                                    const employee = loadedEmployees.find(emp => emp.id === assign.employee?.id);
+                                    if (employee) {
+                                        assign.employee = employee; // Replace potentially partial data with full object
+                                    }
+                                });
+                            });
                         }
                     });
                     setScheduleData(parsedData);
@@ -292,16 +347,15 @@ export default function SchedulePage() {
              if (savedTemplatesRaw) {
                  try {
                      const parsedTemplates = JSON.parse(savedTemplatesRaw);
-                     // Basic validation: ensure it's an array and items have expected structure (optional but good)
                      if (Array.isArray(parsedTemplates) && parsedTemplates.every(t => t && typeof t.id === 'string' && typeof t.name === 'string' && typeof t.type === 'string')) {
                          setSavedTemplates(parsedTemplates);
                      } else {
                          console.warn("Invalid template data found in localStorage, ignoring.");
-                         localStorage.removeItem(SCHEDULE_TEMPLATES_KEY); // Clear invalid data
+                         localStorage.removeItem(SCHEDULE_TEMPLATES_KEY);
                      }
                  } catch (error) {
                      console.error("Error parsing templates from localStorage:", error);
-                     localStorage.removeItem(SCHEDULE_TEMPLATES_KEY); // Clear invalid data
+                     localStorage.removeItem(SCHEDULE_TEMPLATES_KEY);
                  }
              }
 
@@ -310,10 +364,86 @@ export default function SchedulePage() {
             if (savedNotes) {
                 setNotes(savedNotes);
             } else {
-                setNotes(defaultNotesText); // Set default if nothing saved
+                setNotes(defaultNotesText);
             }
         }
-    }, []);
+    }, []); // Empty dependency array ensures this runs only once on mount
+
+
+     // --- Save Data to localStorage on Change ---
+     useEffect(() => {
+         if (typeof window !== 'undefined') {
+             try { localStorage.setItem(LOCATIONS_KEY, JSON.stringify(locations)); }
+             catch (e) { console.error("Error saving locations:", e); }
+         }
+     }, [locations]);
+
+     useEffect(() => {
+         if (typeof window !== 'undefined') {
+             try { localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(departments)); }
+             catch (e) { console.error("Error saving departments:", e); }
+         }
+     }, [departments]);
+
+     useEffect(() => {
+         if (typeof window !== 'undefined') {
+             try { localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees)); }
+             catch (e) { console.error("Error saving employees:", e); }
+         }
+     }, [employees]);
+
+     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                // Deep copy schedule data to avoid modifying state directly during serialization
+                const dataToSave = JSON.parse(JSON.stringify(scheduleData));
+                 // Stringify date objects and simplify employee data for storage
+                 Object.keys(dataToSave).forEach(key => {
+                     if (dataToSave[key] && dataToSave[key].date instanceof Date) {
+                         dataToSave[key].date = dataToSave[key].date.toISOString();
+                     }
+                     // Simplify employee object in assignments to just ID
+                     if (dataToSave[key] && dataToSave[key].assignments) {
+                         Object.keys(dataToSave[key].assignments).forEach(deptId => {
+                             dataToSave[key].assignments[deptId].forEach((assign: any) => {
+                                 if (assign.employee && typeof assign.employee === 'object') {
+                                     assign.employee = { id: assign.employee.id }; // Store only ID
+                                 }
+                             });
+                         });
+                     }
+                 });
+                localStorage.setItem(SCHEDULE_DATA_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error("Error saving schedule data to localStorage:", error);
+                // Optionally show a toast message here
+            }
+        }
+    }, [scheduleData]); // Save whenever scheduleData changes
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem(SCHEDULE_NOTES_KEY, notes);
+            } catch (error) {
+                console.error("Error saving notes to localStorage:", error);
+            }
+        }
+    }, [notes]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
+            } catch (error) {
+                 console.error("Error saving templates to localStorage:", error);
+                 // Optionally show toast
+            }
+        }
+    }, [savedTemplates]);
+
+    // ---- End LocalStorage Effects ---
+
 
 
     const weekDates = getWeekDates(currentDate);
@@ -322,7 +452,25 @@ export default function SchedulePage() {
     // Helper to get schedule for a specific date, handling potential undefined
     const getScheduleForDate = (date: Date): ScheduleData => {
         const key = format(date, 'yyyy-MM-dd');
-        return scheduleData[key] || { date: date, assignments: {} };
+        // Ensure employee objects are fully populated when retrieving schedule data
+        const dayData = scheduleData[key];
+        if (dayData && dayData.assignments) {
+             Object.keys(dayData.assignments).forEach(deptId => {
+                 dayData.assignments[deptId].forEach(assign => {
+                    // If employee is just an ID object, find the full object
+                    if (assign.employee && typeof assign.employee === 'object' && !assign.employee.name) {
+                        const fullEmployee = employees.find(emp => emp.id === assign.employee.id);
+                        if (fullEmployee) {
+                            assign.employee = fullEmployee;
+                        } else {
+                            console.warn(`Employee with ID ${assign.employee.id} not found for assignment ${assign.id}`);
+                            // Keep partial data or handle as needed
+                        }
+                    }
+                 });
+             });
+        }
+        return dayData || { date: date, assignments: {} };
     }
 
     // Derived state for filtering employees and departments by location
@@ -365,10 +513,16 @@ export default function SchedulePage() {
 
 
     useEffect(() => {
-        // Ensure department locationId defaults to current selected location
-        setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
-        setEmployeeFormData(prev => ({ ...prev, primaryLocationId: selectedLocationId }));
-    }, [selectedLocationId]);
+        // Ensure department locationId defaults to current selected location if it's empty
+        if (!departmentFormData.locationId && selectedLocationId) {
+           setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
+        }
+         // Ensure employee primaryLocationId defaults if empty
+        if (!employeeFormData.primaryLocationId && selectedLocationId) {
+            setEmployeeFormData(prev => ({ ...prev, primaryLocationId: selectedLocationId }));
+        }
+    }, [selectedLocationId, departmentFormData.locationId, employeeFormData.primaryLocationId]); // Added dependencies
+
 
     const handleLocationChange = (locationId: string) => {
         setSelectedLocationId(locationId);
@@ -424,7 +578,7 @@ export default function SchedulePage() {
         const assignmentPayload: ShiftAssignment = {
             // If editing, use existing ID, otherwise use the generated one
             id: editingShift?.assignment.id || newAssignmentId,
-            employee: employeeForShift,
+            employee: employeeForShift, // Store the full employee object in the state
             startTime: details.startTime,
             endTime: details.endTime,
             includeBreak: details.includeBreak || false,
@@ -433,7 +587,7 @@ export default function SchedulePage() {
         };
 
         setScheduleData(prevData => {
-            const dayData = prevData[dateKey] || { date: date, assignments: {} };
+            const dayData = getScheduleForDate(date); // Use getter to ensure full employee objects
             const departmentAssignments = dayData.assignments[departmentId] || [];
 
             let updatedAssignments;
@@ -573,6 +727,10 @@ export default function SchedulePage() {
              const newLocation = { id: `loc-${name.toLowerCase().replace(/\s+/g, '-')}`, name };
             setLocations([...locations, newLocation]);
             toast({ title: 'Sede Agregada', description: `Sede "${name}" agregada.` });
+            // If this is the first location added, select it automatically
+            if (locations.length === 0) {
+                 setSelectedLocationId(newLocation.id);
+            }
         }
         setIsLocationModalOpen(false);
         setEditingLocation(null); // Clear editing state
@@ -580,6 +738,7 @@ export default function SchedulePage() {
 
     const handleOpenDepartmentModal = (department: Department | null) => {
         setEditingDepartment(department);
+        // Ensure locationId is set to the currently selected location if adding new
         setDepartmentFormData({ name: department?.name || '', locationId: department?.locationId || selectedLocationId });
         setIsDepartmentModalOpen(true);
     };
@@ -606,7 +765,7 @@ export default function SchedulePage() {
 
     const handleOpenEmployeeModal = (employee: Employee | null) => {
         setEditingEmployee(employee);
-        // Set form data including the ID
+        // Set form data including the ID and default location
         setEmployeeFormData({ id: employee?.id || '', name: employee?.name || '', primaryLocationId: employee?.primaryLocationId || selectedLocationId });
         setIsEmployeeModalOpen(true);
     };
@@ -655,22 +814,23 @@ export default function SchedulePage() {
             let message = '';
             switch (itemToDelete.type) {
                 case 'location':
-                    setLocations(locations.filter(loc => loc.id !== itemToDelete.id));
-                    setDepartments(departments.filter(dep => dep.locationId !== itemToDelete.id));
-                    setEmployees(emps => emps.map(emp => emp.primaryLocationId === itemToDelete.id ? {...emp, primaryLocationId: '' } : emp));
+                    setLocations(prevLocs => prevLocs.filter(loc => loc.id !== itemToDelete.id));
+                    setDepartments(prevDeps => prevDeps.filter(dep => dep.locationId !== itemToDelete.id));
+                    setEmployees(prevEmps => prevEmps.map(emp => emp.primaryLocationId === itemToDelete.id ? {...emp, primaryLocationId: '' } : emp)); // Unassign primary location
                     // Remove templates associated with this location
                     const remainingTemplatesLocation = savedTemplates.filter(t => t.locationId !== itemToDelete.id);
                     setSavedTemplates(remainingTemplatesLocation);
-                    if (typeof window !== 'undefined') {
-                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(remainingTemplatesLocation));
-                    }
+                    // No need to save to localStorage here, the useEffects will handle it
+
                     if (selectedLocationId === itemToDelete.id) {
-                        setSelectedLocationId(locations.length > 1 ? locations.find(loc => loc.id !== itemToDelete.id)!.id : '');
+                        // Select the first available location, or empty if none left
+                        const firstRemainingLocation = locations.find(loc => loc.id !== itemToDelete.id);
+                        setSelectedLocationId(firstRemainingLocation ? firstRemainingLocation.id : '');
                     }
                     message = `Sede "${itemToDelete.name}" y sus datos asociados eliminados.`;
                     break;
                 case 'department':
-                    setDepartments(departments.filter(dep => dep.id !== itemToDelete.id));
+                    setDepartments(prevDeps => prevDeps.filter(dep => dep.id !== itemToDelete.id));
                      const updatedSchedule = { ...scheduleData };
                      Object.keys(updatedSchedule).forEach(dateKey => {
                          delete updatedSchedule[dateKey].assignments[itemToDelete.id];
@@ -684,7 +844,7 @@ export default function SchedulePage() {
                              delete (newAssignments as { [deptId: string]: any })[itemToDelete.id];
                          } else if (t.type === 'weekly') {
                              Object.keys(newAssignments).forEach(dateKey => {
-                                  if (newAssignments[dateKey]?.[itemToDelete.id]) {
+                                  if ((newAssignments as any)[dateKey]?.[itemToDelete.id]) {
                                      delete (newAssignments as { [dateKey: string]: { [deptId: string]: any } })[dateKey][itemToDelete.id];
                                   }
                              });
@@ -692,13 +852,11 @@ export default function SchedulePage() {
                          return { ...t, assignments: newAssignments };
                      });
                      setSavedTemplates(updatedTemplatesDept);
-                     if (typeof window !== 'undefined') {
-                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplatesDept));
-                     }
+                     // No need to save to localStorage here
                     message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
                 case 'employee':
-                    setEmployees(employees.filter(emp => emp.id !== itemToDelete.id));
+                    setEmployees(prevEmps => prevEmps.filter(emp => emp.id !== itemToDelete.id));
                      const updatedScheduleEmp = { ...scheduleData };
                      Object.keys(updatedScheduleEmp).forEach(dateKey => {
                           Object.keys(updatedScheduleEmp[dateKey].assignments).forEach(deptId => {
@@ -740,17 +898,13 @@ export default function SchedulePage() {
                           return { ...t, assignments: newAssignments };
                       });
                      setSavedTemplates(updatedTemplatesEmp);
-                     if (typeof window !== 'undefined') {
-                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplatesEmp));
-                     }
+                      // No need to save to localStorage here
                     message = `Colaborador "${itemToDelete.name}" eliminado.`;
                     break;
                  case 'template':
                      const updatedTemplates = savedTemplates.filter(t => t.id !== itemToDelete.id);
                      setSavedTemplates(updatedTemplates);
-                     if (typeof window !== 'undefined') {
-                         localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-                     }
+                      // No need to save to localStorage here
                      message = `Template "${itemToDelete.name}" eliminado.`;
                     break;
             }
@@ -774,15 +928,8 @@ export default function SchedulePage() {
 
     // --- Advanced Action Handlers ---
     const handleSaveSchedule = () => {
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem(SCHEDULE_DATA_KEY, JSON.stringify(scheduleData));
-                toast({ title: 'Horario Guardado', description: 'El horario actual se ha guardado localmente.' });
-            } catch (error) {
-                console.error("Error saving schedule data to localStorage:", error);
-                toast({ title: 'Error al Guardar', description: 'No se pudo guardar el horario.', variant: 'destructive' });
-            }
-        }
+        // Saving happens automatically via useEffect, this button is mostly for user confirmation
+        toast({ title: 'Horario Guardado', description: 'El horario actual se ha guardado localmente.' });
     };
 
      const handleDuplicateDay = (sourceDate: Date) => {
@@ -889,7 +1036,10 @@ export default function SchedulePage() {
              // Remove assignment instance IDs when saving daily template
              const cleanedAssignments: { [deptId: string]: Omit<ShiftAssignment, 'id'>[] } = {};
              Object.keys(currentAssignmentsRaw).forEach(deptId => {
-                 cleanedAssignments[deptId] = currentAssignmentsRaw[deptId].map(({ id, ...rest }) => rest); // Remove 'id'
+                 cleanedAssignments[deptId] = currentAssignmentsRaw[deptId].map(({ id, employee, ...rest }) => ({ // Destructure employee too
+                      ...rest,
+                      employee: { id: employee.id } // Store only employee ID in template
+                 }));
              });
              templateAssignments = cleanedAssignments;
 
@@ -907,7 +1057,10 @@ export default function SchedulePage() {
                  const cleanedDailyAssignments: { [deptId: string]: Omit<ShiftAssignment, 'id'>[] } = {};
                  Object.keys(dailyAssignmentsRaw).forEach(deptId => {
                      if (dailyAssignmentsRaw[deptId].length > 0) {
-                         cleanedDailyAssignments[deptId] = dailyAssignmentsRaw[deptId].map(({ id, ...rest }) => rest); // Remove 'id'
+                         cleanedDailyAssignments[deptId] = dailyAssignmentsRaw[deptId].map(({ id, employee, ...rest }) => ({ // Destructure employee
+                             ...rest,
+                             employee: { id: employee.id } // Store only employee ID
+                         }));
                          weekHasAssignments = true; // Mark if any assignment found
                      }
                  });
@@ -934,19 +1087,11 @@ export default function SchedulePage() {
              createdAt: new Date().toISOString(),
          };
 
-         if (typeof window !== 'undefined') {
-            try {
-                const updatedTemplates = [...savedTemplates, newTemplate];
-                setSavedTemplates(updatedTemplates); // Update state
-                localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-                toast({ title: 'Template Guardado', description: `El template "${newTemplate.name}" (${templateType === 'daily' ? 'Diario' : 'Semanal'}) se ha guardado.` });
-                setIsTemplateModalOpen(false);
-                setTemplateName('');
-            } catch (error) {
-                 console.error("Error saving template to localStorage:", error);
-                 toast({ title: 'Error al Guardar', description: 'No se pudo guardar el template.', variant: 'destructive' });
-            }
-         }
+         // Save via state update, useEffect will handle localStorage
+         setSavedTemplates(prev => [...prev, newTemplate]);
+         toast({ title: 'Template Guardado', description: `El template "${newTemplate.name}" (${templateType === 'daily' ? 'Diario' : 'Semanal'}) se ha guardado.` });
+         setIsTemplateModalOpen(false);
+         setTemplateName('');
 
      };
 
@@ -1075,15 +1220,8 @@ export default function SchedulePage() {
     };
 
     const handleSaveNotes = () => {
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem(SCHEDULE_NOTES_KEY, notes);
-                toast({ title: 'Notas Guardadas', description: 'Tus notas han sido guardadas localmente.' });
-            } catch (error) {
-                console.error("Error saving notes to localStorage:", error);
-                toast({ title: 'Error al Guardar Notas', variant: 'destructive' });
-            }
-        }
+        // Saving happens automatically via useEffect
+        toast({ title: 'Notas Guardadas', description: 'Tus notas han sido guardadas localmente.' });
     };
 
 
@@ -1288,8 +1426,8 @@ export default function SchedulePage() {
                              />
                          </div>
 
-                          {/* Configuration Button */}
-                         <div className="flex flex-col items-center space-y-1">
+                        {/* Configuration Button */}
+                        <div className="flex flex-col items-center space-y-1">
                              <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                  <DialogTrigger asChild>
                                      <Button variant="outline" size="icon"> {/* Icon button */}
@@ -1770,3 +1908,6 @@ export default function SchedulePage() {
         </main>
     );
 }
+
+
+    
