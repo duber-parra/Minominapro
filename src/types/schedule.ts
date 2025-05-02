@@ -1,3 +1,4 @@
+
 // src/types/schedule.ts
 
 import type { LucideIcon } from 'lucide-react';
@@ -49,7 +50,7 @@ export interface ShiftTemplate {
   name: string;
   locationId: string;
   assignments: {
-    // Use Omit to exclude 'id' and 'employee' from the saved assignment structure in the template
+    // Use Omit to exclude 'id' from the saved assignment structure in the template
     [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
     // Alternatively, if you want to save employee ID but not the full object:
     // [departmentId: string]: (Omit<ShiftAssignment, 'id' | 'employee'> & { employeeId: string })[];
@@ -73,3 +74,4 @@ export interface PayrollCalculationInput {
     duracionDescansoMinutos: number; // Keeping this for now, calculate from start/end times if provided
   }[];
 }
+

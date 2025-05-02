@@ -14,9 +14,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2 } from 'lucide-react'; // Added Save, CopyPlus, Library, Eraser, Download, Upload, FileX2
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/components/ui/separator'; // Import Separator
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,7 @@ import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
-import { WeekNavigator } from '@/components/schedule/WeekNavigator';
+import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
@@ -992,3 +992,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
