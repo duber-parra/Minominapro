@@ -15,9 +15,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check, FileUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 import {
   AlertDialog,
   AlertDialogAction,
@@ -2043,19 +2044,97 @@ export default function SchedulePage() {
               />
 
              {/* Controls Section - Adjusted Layout */}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 md:mb-8 flex-wrap">
+             {/* Removed Card and made it transparent */}
+             <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 md:mb-8 flex-wrap bg-transparent">
+                 {/* Removed CardHeader */}
+                 {/* Removed CardContent wrapper */}
+                 {/* Adjusted layout to place items directly in the flex container */}
+                 <div className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-primary" />
+                    <LocationSelector
+                        locations={locations}
+                        selectedLocationId={selectedLocationId}
+                        onLocationChange={handleLocationChange}
+                    />
+                 </div>
 
-                  {/* Location Selector */}
-                   <div className="flex items-center gap-2">
-                       <Building className="h-5 w-5 text-primary" />
-                     <LocationSelector
-                         locations={locations}
-                         selectedLocationId={selectedLocationId}
-                         onLocationChange={handleLocationChange}
-                     />
-                   </div>
+                 {/* --- Day View Date Selector OR Week View Navigator --- */}
+                 <div className="flex items-center justify-center gap-2">
+                     {viewMode === 'day' ? (
+                         <Popover>
+                             <PopoverTrigger asChild>
+                                 <Button
+                                     variant={'outline'}
+                                     className={cn(
+                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
+                                         !targetDate && 'text-muted-foreground',
+                                         isHoliday(targetDate) && 'border-primary' // Removed border-2, keep primary color
+                                     )}
+                                     disabled={isCheckingHoliday}
+                                 >
+                                     {isCheckingHoliday ? (
+                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                     ) : (
+                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                     )}
+                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold text-primary">(Festivo)</span>}
+                                 </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-0">
+                                 <Calendar
+                                     mode="single"
+                                     selected={targetDate}
+                                     onSelect={(date) => { if (date) setTargetDate(date) }}
+                                     initialFocus
+                                     locale={es}
+                                     modifiers={{ holiday: (date) => isHoliday(date) }}
+                                     modifiersClassNames={{
+                                          holiday: 'text-primary font-medium border border-primary',
+                                     }}
+                                 />
+                             </PopoverContent>
+                         </Popover>
+                     ) : (
+                         <WeekNavigator
+                             currentDate={currentDate}
+                             onPreviousWeek={handlePreviousWeek}
+                             onNextWeek={handleNextWeek}
+                         />
+                     )}
+                 </div>
 
-                 {/* Configuration Button */}
+                 {/* View Mode Toggle */}
+                 <div className="flex items-center justify-center gap-2">
+                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                         <SelectTrigger className="w-[120px]">
+                             <SelectValue placeholder="Vista" />
+                         </SelectTrigger>
+                         <SelectContent>
+                             <SelectItem value="day">Día</SelectItem>
+                             <SelectItem value="week">Semana</SelectItem>
+                         </SelectContent>
+                     </Select>
+                 </div>
+
+                  {/* CSV Import Button */}
+                  <div className="flex items-center gap-2">
+                     <Button
+                         variant="outline"
+                         onClick={triggerCSVFileInput}
+                         disabled={isImportingCSV}
+                         title="Importar Horario desde CSV (como Template)"
+                     >
+                         {isImportingCSV ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         ) : (
+                             <FileUp className="mr-2 h-4 w-4" />
+                         )}
+                         Importar CSV
+                     </Button>
+                 </div>
+
+                  {/* Configuration Button */}
                   <div className="flex items-center gap-2">
                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                          <DialogTrigger asChild>
@@ -2253,84 +2332,6 @@ export default function SchedulePage() {
                         </DialogContent>
                     </Dialog>
                  </div>
-
-
-                 {/* --- Day View Date Selector OR Week View Navigator --- */}
-                 <div className="flex items-center justify-center gap-2">
-                     {viewMode === 'day' ? (
-                         <Popover>
-                             <PopoverTrigger asChild>
-                                 <Button
-                                     variant={'outline'}
-                                     className={cn(
-                                         'w-[200px] sm:w-[280px] justify-start text-left font-normal',
-                                         !targetDate && 'text-muted-foreground',
-                                         isHoliday(targetDate) && 'border-primary border-2' // Use primary border
-                                     )}
-                                     disabled={isCheckingHoliday}
-                                 >
-                                     {isCheckingHoliday ? (
-                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                     ) : (
-                                         <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
-                                     )}
-                                     {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                     {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-2 text-xs font-semibold text-primary">(Festivo)</span>}
-                                 </Button>
-                             </PopoverTrigger>
-                             <PopoverContent className="w-auto p-0">
-                                 <Calendar
-                                     mode="single"
-                                     selected={targetDate}
-                                     onSelect={(date) => { if (date) setTargetDate(date) }}
-                                     initialFocus
-                                     locale={es}
-                                     modifiers={{ holiday: (date) => isHoliday(date) }}
-                                     modifiersClassNames={{
-                                          holiday: 'text-primary font-semibold border border-primary rounded-md',
-                                     }}
-                                 />
-                             </PopoverContent>
-                         </Popover>
-                     ) : (
-                         <WeekNavigator
-                             currentDate={currentDate}
-                             onPreviousWeek={handlePreviousWeek}
-                             onNextWeek={handleNextWeek}
-                         />
-                     )}
-                 </div>
-
-                 {/* View Mode Toggle */}
-                  <div className="flex items-center justify-center gap-2">
-                     <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                         <SelectTrigger className="w-[120px]">
-                             <SelectValue placeholder="Vista" />
-                         </SelectTrigger>
-                         <SelectContent>
-                             <SelectItem value="day">Día</SelectItem>
-                             <SelectItem value="week">Semana</SelectItem>
-                         </SelectContent>
-                     </Select>
-                 </div>
-
-                  {/* CSV Import Button */}
-                  <div className="flex items-center gap-2">
-                     <Button
-                         variant="outline"
-                         onClick={triggerCSVFileInput}
-                         disabled={isImportingCSV}
-                         title="Importar Horario desde CSV (como Template)"
-                     >
-                         {isImportingCSV ? (
-                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         ) : (
-                             <FileUp className="mr-2 h-4 w-4" />
-                         )}
-                         Importar CSV
-                     </Button>
-                 </div>
-
              </div>
 
 
