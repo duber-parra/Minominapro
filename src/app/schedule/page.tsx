@@ -444,13 +444,19 @@ export default function SchedulePage() {
     useEffect(() => {
         if (typeof window !== 'undefined') {
             try {
-                 console.log("Saving templates to localStorage:", savedTemplates); // Add logging
+                 console.log("Saving templates to localStorage:", savedTemplates); // Log before saving
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
+                 console.log("Templates saved successfully."); // Log if saving succeeds
             } catch (error) {
                  console.error("Error saving templates to localStorage:", error);
+                 toast({
+                     title: 'Error al Guardar Templates',
+                     description: 'No se pudieron guardar los templates localmente.',
+                     variant: 'destructive',
+                 });
             }
         }
-    }, [savedTemplates]);
+    }, [savedTemplates, toast]); // Add toast as a dependency
 
     // ---- End LocalStorage Effects ---
 
@@ -524,7 +530,7 @@ export default function SchedulePage() {
     // Update availableEmployees based on assignedEmployeeIdsForTargetDate
     const availableEmployees = useMemo(() => {
         // In week view, always show all filtered employees
-        if (viewMode === 'week') {
+        if (viewMode === 'week' && !isEmployeeSelectionModalOpen) { // Only filter if modal isn't open
             return filteredEmployees;
         }
         // Filter out employees already assigned on the targetDate (relevant for both day and when adding in week view via modal)
@@ -541,7 +547,7 @@ export default function SchedulePage() {
         }
         return filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
 
-    }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext]); // Dependencies adjusted
+    }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isEmployeeSelectionModalOpen]); // Dependencies adjusted
 
 
     // Ensure form data defaults are updated when selectedLocationId changes
@@ -701,7 +707,7 @@ export default function SchedulePage() {
     const handleDragEnd = (event: DragEndEvent) => {
         const { over, active } = event;
 
-        if (!over || !active || isMobile) return;
+        if (!over || !active || isMobile) return; // Disable drag on mobile
 
         const employeeId = active.id as string;
         const targetData = over.data.current as { type: string; id: string; date?: string };
@@ -1585,26 +1591,28 @@ export default function SchedulePage() {
 
   return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
-             {/* Title */}
+             {/* Title - Removed specific styling, rely on global/Tailwind */}
              <div className="text-center mb-8">
-                 <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
                     Planificador de Horarios
                  </h1>
                  <p className="text-muted-foreground mt-2">Gestiona turnos, sedes y colaboradores</p>
              </div>
 
-              {/* Controls Section - Centered Flexbox, removed Card wrapper */}
-             <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 p-4">
+
+              {/* Controls Section - Removed Card wrapper */}
+             <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 p-4 bg-transparent"> {/* Made background transparent */}
                  {/* Location Selector */}
-                 <div className="flex flex-col items-center space-y-1">
+                 <div className="flex items-center gap-2">
                      <LocationSelector
                          locations={locations}
                          selectedLocationId={selectedLocationId}
                          onLocationChange={handleLocationChange}
                      />
                  </div>
+
                  {/* Configuration Button */}
-                  <div className="flex flex-col items-center space-y-1">
+                  <div className="flex items-center gap-2">
                       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                           <DialogTrigger asChild>
                               <Button variant="outline" size="icon" title="Configuración">
@@ -1798,7 +1806,7 @@ export default function SchedulePage() {
 
                  {/* --- Day View Date Selector --- */}
                  {viewMode === 'day' && (
-                     <div className="flex flex-col items-center space-y-1">
+                     <div className="flex items-center gap-2">
                          <Popover>
                              <PopoverTrigger asChild>
                                  <Button
@@ -1838,7 +1846,7 @@ export default function SchedulePage() {
 
                  {/* --- Week View Navigator --- */}
                  {viewMode === 'week' && (
-                     <div className="flex flex-col items-center space-y-1">
+                     <div className="flex items-center gap-2">
                          <WeekNavigator
                              currentDate={currentDate}
                              onPreviousWeek={handlePreviousWeek}
@@ -1848,7 +1856,7 @@ export default function SchedulePage() {
                  )}
 
                  {/* View Mode Toggle */}
-                 <div className="flex flex-col items-center space-y-1">
+                 <div className="flex items-center gap-2">
                      <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
                          <SelectTrigger className="w-[120px]">
                              <SelectValue placeholder="Vista" />
@@ -2156,4 +2164,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
