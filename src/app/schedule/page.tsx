@@ -44,7 +44,7 @@ import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionM
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns'; // Added differenceInMinutes, parseDateFnsInternal
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal } from 'date-fns'; // Added differenceInMinutes, parseDateFnsInternal, endOfWeek
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
@@ -832,9 +832,22 @@ export default function SchedulePage() {
              // Regenerate assignment IDs when loading a template
              const loadedAssignments = JSON.parse(JSON.stringify(templateToLoad.assignments));
              Object.keys(loadedAssignments).forEach(deptId => {
-                 loadedAssignments[deptId].forEach((assign: ShiftAssignment) => {
-                     assign.id = uuidv4();
-                 });
+                  // Ensure employee object exists within the template's assignment structure before regeneration
+                  if (loadedAssignments[deptId] && Array.isArray(loadedAssignments[deptId])) {
+                     loadedAssignments[deptId].forEach((assign: ShiftAssignment) => {
+                        // Find the corresponding employee object from the current employee list
+                        const employee = employees.find(emp => emp.id === (typeof assign.employee === 'string' ? assign.employee : assign.employee.id));
+                        if (employee) {
+                             assign.id = uuidv4(); // Generate new assignment ID
+                             assign.employee = employee; // Assign the full employee object
+                        } else {
+                             console.warn(`Employee ID ${(typeof assign.employee === 'string' ? assign.employee : assign.employee.id)} not found while loading template. Skipping assignment.`);
+                             // Optionally remove this assignment or handle differently
+                        }
+                     });
+                     // Filter out any assignments where employee was not found
+                     loadedAssignments[deptId] = loadedAssignments[deptId].filter((assign: ShiftAssignment) => assign.employee !== undefined);
+                  }
              });
 
              setScheduleData(prev => ({
@@ -844,7 +857,7 @@ export default function SchedulePage() {
                      assignments: loadedAssignments,
                  }
              }));
-             toast({ title: 'Formación Cargada', description: `Se cargó la formación "${templateToLoad.name}" para hoy.` });
+             toast({ title: 'Formación Cargada', description: `Se cargó la formación "${templateToLoad.name}" para ${format(targetDate, 'PPP', { locale: es })}.` });
              setIsConfigModalOpen(false); // Close config modal after loading
          }
      };
@@ -1223,9 +1236,9 @@ export default function SchedulePage() {
                  </Button>
              </div>
 
-              {/* Main content grid - Reverted to previous layout */}
+              {/* Main content grid */}
              <DndWrapper> {/* Conditionally wrap with DndContext */}
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"> {/* Reverted to 12 columns */}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                      {/* --- Available Employees (Takes 2/12 width) --- */}
                       <div className="lg:col-span-2 space-y-6">
@@ -1235,7 +1248,7 @@ export default function SchedulePage() {
 
 
                      {/* --- Schedule View (Takes remaining 10/12 width) --- */}
-                     <div className="lg:col-span-10"> {/* Reverted Schedule to take 10 columns */}
+                     <div className="lg:col-span-10">
                         <ScheduleView
                             departments={filteredDepartments}
                             scheduleData={scheduleData}
