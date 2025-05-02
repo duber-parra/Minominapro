@@ -694,7 +694,7 @@ export default function SchedulePage() {
                      if (typeof window !== 'undefined') {
                          localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
                      }
-                     message = `Template "${itemToDelete.name}" eliminado.`; // Changed from Formación
+                     message = `Template "${itemToDelete.name}" eliminado.`;
                     break;
             }
             toast({ title: 'Elemento Eliminado', description: message, variant: 'destructive' });
@@ -1163,144 +1163,8 @@ export default function SchedulePage() {
                      )}
                  </div>
 
-                 {/* --- Right Controls (Config, View Mode, Location) --- */}
-                 <div className="flex items-center gap-2 flex-shrink-0 order-2 md:order-last"> {/* Order-2 on mobile */}
-                     {/* Configuration Button - Now Triggers a Dialog */}
-                     <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-                         <DialogTrigger asChild>
-                             <Button variant="outline" size="icon"> {/* Icon button */}
-                                <Settings className="h-4 w-4"/>
-                                 <span className="sr-only">Configuración</span>
-                             </Button>
-                         </DialogTrigger>
-                         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Wide modal, scrollable */}
-                              <DialogHeader>
-                                  <DialogTitle>Configuración General</DialogTitle>
-                                  <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
-                              </DialogHeader>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
-                                  {/* Locations Column */}
-                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                      <div className="flex justify-between items-center">
-                                         <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
-                                         <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
-                                             <Plus className="h-4 w-4" />
-                                         </Button>
-                                      </div>
-                                      <ul className="space-y-2 text-sm">
-                                          {locations.map((loc) => (
-                                              <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
-                                                  <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
-                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
-                                                      <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
-                                                          {/* AlertDialogContent for Delete Confirmation is defined below */}
-                                                      </AlertDialog>
-                                                  </div>
-                                              </li>
-                                          ))}
-                                      </ul>
-                                  </div>
-                                  {/* Departments Column */}
-                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                       <div className="flex justify-between items-center">
-                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
-                                          <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
-                                              <Plus className="h-4 w-4" />
-                                          </Button>
-                                       </div>
-                                      <ul className="space-y-2 text-sm">
-                                          {departments.map((dep) => (
-                                              <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
-                                                  <span className="truncate text-muted-foreground">{dep.name} <span className="text-xs italic">({locations.find(l => l.id === dep.locationId)?.name || 'Sede inválida'})</span></span>
-                                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
-                                                       <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                          </AlertDialogTrigger>
-                                                          {/* AlertDialogContent for Delete Confirmation is defined below */}
-                                                       </AlertDialog>
-                                                  </div>
-                                              </li>
-                                          ))}
-                                      </ul>
-                                  </div>
-                                   {/* Employees Column */}
-                                  <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                      <div className="flex justify-between items-center">
-                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
-                                          <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
-                                              <Plus className="h-4 w-4" />
-                                          </Button>
-                                      </div>
-                                       <ul className="space-y-2 text-sm">
-                                           {employees.map((emp) => (
-                                               <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                   <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">({locations.find(l => l.id === emp.primaryLocationId)?.name || 'Sede inválida'})</span></span>
-                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
-                                                        <AlertDialog>
-                                                           <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                           </AlertDialogTrigger>
-                                                           {/* AlertDialogContent for Delete Confirmation is defined below */}
-                                                        </AlertDialog>
-                                                   </div>
-                                               </li>
-                                           ))}
-                                       </ul>
-                                  </div>
-                                  {/* Saved Templates Column */}
-                                  <div className="space-y-4">
-                                      <div className="flex justify-between items-center">
-                                           <h4 className="font-semibold text-foreground flex items-center gap-1">
-                                               <Library className="h-4 w-4 text-muted-foreground"/>
-                                               Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
-                                           </h4>
-                                          {/* Add Template button moved to Actions Row */}
-                                      </div>
-                                       <ul className="space-y-2 text-sm">
-                                            {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
-                                                <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                    <span className="truncate text-muted-foreground">{template.name}</span>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => handleLoadTemplate(template.id)}
-                                                            title={`Cargar Template (${template.type === 'daily' ? 'Diario' : 'Semanal'})`}
-                                                        >
-                                                            <Upload className="h-4 w-4" />
-                                                        </Button>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                            </AlertDialogTrigger>
-                                                            {/* AlertDialogContent for Delete Confirmation is defined below */}
-                                                        </AlertDialog>
-                                                    </div>
-                                                </li>
-                                            )) : (
-                                                <p className="text-xs text-muted-foreground italic text-center pt-2">
-                                                    No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
-                                                </p>
-                                            )}
-                                       </ul>
-                                  </div>
-                              </div>
-                              <DialogFooter>
-                                  <DialogClose asChild>
-                                      <Button variant="secondary">Cerrar</Button>
-                                  </DialogClose>
-                              </DialogFooter>
-                         </DialogContent>
-                     </Dialog>
-
+                 {/* --- Right Controls (View Mode, Location, Settings) --- */}
+                 <div className="flex items-center gap-2 flex-shrink-0 order-2 md:order-last">
                      {/* Day/Week View Toggle */}
                      <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
                          <SelectTrigger className="w-[120px]">
@@ -1319,6 +1183,141 @@ export default function SchedulePage() {
                             onLocationChange={handleLocationChange}
                          />
                      </div>
+                     {/* Configuration Button - Now Triggers a Dialog */}
+                      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+                          <DialogTrigger asChild>
+                              <Button variant="outline" size="icon"> {/* Icon button */}
+                                 <Settings className="h-4 w-4"/>
+                                  <span className="sr-only">Configuración</span>
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"> {/* Wide modal, scrollable */}
+                               <DialogHeader>
+                                   <DialogTitle>Configuración General</DialogTitle>
+                                   <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates guardados.</DialogDescription>
+                               </DialogHeader>
+                               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
+                                   {/* Locations Column */}
+                                   <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                       <div className="flex justify-between items-center">
+                                          <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                       </div>
+                                       <ul className="space-y-2 text-sm">
+                                           {locations.map((loc) => (
+                                               <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
+                                                   <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
+                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
+                                                       <AlertDialog>
+                                                           <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
+                                                           {/* AlertDialogContent for Delete Confirmation is defined below */}
+                                                       </AlertDialog>
+                                                   </div>
+                                               </li>
+                                           ))}
+                                       </ul>
+                                   </div>
+                                   {/* Departments Column */}
+                                   <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                        <div className="flex justify-between items-center">
+                                           <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
+                                           <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
+                                               <Plus className="h-4 w-4" />
+                                           </Button>
+                                        </div>
+                                       <ul className="space-y-2 text-sm">
+                                           {departments.map((dep) => (
+                                               <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
+                                                   <span className="truncate text-muted-foreground">{dep.name} <span className="text-xs italic">({locations.find(l => l.id === dep.locationId)?.name || 'Sede inválida'})</span></span>
+                                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
+                                                        <AlertDialog>
+                                                           <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                           </AlertDialogTrigger>
+                                                           {/* AlertDialogContent for Delete Confirmation is defined below */}
+                                                        </AlertDialog>
+                                                   </div>
+                                               </li>
+                                           ))}
+                                       </ul>
+                                   </div>
+                                    {/* Employees Column */}
+                                   <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                       <div className="flex justify-between items-center">
+                                           <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
+                                           <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
+                                               <Plus className="h-4 w-4" />
+                                           </Button>
+                                       </div>
+                                        <ul className="space-y-2 text-sm">
+                                            {employees.map((emp) => (
+                                                <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
+                                                    <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">({locations.find(l => l.id === emp.primaryLocationId)?.name || 'Sede inválida'})</span></span>
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
+                                                         <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                            </AlertDialogTrigger>
+                                                            {/* AlertDialogContent for Delete Confirmation is defined below */}
+                                                         </AlertDialog>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                   </div>
+                                   {/* Saved Templates Column */}
+                                   <div className="space-y-4">
+                                       <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-foreground flex items-center gap-1">
+                                                <Library className="h-4 w-4 text-muted-foreground"/>
+                                                Templates ({filteredTemplates.length} {viewMode === 'day' ? 'Diarios' : 'Semanales'})
+                                            </h4>
+                                           {/* Add Template button moved to Actions Row */}
+                                       </div>
+                                        <ul className="space-y-2 text-sm">
+                                             {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
+                                                 <li key={template.id} className="flex items-center justify-between group py-1 border-b">
+                                                     <span className="truncate text-muted-foreground">{template.name}</span>
+                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                         <Button
+                                                             variant="ghost"
+                                                             size="icon"
+                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                             onClick={() => handleLoadTemplate(template.id)}
+                                                             title={`Cargar Template (${template.type === 'daily' ? 'Diario' : 'Semanal'})`}
+                                                         >
+                                                             <Upload className="h-4 w-4" />
+                                                         </Button>
+                                                         <AlertDialog>
+                                                             <AlertDialogTrigger asChild>
+                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
+                                                             </AlertDialogTrigger>
+                                                             {/* AlertDialogContent for Delete Confirmation is defined below */}
+                                                         </AlertDialog>
+                                                     </div>
+                                                 </li>
+                                             )) : (
+                                                 <p className="text-xs text-muted-foreground italic text-center pt-2">
+                                                     No hay templates {viewMode === 'day' ? 'diarios' : 'semanales'} guardados para esta sede.
+                                                 </p>
+                                             )}
+                                        </ul>
+                                   </div>
+                               </div>
+                               <DialogFooter>
+                                   <DialogClose asChild>
+                                       <Button variant="secondary">Cerrar</Button>
+                                   </DialogClose>
+                               </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
                  </div>
              </div>
 
