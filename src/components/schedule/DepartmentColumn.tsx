@@ -1,4 +1,3 @@
-
 // src/components/schedule/DepartmentColumn.tsx
 
 import React from 'react';
@@ -64,14 +63,14 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
                   />
               ))
           ) : (
-              <p className="text-[9px] text-muted-foreground text-center py-1 italic">Vacío</p> {/* Smaller text and padding */}
+              <p className="text-[9px] text-muted-foreground text-center py-1 italic">Vacío</p> // Smaller text and padding
           )}
       </div>
     ); // End of return statement for week view
   }
 
   // Full rendering for day view
-  return (
+  return ( // Start of return for day view
     <Card ref={setNodeRef} style={style} className="flex flex-col h-full shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 border-b">
          <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground"> {/* Adjusted size */}
@@ -102,5 +101,5 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
         {/* </SortableContext> */}
       </CardContent>
     </Card>
-  );
+  ); // End of return for day view
 };
