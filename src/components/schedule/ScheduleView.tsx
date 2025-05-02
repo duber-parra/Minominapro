@@ -41,16 +41,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
          // --- Day View ---
         const daySchedule = getScheduleForDate(currentDate);
         const dynamicGridClass = `grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(departments.length, 4)} xl:grid-cols-${Math.min(departments.length, 5)}`; // Adjust as needed
+        const isCurrentHoliday = isHoliday(currentDate);
 
         return (
-            <Card className="shadow-md bg-card border border-border">
+            <Card className={cn(
+                "shadow-md bg-card border",
+                isCurrentHoliday ? "border-primary" : "border-border" // Highlight border if holiday
+            )}>
                 <CardHeader className="border-b">
                     <CardTitle className={cn(
-                        "text-lg font-medium text-foreground",
-                        isHoliday(currentDate) && "text-accent" // Use accent color for holiday title
+                        "text-lg font-medium",
+                        isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight text if holiday
                     )}>
                         Horario para el {format(currentDate, 'EEEE, d MMMM yyyy', { locale: es })}
-                        {isHoliday(currentDate) && <span className="text-xs font-normal ml-2">(Festivo)</span>}
+                        {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
                     </CardTitle>
                     {/* Add description or other info if needed */}
                 </CardHeader>
@@ -90,24 +94,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             return (
                 <Card key={dateKey} className={cn(
                     "shadow-sm bg-card border flex flex-col min-w-[140px]", // Adjusted min-width
-                    // Use a subtle border accent for holidays instead of strong destructive color
-                    isCurrentHoliday ? "border-accent" : "border-border/50"
+                    isCurrentHoliday ? "border-primary" : "border-border/50" // Highlight border with primary color
                 )}>
                     <CardHeader className={cn(
                         "pb-2 pt-3 px-3 border-b relative",
-                        // Match border color to card's border
-                        isCurrentHoliday ? "border-accent" : "border-border/50"
+                        isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
                     )}>
                         <CardTitle className={cn(
-                            "text-sm font-medium text-foreground text-center whitespace-nowrap", // Reduced size, nowrap
-                            // Use accent color for holiday title text
-                             isCurrentHoliday && "text-accent font-semibold"
+                            "text-sm font-medium text-center whitespace-nowrap", // Reduced size, nowrap
+                            isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight title text with primary color
                         )}>
                             {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
                         </CardTitle>
                         <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Smaller description */}
                             {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
-                            {isCurrentHoliday && <span className="text-accent block text-[9px] font-medium">Festivo</span>}
+                            {isCurrentHoliday && <span className="text-primary block text-[9px] font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
                         </CardDescription>
                          {/* Action Buttons: Duplicate and Clear */}
                         <div className="absolute top-1 right-1 flex flex-col gap-0.5">

@@ -308,8 +308,9 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           className={cn(
                             'w-full pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
-                             // Conditional border for Sunday (if not holiday)
-                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border'
+                             // Conditional border for holiday and Sunday
+                             isHoliday && 'border-primary border', // Use primary border for holiday
+                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border' // Keep primary border for Sunday
                           )}
                           disabled={isCheckingHoliday} // Disable while checking
                         >
@@ -340,7 +341,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
                          modifiersClassNames={{
-                             holiday: 'ring-2 ring-offset-1 ring-accent text-accent font-bold border-accent border-2', // Use ring utility + border
+                             holiday: 'text-primary font-semibold border border-primary', // Style holiday with primary color
                              sunday: 'text-primary'
                          }}
                       />
@@ -348,7 +349,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   </Popover>
                   {/* Display holiday/Sunday indicator */}
                   {isHoliday && !isCheckingHoliday && (
-                      <p className="text-xs text-accent font-semibold mt-1 pl-1"> • Día festivo</p>
+                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Día festivo</p> // Use primary color text
                   )}
                    {!isHoliday && startDate && isSunday(startDate) && !isCheckingHoliday && (
                       <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Domingo</p> // Use primary text color
