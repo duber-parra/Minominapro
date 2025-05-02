@@ -5,6 +5,7 @@ import React, { useState, useCallback, useMemo, ChangeEvent, useEffect } from 'r
 import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
+import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2 } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay } from 'date-fns'; // Added addDays and isSameDay
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, parse as dateFnsParse, isWithinInterval } from 'date-fns'; // Added addDays and isSameDay, dateFnsParse, isWithinInterval
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
 const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance
+const SCHEDULE_DATA_KEY = 'schedulePlannerData'; // LocalStorage key for schedule data
 
 // --- LocalStorage Key Generation ---
 const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
@@ -114,8 +116,8 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                     const employeeId = match[1];
                     const startStr = match[2];
                     const endStr = match[3];
-                    const startDate = parseDateFns(startStr, 'yyyy-MM-dd', new Date());
-                    const endDate = parseDateFns(endStr, 'yyyy-MM-dd', new Date());
+                    const startDate = dateFnsParse(startStr, 'yyyy-MM-dd', new Date());
+                    const endDate = dateFnsParse(endStr, 'yyyy-MM-dd', new Date());
 
                     // Validate parsed data
                     if (!employeeId || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -197,6 +199,7 @@ export default function Home() {
     const [editedHours, setEditedHours] = useState<CalculationResults['horasDetalladas'] | null>(null); // Temp state for edited hours
     const [dayToDeleteId, setDayToDeleteId] = useState<string | null>(null);
     const [isLoadingDay, setIsLoadingDay] = useState<boolean>(false); // Loading state for individual day calculation/duplication
+    const [isImporting, setIsImporting] = useState<boolean>(false); // Loading state for importing schedule
     const [errorDay, setErrorDay] = useState<string | null>(null);
     const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false); // Track initial load for current employee/period
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]); // State for the list of all saved payrolls
@@ -328,6 +331,137 @@ export default function Home() {
          setPayPeriodEnd(d => d ? new Date(d.getTime()) : undefined);
 
     }, [employeeId, payPeriodStart, payPeriodEnd, toast]);
+
+
+    // --- Function to check if a date is already calculated ---
+    // Moved BEFORE handleImportSchedule
+    const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
+        return calculatedDays.some(day => isSameDay(day.inputData.startDate, dateToCheck));
+    }, [calculatedDays]);
+
+
+    // --- Function to Import Shifts from Schedule ---
+    const handleImportSchedule = useCallback(async () => {
+        if (!employeeId || !payPeriodStart || !payPeriodEnd) {
+            toast({
+                title: 'Información Incompleta',
+                description: 'Selecciona colaborador y período antes de importar.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setIsImporting(true); // Set loading state
+
+        try {
+            if (typeof window !== 'undefined') {
+                const savedScheduleRaw = localStorage.getItem(SCHEDULE_DATA_KEY);
+                if (!savedScheduleRaw) {
+                    throw new Error('No se encontraron datos de horario planificado.');
+                }
+
+                const scheduleDataMap = JSON.parse(savedScheduleRaw) as { [dateKey: string]: ScheduleData };
+
+                let importedCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
+                const newCalculatedDays: CalculationResults[] = []; // Store results of newly imported days
+
+                // Iterate through dates in the selected pay period
+                let currentDate = new Date(payPeriodStart);
+                while (currentDate <= payPeriodEnd) {
+                    const dateKey = format(currentDate, 'yyyy-MM-dd');
+                    const daySchedule = scheduleDataMap[dateKey];
+
+                    // Check if this date is already calculated in the current state
+                     if (isDateCalculated(currentDate)) { // Now isDateCalculated is defined
+                         skippedCount++;
+                         // Move to the next day
+                         currentDate = addDays(currentDate, 1);
+                         continue; // Skip already calculated dates
+                     }
+
+
+                    if (daySchedule) {
+                        // Find the shift for the *current employee* on this date
+                        let employeeShift: ShiftAssignment | undefined;
+                        for (const deptId in daySchedule.assignments) {
+                            const assignment = daySchedule.assignments[deptId].find(a => a.employee.id === employeeId);
+                            if (assignment) {
+                                employeeShift = assignment;
+                                break; // Found the shift for this employee
+                            }
+                        }
+
+                        if (employeeShift) {
+                            // Convert ShiftAssignment to WorkdayFormValues
+                            const shiftValues: WorkdayFormValues = {
+                                startDate: dateFnsParse(dateKey, 'yyyy-MM-dd', new Date()),
+                                startTime: employeeShift.startTime,
+                                endTime: employeeShift.endTime,
+                                // Calculate endsNextDay based on times
+                                endsNextDay: parseInt(employeeShift.endTime.split(':')[0]) < parseInt(employeeShift.startTime.split(':')[0]),
+                                includeBreak: employeeShift.includeBreak,
+                                breakStartTime: employeeShift.breakStartTime,
+                                breakEndTime: employeeShift.breakEndTime,
+                            };
+
+                            // Calculate this shift
+                            const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                            const result = await calculateSingleWorkday(shiftValues, calculationId);
+
+                            if (isCalculationError(result)) {
+                                console.error(`Error calculando turno importado para ${dateKey}:`, result.error);
+                                errorCount++;
+                                toast({
+                                    title: `Error Importando Turno (${format(currentDate, 'dd/MM')})`,
+                                    description: result.error,
+                                    variant: 'destructive',
+                                    duration: 5000
+                                })
+                            } else {
+                                newCalculatedDays.push(result); // Add successful calculation
+                                importedCount++;
+                            }
+                        }
+                    }
+
+                    // Move to the next day
+                    currentDate = addDays(currentDate, 1);
+                }
+
+                 // Merge new calculations with existing ones (if any) and sort
+                setCalculatedDays(prevDays =>
+                    [...prevDays, ...newCalculatedDays].sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime())
+                );
+
+                 // Show summary toast
+                 let toastDescription = `${importedCount} turno(s) importado(s) y calculado(s).`;
+                 if (skippedCount > 0) toastDescription += ` ${skippedCount} día(s) ya calculado(s) omitido(s).`;
+                 if (errorCount > 0) toastDescription += ` ${errorCount} error(es) al calcular.`;
+
+                 toast({
+                     title: 'Importación de Horario Completa',
+                     description: toastDescription,
+                     variant: errorCount > 0 ? 'destructive' : 'default',
+                     duration: 7000
+                 });
+
+            } else {
+                throw new Error('Operación solo disponible en el navegador.');
+            }
+        } catch (error) {
+            console.error("Error importando horario:", error);
+            toast({
+                title: 'Error al Importar',
+                description: error instanceof Error ? error.message : 'No se pudo importar el horario planificado.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsImporting(false); // Turn off loading state
+        }
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]); // Added dependencies
+
 
     const handleClearPeriodData = () => {
          const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
@@ -814,10 +948,6 @@ export default function Home() {
    };
 
 
-    // --- Function to check if a date is already calculated ---
-    const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
-        return calculatedDays.some(day => isSameDay(day.inputData.startDate, dateToCheck));
-    }, [calculatedDays]);
 
 
 
@@ -905,13 +1035,29 @@ export default function Home() {
               </div>
 
                 {/* Action Buttons for Load/Clear */}
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
+                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> {/* Changed to 4 columns */}
                    <Button
                      onClick={handleLoadData}
                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" // Use theme color
                      disabled={!employeeId || !payPeriodStart || !payPeriodEnd}>
                        <FolderSync className="mr-2 h-4 w-4" /> Cargar/Actualizar Turnos
                    </Button>
+
+                   {/* Import Schedule Button */}
+                   <Button
+                        onClick={handleImportSchedule}
+                        variant="outline"
+                        className="w-full hover:bg-accent hover:text-accent-foreground"
+                        disabled={!employeeId || !payPeriodStart || !payPeriodEnd || isImporting}
+                    >
+                        {isImporting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <FileUp className="mr-2 h-4 w-4" />
+                        )}
+                        Importar Horario Planificado
+                   </Button>
+
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
                              {/* Disable clear if form disabled OR if all data is already clear */}
@@ -1259,3 +1405,4 @@ export default function Home() {
     </main>
   );
 }
+
