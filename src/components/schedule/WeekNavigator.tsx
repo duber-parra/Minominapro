@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale'; // Import Spanish locale
+import { Card } from '@/components/ui/card'; // Import Card for background
 
 interface WeekNavigatorProps {
   currentDate: Date;
@@ -27,18 +28,18 @@ export const WeekNavigator: React.FC<WeekNavigatorProps> = ({
   const weekRange = `Semana del ${format(weekStart, 'd MMM', { locale: es })}${startYear !== endYear ? ' ' + startYear : ''} al ${format(weekEnd, 'd MMM yyyy', { locale: es })}`;
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      <Button variant="outline" size="icon" onClick={onPreviousWeek} className="h-8 w-8">
-        <ChevronsLeft className="h-4 w-4" />
+    <Card className="flex items-center justify-center gap-2 px-3 py-2 bg-card shadow-sm border border-border rounded-lg"> {/* Wrap in Card, add padding */}
+      <Button variant="ghost" size="icon" onClick={onPreviousWeek} className="h-9 w-9 text-muted-foreground hover:text-primary"> {/* Larger button, ghost variant */}
+        <ChevronsLeft className="h-5 w-5" /> {/* Larger icon */}
         <span className="sr-only">Semana Anterior</span>
       </Button>
-      <span className="text-sm font-medium text-center min-w-[200px]">
+      <span className="text-base font-semibold text-foreground text-center min-w-[220px]"> {/* Larger, bolder text */}
         {weekRange}
       </span>
-      <Button variant="outline" size="icon" onClick={onNextWeek} className="h-8 w-8">
-        <ChevronsRight className="h-4 w-4" />
+      <Button variant="ghost" size="icon" onClick={onNextWeek} className="h-9 w-9 text-muted-foreground hover:text-primary"> {/* Larger button, ghost variant */}
+        <ChevronsRight className="h-5 w-5" /> {/* Larger icon */}
         <span className="sr-only">Semana Siguiente</span>
       </Button>
-    </div>
+    </Card>
   );
 };
