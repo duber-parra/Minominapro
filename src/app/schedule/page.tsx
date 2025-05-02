@@ -1,3 +1,4 @@
+
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -41,7 +42,7 @@ import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, ShiftTemplate } from '@/types/schedule'; // Added ShiftTemplate
 import { v4 as uuidv4 } from 'uuid';
-import { startOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid } from 'date-fns'; // Added parseISO, getYear, isValid
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid } from 'date-fns'; // Added endOfWeek, parseISO, getYear, isValid
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
@@ -317,8 +318,9 @@ export default function SchedulePage() {
             };
         });
         setIsShiftModalOpen(false);
-        setSelectedEmployee(null); // Clear selection after assigning
-        setSelectedDepartmentId(null);
+        // Don't clear selection immediately, let useEffect handle filtering based on viewMode and date
+        // setSelectedEmployee(null);
+        // setSelectedDepartmentId(null);
     };
 
     const handleRemoveShift = (dateKey: string, departmentId: string, assignmentId: string) => {
@@ -1108,3 +1110,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
