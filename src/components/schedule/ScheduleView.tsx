@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '../ui/button';
-import { Plus, Copy } from 'lucide-react'; // Added Copy icon
+import { Plus, Copy, Eraser } from 'lucide-react'; // Added Copy icon, Eraser
 import type { Employee } from '@/types/schedule';
 
 interface ScheduleViewProps {
@@ -20,6 +20,7 @@ interface ScheduleViewProps {
   onAssign: (employee: Employee, departmentId: string, date: Date) => void; // Handler for adding shift via button
   getScheduleForDate: (date: Date) => ScheduleData; // Function to get schedule for a specific date
   onDuplicateDay: (sourceDate: Date) => void; // Add prop for duplicating a day's schedule
+  onClearDay: (dateToClear: Date) => void; // Add prop for clearing a day's schedule
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
@@ -32,6 +33,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     onAssign,
     getScheduleForDate, // Receive helper function
     onDuplicateDay, // Receive duplicate handler
+    onClearDay, // Receive clear handler
 }) => {
 
     if (viewMode === 'day') {
@@ -88,18 +90,32 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Smaller description */}
                             {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay}) {/* Short month, count */}
                         </CardDescription>
-                        {/* Duplicate button for all days except the last one */}
-                        {!isLastDayOfWeek && (
+                         {/* Action Buttons: Duplicate and Clear */}
+                        <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+                            {/* Duplicate button for all days except the last one */}
+                            {!isLastDayOfWeek && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
+                                    onClick={() => onDuplicateDay(date)}
+                                    title="Duplicar al día siguiente"
+                                >
+                                    <Copy className="h-3 w-3" />
+                                </Button>
+                            )}
+                            {/* Clear Day Button */}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="absolute top-1 right-1 h-5 w-5 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
-                                onClick={() => onDuplicateDay(date)}
-                                title="Duplicar al día siguiente"
+                                className="h-5 w-5 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
+                                onClick={() => onClearDay(date)} // Trigger clear confirmation
+                                title="Limpiar turnos del día"
+                                disabled={totalAssignmentsForDay === 0} // Disable if no assignments
                             >
-                                <Copy className="h-3 w-3" />
+                                <Eraser className="h-3 w-3" />
                             </Button>
-                        )}
+                        </div>
                     </CardHeader>
                     <CardContent className="p-1.5 space-y-2 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
                         {departments.length > 0 ? (
@@ -143,3 +159,5 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         );
     }
 };
+
+    

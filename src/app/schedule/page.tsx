@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library } from 'lucide-react'; // Added Save, CopyPlus, Library
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, CalendarIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser } from 'lucide-react'; // Added Save, CopyPlus, Library, Eraser
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -113,6 +113,10 @@ export default function SchedulePage() {
     // State for template saving dialog
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [templateName, setTemplateName] = useState('');
+
+    // State for clear day confirmation
+    const [clearingDate, setClearingDate] = useState<Date | null>(null);
+
 
     const { toast } = useToast(); // Get toast function
 
@@ -464,6 +468,30 @@ export default function SchedulePage() {
          toast({ title: 'Horario Duplicado', description: `El horario del ${format(sourceDate, 'dd/MM')} se duplicó al ${format(nextDayDate, 'dd/MM')}.` });
      };
 
+      // --- Clear Day Handler ---
+     const handleConfirmClearDay = (dateToClear: Date) => {
+         setClearingDate(dateToClear);
+     };
+
+     const handleClearDay = () => {
+         if (!clearingDate) return;
+         const dateKey = format(clearingDate, 'yyyy-MM-dd');
+
+         setScheduleData(prevData => {
+             const updatedData = { ...prevData };
+             if (updatedData[dateKey]) {
+                 updatedData[dateKey] = {
+                     date: clearingDate,
+                     assignments: {} // Clear assignments for this day
+                 };
+             }
+             return updatedData;
+         });
+         setClearingDate(null); // Close dialog
+         toast({ title: 'Horario Limpiado', description: `Se eliminaron todos los turnos para el ${format(clearingDate, 'PPP', { locale: es })}.` });
+     };
+
+
      const handleOpenTemplateModal = () => {
         const currentDayKey = format(targetDate, 'yyyy-MM-dd');
         const currentSchedule = scheduleData[currentDayKey];
@@ -688,9 +716,12 @@ export default function SchedulePage() {
                  <Button onClick={handleSaveSchedule} variant="outline">
                      <Save className="mr-2 h-4 w-4" /> Guardar Horario
                  </Button>
-                 <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline" disabled={viewMode !== 'day'}>
-                     <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
-                 </Button>
+                 {/* Conditionally render Duplicate Day button based on viewMode */}
+                 {viewMode === 'day' && (
+                    <Button onClick={() => handleDuplicateDay(targetDate)} variant="outline">
+                        <CopyPlus className="mr-2 h-4 w-4" /> Duplicar al Día Siguiente
+                    </Button>
+                 )}
                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" onClick={handleOpenTemplateModal} disabled={viewMode !== 'day'}>
@@ -748,6 +779,7 @@ export default function SchedulePage() {
                             onAssign={handleOpenShiftModal} // Pass handler for shift assignment via '+' button
                             getScheduleForDate={getScheduleForDate} // Pass helper function
                             onDuplicateDay={handleDuplicateDay} // Pass the duplicate handler
+                            onClearDay={handleConfirmClearDay} // Pass the clear handler trigger
                         />
                      </div>
                  </div>
@@ -874,6 +906,26 @@ export default function SchedulePage() {
                  </AlertDialogContent>
             </AlertDialog>
 
+            {/* Clear Day Confirmation */}
+            <AlertDialog open={!!clearingDate} onOpenChange={(open) => !open && setClearingDate(null)}>
+                 <AlertDialogContent>
+                     <AlertDialogHeader>
+                         <AlertDialogTitle>¿Limpiar Turnos del Día?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                            Esta acción eliminará todos los turnos asignados para el{' '}
+                            <strong>{clearingDate ? format(clearingDate, 'PPP', { locale: es }) : ''}</strong>. No se puede deshacer.
+                         </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                         <AlertDialogCancel onClick={() => setClearingDate(null)}>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearDay}>Limpiar Día</AlertDialogAction>
+                     </AlertDialogFooter>
+                 </AlertDialogContent>
+            </AlertDialog>
+
+
         </main>
     );
 }
+
+    
