@@ -1,13 +1,12 @@
 // src/components/schedule/ScheduleView.tsx
 import React, { useState, useEffect } from 'react'; // Added useState, useEffect
-import type { Department, ScheduleData, ShiftAssignment, ScheduleNote } from '@/types/schedule'; // Added ScheduleNote
+import type { Department, ScheduleData, ShiftAssignment, ScheduleNote, Employee } from '@/types/schedule'; // Added ScheduleNote and Employee
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added CardFooter
-import { format, parseISO } from 'date-fns'; // Added parseISO
+import { format, parse, isValid as isValidDate } from 'date-fns'; // Correctly import parse and isValid
 import { es } from 'date-fns/locale';
 import { Button } from '../ui/button';
 import { Plus, Copy, Eraser, NotebookPen } from 'lucide-react'; // Added NotebookPen icon
-import type { Employee } from '@/types/schedule';
 import { cn } from '@/lib/utils'; // Import cn
 import {
   Tooltip,
@@ -69,7 +68,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             {notes.map(note => {
                 const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
                 // Format date for tooltip: Abbreviated day, numeric day, abbreviated month
-                const noteDate = parseDateFnsInternal(note.date, 'yyyy-MM-dd', new Date());
+                // Use the imported 'parse' function
+                const noteDate = parse(note.date, 'yyyy-MM-dd', new Date());
                 const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE d MMM', { locale: es }) : note.date;
                 return (
                     <p key={note.id}>
@@ -302,3 +302,5 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
          return weekViewContent;
     }
 };
+
+    

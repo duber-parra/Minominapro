@@ -43,7 +43,7 @@ interface ScheduleNotesModalProps {
   notes: ScheduleNote[];
   employees: Employee[]; // To populate the dropdown
   onAddNote: (newNoteData: Omit<ScheduleNote, 'id'>) => void;
-  onDeleteNote: (noteId: string) => void; // Changed prop name to onDeleteNote
+  onDeleteNote: (noteId: string) => void; // Renamed prop
   initialDate?: Date; // Optional initial date
 }
 
@@ -62,7 +62,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Filter notes based on initialDate if provided
+  // Filter notes based on initialDate if provided, otherwise use all notes
   const filteredNotes = initialDate
     ? allNotes.filter(note => note.date === format(initialDate, 'yyyy-MM-dd'))
     : allNotes;
@@ -193,10 +193,10 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
           <h4 className="mb-3 font-medium text-sm text-foreground">
               {initialDate ? `Anotaciones Existentes (${filteredNotes.length})` : `Anotaciones Guardadas (${allNotes.length})`}
           </h4>
-          {(initialDate ? filteredNotes : allNotes).length > 0 ? (
+          {filteredNotes.length > 0 ? (
             <ScrollArea className="h-[35vh] pr-4"> {/* Ajusta altura según necesites */}
               <ul className="space-y-2">
-                {(initialDate ? filteredNotes : allNotes).map((note) => {
+                {filteredNotes.map((note) => {
                    const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
                    const noteDate = parseDateFns(note.date, 'yyyy-MM-dd', new Date());
                    // Format date for display: Abbreviated day, numeric day, abbreviated month
@@ -204,37 +204,42 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                   return (
                     <li key={note.id} className="flex items-start justify-between p-2 border rounded-md bg-background text-sm">
                       <div className="flex-grow mr-2 overflow-hidden"> {/* Added overflow-hidden */}
-                         {/* Trigger AlertDialog on click */}
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <button className="text-left w-full cursor-pointer hover:text-primary transition-colors">
-                                     <span className="font-medium text-foreground block truncate">{note.note}</span> {/* Added truncate */}
-                                     <span className="block text-xs text-muted-foreground truncate"> {/* Added truncate */}
-                                        {formattedDate}
-                                        {employeeName ? ` - ${employeeName}` : ''}
-                                     </span>
-                                </button>
-                            </AlertDialogTrigger>
-                             <AlertDialogContent>
-                                <AlertDialogHeader>
-                                   <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
-                                   <AlertDialogDescription>
-                                      "{note.note}" ({formattedDate}{employeeName ? ` - ${employeeName}` : ''})
-                                      <br/>Esta acción no se puede deshacer.
-                                   </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                   <AlertDialogAction
-                                      onClick={() => onDeleteNote(note.id)}
-                                      className="bg-destructive hover:bg-destructive/90">
-                                      Eliminar Anotación
-                                   </AlertDialogAction>
-                                </AlertDialogFooter>
-                             </AlertDialogContent>
-                         </AlertDialog>
+                        <p className="font-medium text-foreground block truncate">{note.note}</p> {/* Added truncate */}
+                        <span className="block text-xs text-muted-foreground truncate"> {/* Added truncate */}
+                           {formattedDate}
+                           {employeeName ? ` - ${employeeName}` : ''}
+                        </span>
                       </div>
-                      {/* Removed direct delete button, now handled by clicking the note */}
+                       {/* Delete Button Trigger */}
+                       <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
+                                 title="Eliminar anotación"
+                              >
+                                 <Trash2 className="h-4 w-4" />
+                              </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                              <AlertDialogHeader>
+                                 <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                    "{note.note}" ({formattedDate}{employeeName ? ` - ${employeeName}` : ''})
+                                    <br/>Esta acción no se puede deshacer.
+                                 </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                 <AlertDialogAction
+                                    onClick={() => onDeleteNote(note.id)}
+                                    className="bg-destructive hover:bg-destructive/90">
+                                    Eliminar Anotación
+                                 </AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                       </AlertDialog>
                     </li>
                   );
                  })}
@@ -258,3 +263,5 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
     </Dialog>
   );
 };
+
+    
