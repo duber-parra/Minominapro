@@ -60,6 +60,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
   const [noteText, setNoteText] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for delete confirmation
   const { toast } = useToast();
 
   // Filter notes based on initialDate if provided, otherwise use all notes
@@ -74,6 +75,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
       setNoteText('');
       setSelectedEmployeeId(undefined);
       setError(null);
+      setNoteToDeleteId(null); // Reset delete confirmation on open
     }
   }, [isOpen, initialDate]);
 
@@ -102,6 +104,14 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
     // Optionally keep the date or advance it? Keep for now.
   };
 
+  // Function to actually delete the note after confirmation
+   const confirmDeleteNote = () => {
+       if (noteToDeleteId) {
+           onDeleteNote(noteToDeleteId);
+           setNoteToDeleteId(null); // Close the confirmation dialog
+       }
+   };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
@@ -117,7 +127,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
 
         {/* --- Formulario para añadir nota (only if not viewing specific date) --- */}
         {!initialDate && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b pb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-2 border-b pb-4"> {/* Reduced py and pb */}
             {/* Date Picker */}
             <div className="space-y-2 sm:col-span-1">
                 <Label htmlFor="note-date">Fecha</Label>
@@ -132,7 +142,8 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                     )}
                     >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                     {/* Use shorter date format */}
+                    {selectedDate ? format(selectedDate, 'dd MMM yyyy', { locale: es }) : <span>Selecciona fecha</span>}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -189,12 +200,12 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
 
 
         {/* --- Lista de notas existentes --- */}
-        <div className="flex-grow overflow-hidden py-4">
+        <div className="flex-grow overflow-hidden py-2"> {/* Reduced py */}
           <h4 className="mb-3 font-medium text-sm text-foreground">
               {initialDate ? `Anotaciones Existentes (${filteredNotes.length})` : `Anotaciones Guardadas (${allNotes.length})`}
           </h4>
           {filteredNotes.length > 0 ? (
-            <ScrollArea className="h-[35vh] pr-4"> {/* Ajusta altura según necesites */}
+            <ScrollArea className="h-[40vh] pr-4"> {/* Increased height */}
               <ul className="space-y-2">
                 {filteredNotes.map((note) => {
                    const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
@@ -211,35 +222,17 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                         </span>
                       </div>
                        {/* Delete Button Trigger */}
-                       <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                              <Button
-                                 variant="ghost"
-                                 size="icon"
-                                 className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
-                                 title="Eliminar anotación"
-                              >
-                                 <Trash2 className="h-4 w-4" />
-                              </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                 <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
-                                 <AlertDialogDescription>
-                                    "{note.note}" ({formattedDate}{employeeName ? ` - ${employeeName}` : ''})
-                                    <br/>Esta acción no se puede deshacer.
-                                 </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                 <AlertDialogAction
-                                    onClick={() => onDeleteNote(note.id)}
-                                    className="bg-destructive hover:bg-destructive/90">
-                                    Eliminar Anotación
-                                 </AlertDialogAction>
-                              </AlertDialogFooter>
-                          </AlertDialogContent>
-                       </AlertDialog>
+                       <AlertDialogTrigger asChild>
+                          <Button
+                             variant="ghost"
+                             size="icon"
+                             className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
+                             title="Eliminar anotación"
+                             onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
+                          >
+                             <Trash2 className="h-4 w-4" />
+                          </Button>
+                       </AlertDialogTrigger>
                     </li>
                   );
                  })}
@@ -260,8 +253,28 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
           </DialogClose>
         </DialogFooter>
       </DialogContent>
+
+       {/* Confirmation Dialog for Deleting Note */}
+       <AlertDialog open={!!noteToDeleteId} onOpenChange={(open) => !open && setNoteToDeleteId(null)}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+             <AlertDialogDescription>
+                {/* Optionally show note details here */}
+                Esta acción no se puede deshacer.
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
+             <AlertDialogAction
+                onClick={confirmDeleteNote} // Call the delete function on confirm
+                className="bg-destructive hover:bg-destructive/90">
+                Eliminar Anotación
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+
     </Dialog>
   );
 };
-
-    
