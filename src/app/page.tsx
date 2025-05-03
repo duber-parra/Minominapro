@@ -715,7 +715,7 @@ export default function Home() {
                 alt="Ilustración de taza de café"
                 width={120} // Adjust size as needed
                 height={120} // Adjust size as needed
-                className="object-contain relative -top-6 left-8 transform -rotate-12" // Adjusted position UP by reducing top (was top-24)
+                className="object-contain relative -top-30 left-8 transform -rotate-12" // Adjusted position UP
                 data-ai-hint="coffee cup illustration"
             />
         </div>
@@ -725,7 +725,7 @@ export default function Home() {
                 alt="Ilustración de mano escribiendo"
                 width={150} // Adjust size as needed
                 height={150} // Adjust size as needed
-                className="object-contain relative top-0 right-0 transform rotate-12" // Adjusted top to 0, right to 0 for full top right corner
+                className="object-contain relative -top-20 right-0 transform rotate-12" // Adjusted position UP
                 data-ai-hint="hand writing illustration"
              />
          </div>
@@ -956,3 +956,4 @@ export default function Home() {
     </main>
   );
 }
+
