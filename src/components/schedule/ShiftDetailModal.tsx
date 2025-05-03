@@ -44,8 +44,8 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   isEditing = false, // Default to false (adding)
 }) => {
   const { toast } = useToast();
-  const [startTime, setStartTime] = useState(initialDetails?.startTime || '08:00');
-  const [endTime, setEndTime] = useState(initialDetails?.endTime || '17:00');
+  const [startTime, setStartTime] = useState(initialDetails?.startTime || '12:00'); // Default to 12:00 PM
+  const [endTime, setEndTime] = useState(initialDetails?.endTime || '22:00'); // Default to 10:00 PM
   const [includeBreak, setIncludeBreak] = useState(initialDetails?.includeBreak || false); // Default to false
   const [breakStartTime, setBreakStartTime] = useState(initialDetails?.breakStartTime || '15:00'); // Default 3 PM
   const [breakEndTime, setBreakEndTime] = useState(initialDetails?.breakEndTime || '18:00'); // Default 6 PM
@@ -58,8 +58,8 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
   // Reset state when modal opens or initial details change
   useEffect(() => {
     if (isOpen) {
-        const defaultStartTime = '08:00';
-        const defaultEndTime = '17:00';
+        const defaultStartTime = '12:00'; // Updated default start time
+        const defaultEndTime = '22:00';   // Updated default end time
         const defaultBreakStartTime = '15:00';
         const defaultBreakEndTime = '18:00';
 
