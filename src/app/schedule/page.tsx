@@ -227,12 +227,15 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
                        }
                         // Specific parsing for templates to ensure dates are handled if necessary
                         if (key === SCHEDULE_TEMPLATES_KEY) {
-                             return parsed.map((template: any) => ({
+                            console.log(`[Load ${key}] Parsed data from localStorage:`, parsed); // Log parsed data
+                             const validatedTemplates = parsed.map((template: any) => ({
                                  ...template,
                                  // Parse createdAt if it exists, otherwise set null or default
                                  createdAt: template.createdAt ? template.createdAt : new Date().toISOString(),
                                  // Ensure assignments are correctly structured (might need deeper checks if dates are inside)
-                             })) as T;
+                             }));
+                              console.log(`[Load ${key}] Validated templates:`, validatedTemplates); // Log validated data
+                             return validatedTemplates as T;
                          }
                       return parsed as T;
                  } else {
@@ -354,6 +357,16 @@ const csvRowSchema = z.object({
 
 type CsvRowData = z.infer<typeof csvRowSchema>;
 
+// Define a Zod schema for the entire template file structure
+const templateFileSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    locationId: z.string(),
+    type: z.enum(['daily', 'weekly']),
+    assignments: z.record(z.any()), // Allow any structure for now, refine later if needed
+    createdAt: z.string().datetime(), // Expect ISO date string
+});
+
 
 export default function SchedulePage() {
     // --- State Initialization ---
@@ -396,16 +409,18 @@ export default function SchedulePage() {
 
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [templateName, setTemplateName] = useState('');
-    const [isTemplateLoadModalOpen, setIsTemplateLoadModalOpen] = useState(false); // State for template loading modal
-
+    // No longer need isTemplateLoadModalOpen, moved to separate component/section
+    // const [isTemplateLoadModalOpen, setIsTemplateLoadModalOpen] = useState(false);
 
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
 
     const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for CSV import
+    const jsonInputRef = useRef<HTMLInputElement>(null); // Ref for JSON template import
     const [isImportingCSV, setIsImportingCSV] = useState<boolean>(false);
+    const [isImportingJSON, setIsImportingJSON] = useState<boolean>(false);
     const [isClient, setIsClient] = useState(false);
 
 
@@ -420,14 +435,14 @@ export default function SchedulePage() {
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
         const loadedTemps = loadFromLocalStorage<ShiftTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
+        console.log("Loaded templates from localStorage on mount:", loadedTemps); // Log loaded templates
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
-        setSavedTemplates(loadedTemps);
-        console.log("[Load Effect] Loaded templates from localStorage on mount:", loadedTemps); // Add logging
+        setSavedTemplates(loadedTemps || []); // Ensure it's an array
         setNotes(loadedNotesStr);
 
         // Set initial selected location and update form defaults accordingly
@@ -529,21 +544,24 @@ export default function SchedulePage() {
     }, [notes, isClient]);
 
     useEffect(() => {
-       if (isClient) {
-           try {
-               console.log("[Save Effect] Saving templates to localStorage:", savedTemplates); // Log before saving
-               localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
-               console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
-           } catch (error) {
-                console.error("Error saving templates to localStorage:", error);
-                toast({
-                    title: 'Error al Guardar Templates',
-                    description: 'No se pudieron guardar los templates localmente.',
-                    variant: 'destructive',
-                });
-           }
-       }
+        if (isClient) {
+            try {
+                // Ensure savedTemplates is always an array
+                const templatesToSave = Array.isArray(savedTemplates) ? savedTemplates : [];
+                console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
+                localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
+                console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
+            } catch (error) {
+                 console.error("Error saving templates to localStorage:", error);
+                 toast({
+                     title: 'Error al Guardar Templates',
+                     description: 'No se pudieron guardar los templates localmente.',
+                     variant: 'destructive',
+                 });
+            }
+        }
     }, [savedTemplates, isClient, toast]);
+
 
     // ---- End LocalStorage Effects ---
 
@@ -583,6 +601,7 @@ export default function SchedulePage() {
     // Filter templates based on current location and view mode
     const filteredTemplates = useMemo(() => {
         console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates before filtering
+        // Ensure savedTemplates is always an array
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
             const locationMatch = temp.locationId === selectedLocationId;
@@ -1509,7 +1528,7 @@ export default function SchedulePage() {
                  if (assignmentsLoadedCount === 0) {
                      console.warn(`[LOAD Daily] No valid assignments found or matched in template ${templateId}.`);
                      toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se encontraron turnos válidos para cargar del template "${templateToLoad.name}".`, variant: 'default' });
-                     setIsTemplateLoadModalOpen(false); // Close template loading modal if open
+                     // setIsTemplateLoadModalOpen(false); // Close template loading modal if open
                      return;
                  }
                  // Overwrite the schedule data for the target date
@@ -1587,7 +1606,7 @@ export default function SchedulePage() {
                  if (assignmentsLoadedCount === 0) {
                      console.warn(`[LOAD Weekly] No valid assignments found or matched in template ${templateId}.`);
                      toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se encontraron turnos válidos para cargar del template "${templateToLoad.name}".`, variant: 'default' });
-                     setIsTemplateLoadModalOpen(false); // Close template loading modal if open
+                     // setIsTemplateLoadModalOpen(false); // Close template loading modal if open
                      return;
                  }
 
@@ -1597,7 +1616,7 @@ export default function SchedulePage() {
 
              setScheduleData(updatedScheduleData); // Update the main schedule state
              toast({ title: 'Template Cargado', description: successMessage });
-             setIsTemplateLoadModalOpen(false); // Close the template loading modal
+             // setIsTemplateLoadModalOpen(false); // Close the template loading modal
          } catch (error) {
              console.error("[Load Template] Error loading template:", error);
              toast({ title: 'Error al Cargar Template', description: 'No se pudo cargar el template seleccionado.', variant: 'destructive' });
@@ -1905,6 +1924,108 @@ export default function SchedulePage() {
      };
 
 
+    // --- Template Export/Import JSON Handlers ---
+
+    const handleExportTemplateJSON = (templateId: string) => {
+         const templateToExport = savedTemplates.find(t => t.id === templateId);
+         if (!templateToExport) {
+             toast({ title: 'Template no encontrado', variant: 'destructive' });
+             return;
+         }
+         try {
+             const jsonString = JSON.stringify(templateToExport, null, 2); // Pretty print JSON
+             const blob = new Blob([jsonString], { type: 'application/json' });
+             const href = URL.createObjectURL(blob);
+             const link = document.createElement('a');
+             link.href = href;
+             // Create a safe filename
+             const locationNameSafe = locations.find(l => l.id === templateToExport.locationId)?.name.replace(/[^a-zA-Z0-9]/g, '_') || templateToExport.locationId;
+             const templateNameSafe = templateToExport.name.replace(/[^a-zA-Z0-9]/g, '_');
+             link.download = `template_${templateNameSafe}_${locationNameSafe}_${templateToExport.type}.json`;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(href);
+             toast({ title: 'Template Exportado', description: `Template "${templateToExport.name}" exportado como JSON.` });
+         } catch (error) {
+             console.error("Error exporting template to JSON:", error);
+             toast({ title: 'Error al Exportar Template', description: 'No se pudo generar el archivo JSON.', variant: 'destructive' });
+         }
+    };
+
+    const handleImportTemplateJSON = async (event: ChangeEvent<HTMLInputElement>) => {
+         const file = event.target.files?.[0];
+         if (!file) return;
+         console.log('[JSON Import] File selected:', file.name);
+
+         setIsImportingJSON(true);
+         try {
+             const content = await file.text();
+             console.log('[JSON Import] File content read, length:', content.length);
+             if (!content.trim()) {
+                 throw new Error('El archivo JSON está vacío.');
+             }
+
+             const parsedTemplate = JSON.parse(content);
+
+             // --- Validate the imported template structure ---
+             try {
+                 templateFileSchema.parse(parsedTemplate); // Use Zod to validate
+             } catch (validationError) {
+                  console.error("Error validating JSON template:", validationError);
+                  throw new Error(`El archivo JSON no tiene el formato de template esperado. Detalles: ${validationError instanceof z.ZodError ? validationError.errors.map(e => e.message).join(', ') : 'Formato inválido.'}`);
+             }
+
+             // Check if a template with the same ID already exists
+             const existingIndex = savedTemplates.findIndex(t => t.id === parsedTemplate.id);
+
+             let updatedTemplates;
+             let toastTitle = '';
+             let toastDescription = '';
+
+             if (existingIndex > -1) {
+                 // Template exists, ask user to confirm overwrite (or just overwrite for now)
+                 // For simplicity, we'll overwrite here. Add confirmation dialog if needed.
+                 updatedTemplates = [...savedTemplates];
+                 updatedTemplates[existingIndex] = parsedTemplate;
+                 toastTitle = 'Template Actualizado';
+                 toastDescription = `El template "${parsedTemplate.name}" ha sido actualizado desde el archivo JSON.`;
+             } else {
+                 // Template is new, add it
+                 updatedTemplates = [...savedTemplates, parsedTemplate];
+                 toastTitle = 'Template Importado';
+                 toastDescription = `El template "${parsedTemplate.name}" ha sido importado y guardado.`;
+             }
+
+             setSavedTemplates(updatedTemplates);
+             toast({ title: toastTitle, description: toastDescription });
+
+         } catch (error) {
+             console.error("[JSON Import] Error handling JSON file change:", error);
+             const errorMessage = error instanceof Error ? error.message : 'No se pudo leer o procesar el archivo JSON.';
+             toast({
+                 title: 'Error al Importar JSON',
+                 description: errorMessage,
+                 variant: 'destructive',
+                 duration: 9000,
+             });
+         } finally {
+             console.log('[JSON Import] Finalizing file change handler.');
+             setIsImportingJSON(false);
+             // Reset the file input
+             if (jsonInputRef.current) {
+                 jsonInputRef.current.value = '';
+             }
+         }
+     };
+
+    // Trigger JSON file input click
+    const triggerJSONInput = () => {
+        jsonInputRef.current?.click();
+    };
+
+
+
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         // Disable DndContext completely on mobile
         if (isMobile || !isClient) {
@@ -1972,11 +2093,11 @@ export default function SchedulePage() {
 
         // Create CSV content
         const csvContent = "data:text/csv;charset=utf-8,"
-            + dataToExport.map(row =>
-                 row.map((field: string | number | undefined) =>
-                    `"${String(field ?? '').replace(/"/g, '""')}"` // Quote fields and escape double quotes
-                 ).join(",")
+             + dataToExport.map(row =>
+                   // Cambia esta línea para NO añadir comillas alrededor:
+                   row.map((field: string | number | undefined) => String(field ?? '')).join(",") // <-- Modificada: Sin comillas añadidas
              ).join("\n");
+
 
 
         // Trigger download
@@ -2137,16 +2258,18 @@ export default function SchedulePage() {
                   accept=".csv"
                   className="hidden"
               />
+              {/* Hidden file input for JSON template */}
+               <input
+                  type="file"
+                  ref={jsonInputRef}
+                  onChange={handleImportTemplateJSON}
+                  accept=".json"
+                  className="hidden"
+               />
 
-             {/* Controls Section - Using Card */}
-             <Card className="mb-6 md:mb-8 bg-card/0 border-none shadow-none"> {/* Transparent Card */}
-                {/* <CardHeader className="pb-4 pt-4 text-center">
-                     <CardTitle className="text-lg md:text-xl font-semibold">Planificación</CardTitle>
-                     <CardDescription className="text-xs md:text-sm">
-                       Selecciona una fecha o semana, gestiona sedes, carga/guarda templates y descarga horarios.
-                     </CardDescription>
-                </CardHeader> */}
-                 <CardContent className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0"> {/* Remove padding */}
+             {/* Controls Section - Invisible Card for layout */}
+             <Card className="mb-6 md:mb-8 bg-transparent border-none shadow-none">
+                 <CardContent className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
 
                       {/* Sede Selector */}
                       <div className="flex items-center gap-2">
@@ -2158,8 +2281,8 @@ export default function SchedulePage() {
                           />
                       </div>
 
-                       {/* Configuration Button */}
-                       <div className="flex items-center gap-2">
+                      {/* Configuration Button */}
+                      <div className="flex items-center gap-2">
                          <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                              <DialogTrigger asChild>
                                  <Button variant="outline" size="icon" title="Configuración">
@@ -2315,7 +2438,8 @@ export default function SchedulePage() {
                                          className={cn(
                                              'w-[200px] sm:w-[280px] justify-start text-left font-normal',
                                              !targetDate && 'text-muted-foreground',
-                                             isHoliday(targetDate) && 'border-primary font-semibold text-primary' // Highlight border and text for holiday
+                                             // Conditional border for holiday, primary color border
+                                             isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2'
                                          )}
                                          disabled={isCheckingHoliday}
                                      >
@@ -2448,15 +2572,86 @@ export default function SchedulePage() {
                    <Button variant="outline" onClick={handleOpenTemplateModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
                       <Download className="mr-2 h-4 w-4" /> Guardar Template
                    </Button>
-                   <Button variant="outline" onClick={() => setIsTemplateLoadModalOpen(true)} title="Cargar Template Guardado" disabled={filteredTemplates.length === 0}>
-                     <Upload className="mr-2 h-4 w-4" /> Cargar Template
-                   </Button>
+                    {/* Import JSON Template Button */}
+                    <Button variant="outline" onClick={triggerJSONInput} disabled={isImportingJSON} title="Importar Template desde Archivo JSON">
+                        {isImportingJSON ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                             <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        Importar Template (JSON)
+                    </Button>
 
                   <Button onClick={handleSaveSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                       <Save className="mr-2 h-4 w-4" /> Guardar Horario
                   </Button>
 
               </div>
+
+              {/* Section to Display Saved Templates */}
+              <Card className="mt-8 shadow-lg bg-card">
+                    <CardHeader>
+                        <CardTitle className="text-lg text-foreground">Templates Guardados ({filteredTemplates.length})</CardTitle>
+                        <CardDescription>
+                            Carga o elimina templates para la vista actual ({viewMode === 'day' ? 'Diario' : 'Semanal'}) y sede seleccionada.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {filteredTemplates.length > 0 ? (
+                            <ScrollArea className="h-[200px] pr-4">
+                                <ul className="space-y-2">
+                                    {filteredTemplates.map(template => (
+                                        <li key={template.id} className="flex justify-between items-center group border p-2 rounded-md hover:bg-accent">
+                                            <span className="text-sm text-foreground truncate pr-2">{template.name}</span>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="h-7 px-2"
+                                                    onClick={() => handleLoadTemplate(template.id)}
+                                                    title="Cargar este template"
+                                                >
+                                                    <Upload className="h-4 w-4" />
+                                                </Button>
+                                                 {/* Export Template JSON Button */}
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-7 w-7"
+                                                    onClick={() => handleExportTemplateJSON(template.id)}
+                                                    title="Exportar Template a JSON"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-50 group-hover:opacity-100" title="Eliminar template">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Eliminar el template "{template.name}"? Esta acción no se puede deshacer.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => confirmDeleteItem('template', template.id, template.name)}>Eliminar</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </ScrollArea>
+                        ) : (
+                            <p className="text-center text-muted-foreground italic py-4">No hay templates guardados para esta vista/sede.</p>
+                        )}
+                    </CardContent>
+                </Card>
 
 
              {/* --- Modals --- */}
@@ -2689,63 +2884,8 @@ export default function SchedulePage() {
                  </DialogContent>
              </Dialog>
 
-             {/* Template Loading Modal */}
-             <Dialog open={isTemplateLoadModalOpen} onOpenChange={setIsTemplateLoadModalOpen}>
-                 <DialogContent className="max-w-md">
-                     <DialogHeader>
-                         <DialogTitle>Cargar Template</DialogTitle>
-                         <DialogDescription>Selecciona un template {viewMode === 'day' ? 'diario' : 'semanal'} para aplicar al horario actual ({viewMode === 'day' ? format(targetDate, 'PPP', { locale: es }) : 'semana'}). Esto reemplazará los turnos existentes.</DialogDescription>
-                     </DialogHeader>
-                     <div className="py-4 max-h-[50vh] overflow-y-auto">
-                         {filteredTemplates.length > 0 ? (
-                             <ul className="space-y-2">
-                                 {filteredTemplates.map(template => (
-                                     <li key={template.id} className="flex justify-between items-center group border p-2 rounded-md hover:bg-accent">
-                                         <span className="text-sm text-foreground truncate pr-2">{template.name}</span>
-                                         <div className="flex items-center gap-1">
-                                             <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="h-7 px-2"
-                                                onClick={() => handleLoadTemplate(template.id)}
-                                                title="Cargar este template"
-                                             >
-                                                 <Upload className="h-4 w-4" />
-                                             </Button>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-50 group-hover:opacity-100" title="Eliminar template">
-                                                         <Trash2 className="h-4 w-4" />
-                                                     </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                   <AlertDialogHeader>
-                                                      <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle>
-                                                      <AlertDialogDescription>
-                                                         Eliminar el template "{template.name}"? Esta acción no se puede deshacer.
-                                                      </AlertDialogDescription>
-                                                   </AlertDialogHeader>
-                                                   <AlertDialogFooter>
-                                                      <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => confirmDeleteItem('template', template.id, template.name)}>Eliminar</AlertDialogAction>
-                                                   </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                             </AlertDialog>
-                                         </div>
-                                     </li>
-                                 ))}
-                             </ul>
-                         ) : (
-                             <p className="text-center text-muted-foreground italic py-4">No hay templates guardados para esta vista/sede.</p>
-                         )}
-                     </div>
-                     <DialogFooter>
-                         <DialogClose asChild>
-                             <Button variant="secondary">Cerrar</Button>
-                         </DialogClose>
-                     </DialogFooter>
-                 </DialogContent>
-             </Dialog>
+             {/* No longer need a separate modal for loading, it's in the main UI now */}
+             {/* <Dialog open={isTemplateLoadModalOpen} onOpenChange={setIsTemplateLoadModalOpen}> ... </Dialog> */}
 
 
             {/* Editable Notes Section */}
