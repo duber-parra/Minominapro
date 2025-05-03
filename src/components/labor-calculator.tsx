@@ -44,10 +44,15 @@ const CalculadoraLaboral: React.FC = () => {
 
   // State to prevent hydration errors for client-only rendering parts
   const [hasMounted, setHasMounted] = useState(false);
+  const [minimizedButtonHidden, setMinimizedButtonHidden] = useState(true); // Start hidden on server
+  const [cardHidden, setCardHidden] = useState(false); // Start visible on server (matching initial isOpen=true)
 
   useEffect(() => {
     setHasMounted(true);
-  }, []);
+    // Update visibility based on isOpen *after* mount
+    setMinimizedButtonHidden(isOpen);
+    setCardHidden(!isOpen);
+  }, [isOpen]);
 
 
   // --- Effect to handle clicks outside the calculator ---
@@ -336,11 +341,11 @@ const CalculadoraLaboral: React.FC = () => {
   // This prevents the hydration error by ensuring both versions exist in the initial server render.
   return (
     <>
-      {/* Minimized Button - Rendered on server, hidden on client when isOpen or !hasMounted */}
+      {/* Minimized Button - Always rendered, visibility controlled by state */}
       <Button
         className={cn(
           "fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 p-0 shadow-lg",
-          (isOpen && hasMounted) && "hidden" // Hide if calculator is open on client
+          minimizedButtonHidden && "hidden" // Use state to control visibility after mount
         )}
         onClick={() => setIsOpen(true)}
         aria-label="Abrir Calculadora Laboral"
@@ -349,12 +354,12 @@ const CalculadoraLaboral: React.FC = () => {
         <Calculator className="h-6 w-6" />
       </Button>
 
-       {/* Full Calculator Card - Rendered on server, hidden initially or when !isOpen */}
+       {/* Full Calculator Card - Always rendered, visibility controlled by state */}
       <Card
         ref={calculatorRef}
         className={cn(
           "fixed bottom-4 right-4 z-50 w-80 shadow-lg bg-card text-card-foreground rounded-lg",
-          (!isOpen || !hasMounted) && "hidden" // Hide if calculator is closed or not mounted on client
+           cardHidden && "hidden" // Use state to control visibility after mount
         )}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary rounded-t-lg">
