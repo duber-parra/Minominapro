@@ -1,10 +1,10 @@
-
 // src/app/schedule/page.tsx
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import Image from 'next/image'; // Import next/image
 import {
   Card,
   CardContent,
@@ -14,7 +14,7 @@ import {
   CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload } from 'lucide-react'; // Added Upload for template load
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson } from 'lucide-react'; // Added icons
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -67,6 +67,7 @@ import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportScheduleToPDF } from '@/lib/schedule-pdf-exporter';
 import { formatTo12Hour } from '@/lib/time-utils';
+
 
 // Helper to generate dates for the current week
 const getWeekDates = (currentDate: Date): Date[] => {
@@ -326,7 +327,13 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 // Helper function to load schedule templates from localStorage
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    return loadFromLocalStorage(SCHEDULE_TEMPLATES_KEY, []);
+     const loaded = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
+     console.log("[Load Templates Func] Templates loaded from LS:", loaded); // Add log here
+     // Ensure createdAt is a Date object if it exists
+     return loaded.map(temp => ({
+         ...temp,
+         createdAt: temp.createdAt ? new Date(temp.createdAt) : new Date() // Convert string to Date or use current date
+     }));
 };
 
 
@@ -393,7 +400,7 @@ export default function SchedulePage() {
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
-        const loadedTemps = loadScheduleTemplates(); // Load templates
+        const loadedTemps = loadScheduleTemplates(); // Load templates using helper function
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
@@ -504,7 +511,12 @@ export default function SchedulePage() {
         if (isClient) {
             try {
                  console.log("[Save Effect] Saving templates to localStorage:", savedTemplates); // Log before saving
-                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
+                 // Convert Date back to ISO string for storage
+                 const templatesToSave = savedTemplates.map(t => ({
+                    ...t,
+                    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt
+                 }));
+                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
                   console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
             } catch (error) {
                  console.error("Error saving templates to localStorage:", error);
@@ -557,9 +569,10 @@ export default function SchedulePage() {
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
             const locationMatch = temp.locationId === selectedLocationId;
+            // Correctly match the template type with the current viewMode
             const typeMatch = temp.type === viewMode;
-             // Filter out templates with missing or invalid structure
-             const isValidTemplate = temp.id && temp.name && temp.assignments;
+            // Filter out templates with missing or invalid structure (basic check)
+            const isValidTemplate = temp.id && temp.name && temp.assignments && typeof temp.assignments === 'object';
             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}, Valid=${isValidTemplate}`);
             return locationMatch && typeMatch && isValidTemplate;
         });
@@ -1325,6 +1338,18 @@ export default function SchedulePage() {
         if (templateType === 'day') {
             const dayKey = format(targetDate, 'yyyy-MM-dd');
             assignmentsToSave = scheduleData[dayKey]?.assignments || {};
+             // Convert full Employee object back to just { id } for saving
+             const simplifiedDayAssignments: DailyAssignments = {};
+             if (assignmentsToSave) {
+                Object.keys(assignmentsToSave).forEach(deptId => {
+                    simplifiedDayAssignments[deptId] = (assignmentsToSave as DailyAssignments)[deptId].map(a => ({
+                        ...a, // Copy other shift details
+                        employee: { id: a.employee.id } // Only store employee ID
+                    }));
+                });
+             }
+             assignmentsToSave = simplifiedDayAssignments;
+
         } else { // 'week'
             assignmentsToSave = weekDates.reduce((weekAssignments, date) => {
                 const dateKey = format(date, 'yyyy-MM-dd');
@@ -1360,7 +1385,11 @@ export default function SchedulePage() {
             createdAt: new Date().toISOString(),
         };
 
-        setSavedTemplates(prev => Array.isArray(prev) ? [...prev, newTemplate] : [newTemplate]); // Ensure state is array
+        setSavedTemplates(prev => {
+            const updatedTemplates = Array.isArray(prev) ? [...prev, newTemplate] : [newTemplate];
+            console.log("[handleSaveTemplate] Updating templates state:", updatedTemplates); // Log state update
+            return updatedTemplates;
+        }); // Ensure state is array
         toast({ title: "Template Guardado", description: `Template "${name}" guardado.`});
         setIsTemplateSaveModalOpen(false);
     };
@@ -1420,10 +1449,18 @@ export default function SchedulePage() {
                  // Apply to the *currently visible* week
                  weekDates.forEach((currentWeekDate, index) => {
                      // Determine the corresponding date key from the template (if exists)
-                     // This simple approach assumes the template keys match the current week structure.
-                     // A more robust approach might match by day of the week if template keys are generic (0-6).
-                     const dateKey = format(currentWeekDate, 'yyyy-MM-dd');
-                     const templateDayAssignments = weeklyAssignments[dateKey]; // Direct match assumption
+                     // Need to find the template day that corresponds to the current day of the week
+                     const templateDateKey = Object.keys(weeklyAssignments).find(key => {
+                         try {
+                           const templateDate = parseISO(key);
+                           return getDay(templateDate) === getDay(currentWeekDate); // Match day of the week
+                         } catch {
+                           return false; // Invalid key format
+                         }
+                     });
+
+                     const dateKey = format(currentWeekDate, 'yyyy-MM-dd'); // Target date key
+                     const templateDayAssignments = templateDateKey ? weeklyAssignments[templateDateKey] : null;
 
                      if (templateDayAssignments) {
                           // Hydrate employee objects for weekly template day
@@ -1433,7 +1470,7 @@ export default function SchedulePage() {
                                  const fullEmployee = employees.find(emp => emp.id === assign.employee.id);
                                  return {
                                      ...assign,
-                                     id: `shift_${assign.employee.id}_${dateKey}_${assign.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`, // Generate new ID
+                                     id: `shift_${assign.employee.id}_${dateKey}_${assign.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`, // Generate new ID for the target date
                                      employee: fullEmployee || { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] } // Handle missing employee
                                  };
                               });
@@ -1445,9 +1482,9 @@ export default function SchedulePage() {
                          };
                           console.log(`[Load Template] Applied template assignments to ${dateKey}`);
                      } else {
-                         // Optionally clear the day if the template doesn't have data for it?
-                         // delete updatedSchedule[dateKey];
-                          console.log(`[Load Template] No template assignments found for ${dateKey}`);
+                         // Clear the day if the template doesn't have data for it for this day of the week
+                          delete updatedSchedule[dateKey];
+                          console.log(`[Load Template] No template assignments found for ${dateKey} (Day of week: ${getDay(currentWeekDate)})`);
                      }
                  });
             }
@@ -1626,22 +1663,29 @@ export default function SchedulePage() {
     return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
              {/* Title */}
-             <div className="text-center mb-6 md:mb-8 relative z-10"> {/* Added relative z-10 */}
-                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
-                    Planificador de Horarios
-                 </h1>
-                 <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
+             <div className="text-center mb-6 md:mb-8 relative z-10 flex items-center justify-center">
+                 {/* Illustration */}
+                 <div className="absolute left-0 top-0 -translate-y-1/4 opacity-70 pointer-events-none hidden md:block">
+                    <Image
+                       src="https://i.postimg.cc/j2G90DpP/Recurso-5.png"
+                       alt="Planning illustration"
+                       width={150} // Adjust size as needed
+                       height={150} // Adjust size as needed
+                       className="object-contain"
+                       data-ai-hint="schedule planning illustration"
+                    />
+                </div>
+                 <div className="flex-grow">
+                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
+                        Planificador de Horarios
+                     </h1>
+                     <p className="text-sm sm:text-base text-muted-foreground mt-1 md:mt-2">Gestiona turnos, sedes y colaboradores</p>
+                 </div>
              </div>
 
 
              {/* Controls Section - Top Bar */}
              <div className="mb-6 md:mb-8 bg-transparent border-none shadow-none p-0">
-                 <CardHeader className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap mb-4 p-0">
-                     <CardTitle className="sr-only">Controles de Planificación</CardTitle>
-                     <CardDescription className="text-center md:text-left w-full md:w-auto mb-2 md:mb-0">
-                        Seleccione una fecha o una semana a programar, duplica, guarda templates y descarga tu horario.
-                     </CardDescription>
-                 </CardHeader>
                   <CardContent className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                      {/* Location Selector and Config */}
                      <div className="flex items-center gap-2">
@@ -1782,49 +1826,6 @@ export default function SchedulePage() {
                                                          </div>
                                                      </li>
                                                  ))}
-                                             </ul>
-                                         </ScrollArea>
-                                     </div>
-                                     {/* Templates Column - Added */}
-                                     <div className="space-y-4 md:col-span-3 border-t pt-4"> {/* Span full width and add top border */}
-                                         <div className="flex justify-between items-center mb-2">
-                                             <h4 className="font-semibold text-foreground flex items-center gap-1"><Save className="h-4 w-4 text-muted-foreground"/>Templates ({savedTemplates.length})</h4>
-                                             {/* Button to open template load modal/view? */}
-                                         </div>
-                                         <ScrollArea className="h-[30vh]"> {/* Adjusted height */}
-                                             <ul className="space-y-2 text-sm pr-2">
-                                                 {savedTemplates.map((template) => (
-                                                     <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                         <span className="truncate text-muted-foreground">
-                                                              {template.name} <span className="text-xs italic">({template.type === 'daily' ? 'Diario' : 'Semanal'} - {locations.find(l => l.id === template.locationId)?.name || 'Sede?'})</span>
-                                                         </span>
-                                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                              {/* Load Template Button */}
-                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleLoadTemplate(template.id)} title="Cargar Template"><Upload className="h-4 w-4" /></Button>
-                                                             {/* Delete Template Button */}
-                                                             <AlertDialog>
-                                                                  <AlertDialogTrigger asChild>
-                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                                 </AlertDialogTrigger>
-                                                                 <AlertDialogContent>
-                                                                     <AlertDialogHeader>
-                                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                         <AlertDialogDescription>
-                                                                             Eliminar Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
-                                                                         </AlertDialogDescription>
-                                                                     </AlertDialogHeader>
-                                                                     <AlertDialogFooter>
-                                                                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                     </AlertDialogFooter>
-                                                                 </AlertDialogContent>
-                                                             </AlertDialog>
-                                                         </div>
-                                                     </li>
-                                                 ))}
-                                                  {savedTemplates.length === 0 && (
-                                                     <p className="text-xs text-muted-foreground italic text-center py-2">No hay templates guardados.</p>
-                                                  )}
                                              </ul>
                                          </ScrollArea>
                                      </div>
