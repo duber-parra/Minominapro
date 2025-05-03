@@ -205,19 +205,12 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
         const savedData = localStorage.getItem(key);
         // console.log(`[DEBUG loadFromLocalStorage] Raw data for key ${key}:`, savedData); // DEBUG Log
 
-        // Handle notes specifically as a string
-        if (key === SCHEDULE_NOTES_KEY) {
-             // Directly return the string or default, no JSON parsing
-             return savedData !== null ? (savedData as unknown as T) : defaultValue;
-        }
-
         if (savedData) {
              const parsed = JSON.parse(savedData);
              // console.log(`[DEBUG loadFromLocalStorage] Parsed data for key ${key}:`, parsed); // DEBUG Log
 
-
-             // Basic check for other array types
-             if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY) {
+             // Basic check for array types
+             if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_TEMPLATES_KEY].includes(key)) {
                  if (Array.isArray(parsed)) {
                       // Ensure employees have locationIds array
                        if (key === EMPLOYEES_KEY) {
@@ -228,6 +221,17 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
                                    : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
                            })) as T;
                        }
+                       // Revive dates for templates
+                       if (key === SCHEDULE_TEMPLATES_KEY) {
+                           return parsed.map((template: any) => ({
+                               ...template,
+                               // Ensure createdAt is an ISO string or handle potential Date objects if previously saved differently
+                               createdAt: template.createdAt instanceof Date
+                                          ? template.createdAt.toISOString()
+                                          : (typeof template.createdAt === 'string' ? template.createdAt : new Date().toISOString())
+                           })) as T;
+                       }
+
                       return parsed as T;
                  } else {
                      console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
@@ -236,30 +240,25 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              } else if (key === SCHEDULE_DATA_KEY) {
                  // More complex types might need more checks, but for now assume it's okay if it parses
                  return parsed as T;
-             } else if (key === SCHEDULE_TEMPLATES_KEY) { // Handle templates explicitly
-                if (Array.isArray(parsed)) {
-                    return parsed as T; // Assuming it's already in the correct format
-                } else {
-                    console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
-                    return defaultValue;
-                }
+             } else if (key === SCHEDULE_NOTES_KEY) {
+                 // Notes are stored as plain string
+                 return savedData as unknown as T;
              } else {
                  // For unknown keys, just return the parsed data if it's not null/undefined
                  return parsed as T;
              }
         }
     } catch (error) {
-        // More specific error handling for JSON parsing
-         if (error instanceof SyntaxError && key !== SCHEDULE_NOTES_KEY) { // Don't try to parse notes as JSON
-             console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key)); // Log the problematic data
-             // Attempt to remove the invalid item to prevent future errors
+        // Handle JSON parsing errors or other potential issues
+        if (error instanceof SyntaxError && key !== SCHEDULE_NOTES_KEY) {
+             console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
              try {
                  localStorage.removeItem(key);
                  console.warn(`Removed invalid item from localStorage for key: ${key}`);
              } catch (removeError) {
                  console.error(`Error removing invalid item from localStorage for key ${key}:`, removeError);
              }
-         } else if (key !== SCHEDULE_NOTES_KEY) { // Don't log error for notes
+         } else if (key !== SCHEDULE_NOTES_KEY) {
              console.error(`Error loading ${key} from localStorage:`, error);
          }
     }
@@ -327,11 +326,12 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 };
 
 
-// --- NEW: Function to load Schedule Templates ---
-// This function now explicitly loads from SCHEDULE_TEMPLATES_KEY
+// --- Function to load Schedule Templates ---
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return [];
+    // Use the generic loader, specifying the key and default value
     const loadedTemplatesData = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
+    console.log(`[loadScheduleTemplates] Loaded raw data:`, loadedTemplatesData); // Log what was loaded
 
     if (!Array.isArray(loadedTemplatesData)) {
         console.warn("[loadScheduleTemplates] Data loaded from localStorage is not an array. Returning empty array.");
@@ -339,13 +339,9 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
         return [];
     }
 
+    // Revive date strings if necessary (already handled in loadFromLocalStorage)
     console.log(`[loadScheduleTemplates] Loaded ${loadedTemplatesData.length} templates from localStorage.`);
-    return loadedTemplatesData.map(template => ({
-        ...template,
-        createdAt: template.createdAt && typeof template.createdAt === 'string'
-                   ? template.createdAt
-                   : new Date().toISOString()
-    }));
+    return loadedTemplatesData;
 };
 
 
@@ -399,9 +395,9 @@ export default function SchedulePage() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
-    // Separate state for templates - NEW
-    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Renamed from scheduleTemplates for clarity
-    const [notes, setNotes] = useState<string>("");
+    // Separate state for templates - loaded from localStorage
+    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // State for templates
+    const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -434,8 +430,8 @@ export default function SchedulePage() {
     // Modal for saving a NEW template
     const [isTemplateSaveModalOpen, setIsTemplateSaveModalOpen] = useState(false);
     const [templateName, setTemplateName] = useState('');
-    // Separate state to control the visibility of the template loading section
-    const [isTemplateLoadModalOpen, setIsTemplateLoadModalOpen] = useState(false); // Changed from section to modal
+    // Separate state to control the visibility of the template loading section/modal
+    const [isTemplateLoadModalOpen, setIsTemplateLoadModalOpen] = useState(false);
 
 
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
@@ -461,15 +457,15 @@ export default function SchedulePage() {
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
-        // Load templates using the NEW separate function
-        const loadedTemps = loadScheduleTemplates(); // Use the dedicated loading function
+        // Load templates using the dedicated loading function
+        const loadedTemps = loadScheduleTemplates(); // Call the specific function
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
-        setSavedTemplates(loadedTemps); // Set the loaded templates
+        setSavedTemplates(loadedTemps); // Set the loaded templates state
         setNotes(loadedNotesStr);
 
         // Set initial selected location and update form defaults accordingly
@@ -1513,7 +1509,7 @@ export default function SchedulePage() {
             const currentView = viewMode === 'day' ? 'diaria' : 'semanal';
             toast({
                 title: 'Vista Incorrecta',
-                description: `El template "${templateToLoad.name}" es ${templateToLoad.type}. Estás en la vista ${currentView}. Cambia a la vista ${requiredView} para cargarlo.`,
+                description: `El template "${templateToLoad.name}" es ${templateToLoad.type === 'daily' ? 'Diario' : 'Semanal'}. Estás en la vista ${currentView}. Cambia a la vista ${requiredView} para cargarlo.`, // Corrected text
                 variant: 'destructive',
                 duration: 7000,
             });
@@ -1586,7 +1582,12 @@ export default function SchedulePage() {
                   // Clear the current week's data first
                  const currentWeekKeys = weekDates.map(d => format(d, 'yyyy-MM-dd'));
                  currentWeekKeys.forEach(key => {
-                    updatedScheduleData[key] = { date: parseISO(key), assignments: {} }; // Reset assignments
+                     // Initialize the date entry if it doesn't exist, otherwise just clear assignments
+                     if (!updatedScheduleData[key]) {
+                          updatedScheduleData[key] = { date: parseDateFnsInternal(key, 'yyyy-MM-dd', new Date()), assignments: {} };
+                     } else {
+                          updatedScheduleData[key].assignments = {}; // Reset assignments
+                     }
                  });
 
                  // Iterate through dates in the template's assignments (which are 'yyyy-MM-dd' keys)
@@ -1621,10 +1622,11 @@ export default function SchedulePage() {
                         });
 
                          // Apply the loaded assignments to the correct date in the current week
-                         updatedScheduleData[targetDateKey] = {
-                            date: targetWeekDate,
-                            assignments: loadedDailyAssignments
-                         };
+                         // Ensure the target date entry exists before assigning
+                         if (!updatedScheduleData[targetDateKey]) {
+                              updatedScheduleData[targetDateKey] = { date: targetWeekDate, assignments: {} };
+                         }
+                         updatedScheduleData[targetDateKey].assignments = loadedDailyAssignments;
                     } else {
                          console.warn(`[Load Template - Weekly] Could not map template date ${templateDateKey} to current week. Index: ${targetDayIndex}`);
                     }
@@ -1648,7 +1650,7 @@ export default function SchedulePage() {
      };
 
 
-     // --- NEW: Handler for Deleting a Template ---
+     // --- Handler for Deleting a Template ---
      const handleDeleteTemplate = (templateId: string) => {
         if (typeof window === 'undefined') return;
 
@@ -1660,15 +1662,14 @@ export default function SchedulePage() {
             // Update state by filtering out the deleted template
             setSavedTemplates(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== templateId));
 
-            // Remove from localStorage (optional but good practice)
-            // localStorage.removeItem(templateId); // Assumes the template ID is the key - THIS IS WRONG, templates are stored under SCHEDULE_TEMPLATES_KEY
-
             toast({ title: 'Template Eliminado', description: `Se eliminó el template "${templateName}".`, variant: 'destructive' });
         } catch (error) {
             console.error("Error deleting template:", error);
             toast({ title: 'Error al Eliminar', description: 'No se pudo eliminar el template.', variant: 'destructive' });
         }
          setItemToDelete(null); // Close confirmation dialog if it was open
+         // Optionally close the load modal if open
+         setIsTemplateLoadModalOpen(false);
     };
 
 
@@ -2406,22 +2407,26 @@ export default function SchedulePage() {
                />
 
              {/* Controls Section - Top Bar */}
-             <div className="mb-6 md:mb-8 p-0 bg-transparent">
-                 {/* Reverted structure: Flex container for controls */}
-                 <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap">
+             {/* <Card className="mb-6 md:mb-8 bg-transparent border-none shadow-none p-0">
+                 <CardHeader className="p-0 pb-4 mb-4 border-b border-transparent">
+                     <CardDescription className="text-center">
+                         Selecciona una fecha o una semana a programar, duplica, guarda templates y descarga tu horario.
+                     </CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-0"> */}
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap mb-6 md:mb-8">
 
-                     {/* Sede Selector */}
-                     <div className="flex items-center gap-2">
-                         <Building className="h-5 w-5 text-primary" />
-                         <LocationSelector
-                             locations={locations}
-                             selectedLocationId={selectedLocationId}
-                             onLocationChange={handleLocationChange}
-                         />
-                     </div>
+                        {/* Sede Selector */}
+                        <div className="flex items-center gap-2">
+                            <Building className="h-5 w-5 text-primary" />
+                            <LocationSelector
+                                locations={locations}
+                                selectedLocationId={selectedLocationId}
+                                onLocationChange={handleLocationChange}
+                            />
+                        </div>
 
-                     {/* Configuration Button */}
-                     <div className="flex items-center gap-2">
+                         {/* Configuration Button */}
                          <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                              <DialogTrigger asChild>
                                  <Button variant="ghost" size="icon" title="Configuración">
@@ -2432,7 +2437,7 @@ export default function SchedulePage() {
                              <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                                  <DialogHeader>
                                      <DialogTitle>Configuración General</DialogTitle>
-                                     <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
+                                     <DialogDescription>Gestiona sedes, departamentos, colaboradores.</DialogDescription>
                                  </DialogHeader>
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
                                      {/* Locations Column */}
@@ -2556,8 +2561,6 @@ export default function SchedulePage() {
                                              </ul>
                                          </ScrollArea>
                                      </div>
-                                      {/* --- Templates Section (Inside Config Modal) --- */}
-                                      {/* Removed this section from config, now has its own button/modal */}
                                  </div>
                                  <DialogFooter>
                                      <DialogClose asChild>
@@ -2566,71 +2569,72 @@ export default function SchedulePage() {
                                  </DialogFooter>
                              </DialogContent>
                          </Dialog>
-                      </div>
 
-                      {/* --- Day View Date Selector OR Week View Navigator --- */}
-                      <div className="flex items-center justify-center gap-2">
-                          {viewMode === 'day' ? (
-                              <Popover>
-                                  <PopoverTrigger asChild>
-                                      <Button
-                                          variant={'outline'}
-                                          className={cn(
-                                              'w-[200px] sm:w-[280px] justify-start text-left font-normal',
-                                              !targetDate && 'text-muted-foreground',
-                                              // Conditional border for holiday, primary color border
-                                              isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2'
-                                          )}
-                                          disabled={isCheckingHoliday}
-                                      >
-                                          {isCheckingHoliday ? (
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          ) : (
-                                              <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
-                                          )}
-                                          {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                          {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
-                                      </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0">
-                                      <Calendar
-                                          mode="single"
-                                          selected={targetDate}
-                                          onSelect={(date) => { if (date) setTargetDate(date) }}
-                                          initialFocus
-                                          locale={es}
-                                          modifiers={{ holiday: (date) => isHoliday(date) }}
-                                          modifiersClassNames={{
-                                               holiday: 'text-primary font-medium border border-primary', // Style holiday
-                                          }}
-                                      />
-                                  </PopoverContent>
-                              </Popover>
-                          ) : (
-                              <WeekNavigator
-                                  currentDate={currentDate}
-                                  onPreviousWeek={handlePreviousWeek}
-                                  onNextWeek={handleNextWeek}
-                              />
-                          )}
-                      </div>
 
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center justify-center gap-2">
-                          <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                              <SelectTrigger className="w-[120px]">
-                                  <SelectValue placeholder="Vista" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="day">Día</SelectItem>
-                                  <SelectItem value="week">Semana</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
+                        {/* --- Day View Date Selector OR Week View Navigator --- */}
+                        <div className="flex items-center justify-center gap-2">
+                            {viewMode === 'day' ? (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={'outline'}
+                                            className={cn(
+                                                'w-[200px] sm:w-[280px] justify-start text-left font-normal',
+                                                !targetDate && 'text-muted-foreground',
+                                                // Conditional border for holiday, primary color border
+                                                isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2'
+                                            )}
+                                            disabled={isCheckingHoliday}
+                                        >
+                                            {isCheckingHoliday ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                            )}
+                                            {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                            {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={targetDate}
+                                            onSelect={(date) => { if (date) setTargetDate(date) }}
+                                            initialFocus
+                                            locale={es}
+                                            modifiers={{ holiday: (date) => isHoliday(date) }}
+                                            modifiersClassNames={{
+                                                 holiday: 'text-primary font-medium border border-primary', // Style holiday
+                                            }}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            ) : (
+                                <WeekNavigator
+                                    currentDate={currentDate}
+                                    onPreviousWeek={handlePreviousWeek}
+                                    onNextWeek={handleNextWeek}
+                                />
+                            )}
+                        </div>
+
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center justify-center gap-2">
+                            <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="Vista" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="day">Día</SelectItem>
+                                    <SelectItem value="week">Semana</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
 
                  </div>
-             </div>
+             {/* </CardContent>
+            </Card> */}
 
 
                {/* Main content grid */}
@@ -2694,9 +2698,9 @@ export default function SchedulePage() {
                     <Button variant="outline" onClick={handleOpenTemplateSaveModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
                        <Download className="mr-2 h-4 w-4" /> Guardar Template
                     </Button>
-                     {/* Load Template Button - New Position */}
+                     {/* Load Template Button - Triggers Modal */}
                      <Button variant="outline" onClick={() => setIsTemplateLoadModalOpen(true)} title="Cargar o gestionar templates">
-                        <Library className="mr-2 h-4 w-4" /> Templates {/* Changed Icon and Text */}
+                        <Library className="mr-2 h-4 w-4" /> Templates
                      </Button>
                     {/* Export Current View as JSON Button */}
                     <Button variant="outline" onClick={handleExportCurrentViewAsJSON} title={`Exportar horario actual (${viewMode === 'day' ? 'Día' : 'Semana'}) como archivo JSON`}>
@@ -2976,13 +2980,13 @@ export default function SchedulePage() {
                  </DialogContent>
              </Dialog>
 
-            {/* Load Template Modal - Replaces the list previously in config */}
+            {/* Load Template Modal - Triggered by "Templates" button */}
              <Dialog open={isTemplateLoadModalOpen} onOpenChange={setIsTemplateLoadModalOpen}>
-                 <DialogContent className="max-w-lg"> {/* Larger width for template list */}
+                 <DialogContent className="max-w-lg"> {/* Larger width */}
                      <DialogHeader>
                           <DialogTitle>Cargar Template</DialogTitle>
                           <DialogDescription>
-                              Selecciona un template guardado para aplicar al horario {viewMode === 'day' ? `del ${format(targetDate, 'PPP', { locale: es })}` : 'de la semana actual'} para {locations.find(l => l.id === selectedLocationId)?.name}.
+                              Selecciona un template guardado ({viewMode === 'day' ? 'Diario' : 'Semanal'}) para aplicar al horario de {locations.find(l => l.id === selectedLocationId)?.name}.
                               <br />
                               <strong className="text-destructive">Nota:</strong> Esto sobrescribirá los turnos existentes {viewMode === 'day' ? 'para este día.' : 'para esta semana.'}
                           </DialogDescription>
@@ -2991,9 +2995,15 @@ export default function SchedulePage() {
                          {/* Pass filtered templates here */}
                          <ScheduleTemplateList
                              templates={filteredTemplatesForModal} // Pass the correctly filtered templates
-                             onLoadTemplate={handleLoadTemplate} // Pass the actual load handler
-                             onDeleteTemplate={handleDeleteTemplate} // Pass delete handler
+                             onLoadTemplate={handleLoadTemplate}
+                             onDeleteTemplate={(id) => confirmDeleteItem('template', id, savedTemplates.find(t => t.id === id)?.name || 'este template')} // Use confirmDeleteItem
                          />
+                     </div>
+                      <div className="flex justify-center pt-4">
+                          <Button variant="outline" onClick={triggerJSONInput} disabled={isImportingJSON}>
+                              {isImportingJSON ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                              Importar Template (JSON)
+                          </Button>
                      </div>
                      <DialogFooter>
                          <DialogClose asChild>
@@ -3007,5 +3017,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-
