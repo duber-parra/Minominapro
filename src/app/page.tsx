@@ -2,9 +2,10 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
+import Image from 'next/image'; // Import next/image
 import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, ScheduleTemplate } from '@/types'; // Added AdjustmentItem and SavedPayrollData, ScheduleTemplate
 // Removed unused import ShiftTemplate, using schedule types directly
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
@@ -1043,6 +1044,28 @@ export default function Home() {
             </div>
        )}
 
+        {/* Decorative Images */}
+        <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+            <Image
+                src="https://i.postimg.cc/fRLG89BH/Recurso-2.png" // Coffee cup image
+                alt="Ilustración de taza de café"
+                width={120} // Adjust size as needed
+                height={120} // Adjust size as needed
+                className="object-contain relative top-24 left-8 transform -rotate-12" // Position and slight rotation
+                data-ai-hint="coffee cup illustration"
+            />
+        </div>
+         <div className="absolute top-0 right-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+             <Image
+                src="https://i.postimg.cc/Rq5KYKzj/Recurso-1.png" // Hand writing image
+                alt="Ilustración de mano escribiendo"
+                width={150} // Adjust size as needed
+                height={150} // Adjust size as needed
+                className="object-contain relative top-20 right-8 transform rotate-12" // Position and slight rotation
+                data-ai-hint="hand writing illustration"
+             />
+         </div>
+
 
       <h1 className="text-3xl font-bold text-center mb-8 text-foreground">Calculadora de Nómina Quincenal</h1>
 
@@ -1091,7 +1114,7 @@ export default function Home() {
                          ) : (
                              <FileUp className="mr-2 h-4 w-4" />
                          )}
-                        en este boton puedo importar varios colaboradores con horaio semanal?
+                        Importar CSV
                     </Button>
                    {/* Import Schedule Button */}
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isImporting}>
@@ -1236,7 +1259,7 @@ export default function Home() {
                    onDelete={(key) => setPayrollToDeleteKey(key)}
                    onBulkExport={handleBulkExportPDF} // Passed for PDF export
                    onBulkExportCSV={handleBulkExportToCSV} // Passed for CSV export
-                   onExportSingleCSV={() => handleExportSingleToCSV()} // Pass handler for single CSV
+                   onExportSingleCSV={handleExportSingleToCSV} // Pass handler for single CSV
                />
                 <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
                    <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
