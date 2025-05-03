@@ -14,7 +14,7 @@ import {
   CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen } from 'lucide-react'; // Added icons, List, UploadCloud, FileText, NotebookPen
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX } from 'lucide-react'; // Added CalendarX
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -83,7 +83,7 @@ const SCHEDULE_EVENTS_KEY = 'scheduleCalendarEvents'; // Key for specific date n
 const LOCATIONS_KEY = 'schedulePlannerLocations';
 const DEPARTMENTS_KEY = 'schedulePlannerDepartments';
 const EMPLOYEES_KEY = 'schedulePlannerEmployees';
-const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Kept key
+const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Key for schedule templates
 
 // Cache for holidays
 let holidaysCache: { [year: number]: Set<string> } = {};
@@ -215,7 +215,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         const parsed = JSON.parse(savedData);
 
         // Basic check for array types
-        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_TEMPLATES_KEY, SCHEDULE_EVENTS_KEY].includes(key)) { // Added SCHEDULE_EVENTS_KEY
+        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_EVENTS_KEY].includes(key)) { // Added SCHEDULE_EVENTS_KEY
             if (Array.isArray(parsed)) {
                   // Ensure employees have locationIds array
                   if (key === EMPLOYEES_KEY) {
@@ -226,15 +226,6 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                               : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
                       })) as T;
                   }
-                   // Revive template createdAt date if it's a string
-                   if (key === SCHEDULE_TEMPLATES_KEY) {
-                       return parsed.map((tpl: any) => ({
-                           ...tpl,
-                           createdAt: tpl.createdAt && typeof tpl.createdAt === 'string'
-                                      ? parseISO(tpl.createdAt)
-                                      : tpl.createdAt
-                       })) as T;
-                   }
                   // For ScheduleNotes, dates are already strings 'yyyy-MM-dd'
                   if (key === SCHEDULE_EVENTS_KEY) {
                       return parsed.filter(note => // Basic validation
@@ -255,7 +246,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                 }
                 return defaultValue; // Return default if type mismatch
             }
-        } else if (key === SCHEDULE_DATA_KEY) {
+        } else if (key === SCHEDULE_DATA_KEY || key === SCHEDULE_TEMPLATES_KEY) { // Treat templates as complex objects too
             // More complex types might need more checks, but for now assume it's okay if it parses
             return parsed as T;
         } else {
@@ -341,46 +332,33 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
      }
 };
 
-
 // --- Function to Load Schedule Templates ---
-// Function to load templates from localStorage
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return []; // Only run on client
 
-    const loadedTemplates: ScheduleTemplate[] = [];
+    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []); // Use helper
+    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates from key ${SCHEDULE_TEMPLATES_KEY}.`);
 
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            // Check if the key matches the template pattern (e.g., starts with 'scheduleTemplate_')
-            if (key && key.startsWith(SCHEDULE_TEMPLATES_KEY)) { // Use the constant for the prefix
-                const storedData = localStorage.getItem(key);
-                if (storedData) {
-                    try {
-                        const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
-                        // Basic validation
-                        if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
-                            // Revive createdAt date if necessary
-                            if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
-                                parsedTemplate.createdAt = parseISO(parsedTemplate.createdAt);
-                            }
-                            loadedTemplates.push(parsedTemplate);
-                        } else {
-                            console.warn(`Invalid data found for template key: ${key}`);
-                        }
-                    } catch (parseError) {
-                        console.error(`Error parsing JSON for template key ${key}:`, parseError);
-                    }
+    // Add createdAt revival if necessary (might already be handled by loadFromLocalStorage if SCHEDULE_TEMPLATES_KEY is in the array check)
+    return loadedTemplates
+        .map(tpl => {
+            if (tpl.createdAt && typeof tpl.createdAt === 'string') {
+                try {
+                    return { ...tpl, createdAt: parseISO(tpl.createdAt) };
+                } catch (e) {
+                    console.error("Error parsing template createdAt date:", e);
+                    return { ...tpl, createdAt: undefined }; // Or handle as invalid
                 }
             }
-        }
-    } catch (error) {
-        console.error("Error loading templates from localStorage:", error);
-    }
-
-    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates.`);
-    return loadedTemplates.sort((a, b) => (a.createdAt instanceof Date && b.createdAt instanceof Date) ? b.createdAt.getTime() - a.createdAt.getTime() : 0); // Sort newest first
+            return tpl;
+        })
+        .sort((a, b) => {
+            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+            return dateB - dateA; // Sort newest first
+        });
 };
+
 
 
 
@@ -432,6 +410,7 @@ export default function SchedulePage() {
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null); // Removed 'template'
 
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
+    const [clearingWeek, setClearingWeek] = useState<boolean>(false); // State for clearing week confirmation
 
     const [holidaySet, setHolidaySet] = useState<Set<string>>(new Set());
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
@@ -584,11 +563,12 @@ export default function SchedulePage() {
                   // Ensure each template has a unique ID and createdAt timestamp if missing
                   const templatesToSave = savedTemplates.map(tpl => ({
                       ...tpl,
-                      id: tpl.id || `${SCHEDULE_TEMPLATES_KEY}${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Generate ID if missing
+                      id: tpl.id || `${SCHEDULE_TEMPLATES_KEY}_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Generate ID if missing
                       createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : (tpl.createdAt || new Date().toISOString()) // Ensure ISO string date
                   }));
+                  // Save the entire array under the single SCHEDULE_TEMPLATES_KEY
                   localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                   console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
+                  console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
              } catch (error) {
                   console.error("Error saving templates to localStorage:", error);
                   toast({
@@ -1361,6 +1341,31 @@ export default function SchedulePage() {
          toast({ title: 'Horario Limpiado', description: `Se eliminaron todos los turnos para el ${format(clearingDate, 'PPP', { locale: es })}.`, variant: 'destructive' });
      };
 
+     // --- Clear Week Handler ---
+     const handleClearWeek = () => {
+         const weekStartDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+         const weekEndDate = endOfWeek(currentDate, { weekStartsOn: 1 });
+         const weekStartDateFormatted = format(weekStartDate, 'dd/MM/yy');
+         const weekEndDateFormatted = format(weekEndDate, 'dd/MM/yy');
+
+         setScheduleData(prevData => {
+             const updatedData = { ...prevData };
+             weekDates.forEach(date => {
+                 const dateKey = format(date, 'yyyy-MM-dd');
+                 if (updatedData[dateKey]) {
+                     delete updatedData[dateKey];
+                 }
+             });
+             return updatedData;
+         });
+         setClearingWeek(false); // Close the confirmation dialog
+         toast({
+             title: 'Semana Limpiada',
+             description: `Se eliminaron todos los turnos de la semana del ${weekStartDateFormatted} al ${weekEndDateFormatted}.`,
+             variant: 'destructive'
+         });
+     };
+
 
       // --- Template Handling Functions ---
 
@@ -1421,11 +1426,13 @@ export default function SchedulePage() {
                 createdAt: new Date(),
             };
 
-            // Save directly to localStorage using the template ID as the key
-            localStorage.setItem(newTemplate.id, JSON.stringify(newTemplate));
-
             // Update the state by adding the new template
-            setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => (a.createdAt instanceof Date && b.createdAt instanceof Date) ? b.createdAt.getTime() - a.createdAt.getTime() : 0));
+             setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => {
+                  const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+                  const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+                  return dateB - dateA; // Sort newest first
+             }));
+
 
             toast({ title: 'Template Guardado', description: `Template "${newTemplate.name}" guardado.` });
             setTemplateToSaveName(''); // Clear input field
@@ -1558,12 +1565,22 @@ export default function SchedulePage() {
 
       const handleDeleteTemplate = (templateId: string) => {
          try {
-             localStorage.removeItem(templateId); // Remove from localStorage using its ID as the key
-             setSavedTemplates(prev => prev.filter(t => t.id !== templateId)); // Update state
+             // Find the index of the template to remove
+             const templateIndex = savedTemplates.findIndex(t => t.id === templateId);
+             if (templateIndex === -1) {
+                 toast({ title: 'Error', description: 'Template no encontrado para eliminar.', variant: 'destructive' });
+                 return;
+             }
+             // Create a new array without the template
+             const updatedTemplates = [...savedTemplates];
+             updatedTemplates.splice(templateIndex, 1);
+             // Update the state immediately
+             setSavedTemplates(updatedTemplates);
+             // Note: The useEffect for saving templates will handle saving the updated array to localStorage.
              toast({ title: 'Template Eliminado', variant: 'destructive' });
              setTemplateToDeleteId(null); // Close confirmation dialog if open
          } catch (error) {
-             console.error("Error deleting template from localStorage:", error);
+             console.error("Error deleting template:", error);
              toast({ title: 'Error al Eliminar', description: 'No se pudo eliminar el template.', variant: 'destructive' });
              setTemplateToDeleteId(null);
          }
@@ -2001,6 +2018,30 @@ export default function SchedulePage() {
                             <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
                         </Button>
                     )}
+                    {/* Clear Week Button */}
+                     {viewMode === 'week' && (
+                        <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button variant="outline" size="sm" className="hover:bg-destructive hover:text-destructive-foreground">
+                                <CalendarX className="mr-2 h-4 w-4" /> Limpiar Semana
+                             </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 Esta acción eliminará todos los turnos de la semana del{' '}
+                                 {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
+                                 {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                               <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearWeek}>Limpiar Semana</AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                        </AlertDialog>
+                     )}
                     {/* Template Button */}
                      <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                          <DialogTrigger asChild>
@@ -2329,6 +2370,24 @@ export default function SchedulePage() {
                      </AlertDialogFooter>
                  </AlertDialogContent>
             </AlertDialog>
+
+            {/* Clear Week Confirmation */}
+             <AlertDialog open={clearingWeek} onOpenChange={setClearingWeek}>
+                 <AlertDialogContent>
+                     <AlertDialogHeader>
+                         <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                            Esta acción eliminará todos los turnos de la semana del{' '}
+                            {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
+                            {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
+                         </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                         <AlertDialogCancel onClick={() => setClearingWeek(false)}>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearWeek}>Limpiar Semana</AlertDialogAction>
+                     </AlertDialogFooter>
+                 </AlertDialogContent>
+             </AlertDialog>
 
             {/* Template Delete Confirmation Dialog */}
              <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>

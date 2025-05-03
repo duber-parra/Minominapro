@@ -60,7 +60,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   }, []);
 
   // Helper function to render notes tooltip content
-  const renderNotesTooltip = (notes: ScheduleNote[]) => { // Removed employees prop as it's available in scope
+  const renderNotesTooltip = (notes: ScheduleNote[]) => {
     if (!notes || notes.length === 0) return null;
     return (
         <div className="text-xs space-y-1 max-w-xs p-2"> {/* Add padding */}
@@ -167,6 +167,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                 variant="destructive"
                                 size="sm"
                                 title="Limpiar turnos del día"
+                                onClick={() => onClearDay(currentDate)} // Use onClick here to trigger confirmation in parent
                                 disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
                             >
                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
@@ -254,6 +255,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                 size="icon"
                                                 className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
                                                 title="Limpiar turnos del día"
+                                                onClick={() => onClearDay(date)} // Use onClick here
                                                 disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
                                             >
                                                 <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
@@ -272,6 +274,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                        {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
                                                        <span className="overflow-hidden text-ellipsis">{department.name}</span>
                                                   </h4>
+                                                  {/* Add shift button directly here */}
+                                                   <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="absolute top-0 right-0 h-4 w-4 p-0 text-primary hover:bg-primary/10" // Positioned top-right
+                                                        onClick={() => onAddShiftRequest(department.id, date)}
+                                                        title="Añadir Colaborador"
+                                                   >
+                                                       <Plus className="h-3 w-3" />
+                                                   </Button>
                                               </div>
                                               <DepartmentColumn
                                                   department={department}
@@ -302,5 +314,3 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
          return weekViewContent;
     }
 };
-
-    
