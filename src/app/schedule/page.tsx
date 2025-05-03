@@ -55,7 +55,6 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
-// Removed ScheduleTemplateList import
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
@@ -1645,26 +1644,22 @@ export default function SchedulePage() {
 
 
             {/* Editable Notes Section */}
-            <Card className="mt-8 shadow-lg bg-card">
-                <CardHeader>
-                    <CardTitle className="text-lg text-foreground">Notas Adicionales</CardTitle>
-                    <CardDescription>
-                        Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Textarea
-                        value={notes}
-                        onChange={handleNotesChange}
-                        placeholder="Ej: Cierre anticipado el jueves por fumigación..."
-                        rows={4}
-                        className="w-full"
-                    />
-                </CardContent>
-                <CardFooter className="flex justify-end">
+             <div className="mt-8"> {/* Changed Card to div and removed card styling */}
+                 <h3 className="text-lg font-semibold text-foreground mb-2">Notas Adicionales</h3>
+                 <p className="text-sm text-muted-foreground mb-4">
+                    Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
+                 </p>
+                <Textarea
+                    value={notes}
+                    onChange={handleNotesChange}
+                    placeholder="Ej: Cierre anticipado el jueves por fumigación..."
+                    rows={4}
+                    className="w-full bg-card border border-border rounded-md shadow-sm" // Added card-like styling to textarea
+                />
+                <div className="flex justify-end mt-4"> {/* Moved button outside the card structure */}
                     <Button onClick={handleSaveNotes}>Guardar Notas</Button>
-                </CardFooter>
-            </Card>
+                </div>
+            </div>
 
              {/* --- Modals --- */}
 

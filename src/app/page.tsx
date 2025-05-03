@@ -6,7 +6,7 @@ import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, 
 import Image from 'next/image'; // Import next/image
 import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, ScheduleTemplate } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -704,7 +704,7 @@ export default function Home() {
                 data-ai-hint="coffee cup illustration"
             />
         </div>
-         <div className="absolute top-[-120px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted positioning */}
+         <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted positioning */}
              <Image
                 src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
                 alt="Ilustración de elementos de oficina" // Updated alt text
