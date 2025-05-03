@@ -343,20 +343,24 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 
 // --- Function to Load Schedule Templates ---
+// Function to load templates from localStorage
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    if (typeof window === 'undefined') return []; // Only on client
+    if (typeof window === 'undefined') return []; // Only run on client
 
     const loadedTemplates: ScheduleTemplate[] = [];
 
     try {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith(SCHEDULE_TEMPLATES_KEY)) { // Correctly use the constant
+            // Check if the key matches the template pattern (e.g., starts with 'scheduleTemplate_')
+            if (key && key.startsWith(SCHEDULE_TEMPLATES_KEY)) { // Use the constant for the prefix
                 const storedData = localStorage.getItem(key);
                 if (storedData) {
                     try {
                         const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
+                        // Basic validation
                         if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
+                            // Revive createdAt date if necessary
                             if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
                                 parsedTemplate.createdAt = parseISO(parsedTemplate.createdAt);
                             }
@@ -375,8 +379,9 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
     }
 
     console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates.`);
-    return loadedTemplates;
+    return loadedTemplates.sort((a, b) => (a.createdAt instanceof Date && b.createdAt instanceof Date) ? b.createdAt.getTime() - a.createdAt.getTime() : 0); // Sort newest first
 };
+
 
 
 export default function SchedulePage() {
@@ -576,7 +581,13 @@ export default function SchedulePage() {
          if (isClient) {
              try {
                   console.log("[Save Effect] Saving templates to localStorage:", savedTemplates); // Log before saving
-                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(savedTemplates));
+                  // Ensure each template has a unique ID and createdAt timestamp if missing
+                  const templatesToSave = savedTemplates.map(tpl => ({
+                      ...tpl,
+                      id: tpl.id || `${SCHEDULE_TEMPLATES_KEY}${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Generate ID if missing
+                      createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : (tpl.createdAt || new Date().toISOString()) // Ensure ISO string date
+                  }));
+                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
                    console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
              } catch (error) {
                   console.error("Error saving templates to localStorage:", error);
@@ -1402,7 +1413,7 @@ export default function SchedulePage() {
             }
 
             const newTemplate: ScheduleTemplate = {
-                id: `${SCHEDULE_TEMPLATES_KEY}${Date.now()}`, // Use constant in key
+                id: `${SCHEDULE_TEMPLATES_KEY}_${Date.now()}`, // Use constant in key, ensure uniqueness
                 name: name.trim(),
                 locationId: selectedLocationId,
                 type: templateType,
@@ -1413,8 +1424,8 @@ export default function SchedulePage() {
             // Save directly to localStorage using the template ID as the key
             localStorage.setItem(newTemplate.id, JSON.stringify(newTemplate));
 
-            // Update the state by reloading all templates
-            setSavedTemplates(loadScheduleTemplates());
+            // Update the state by adding the new template
+            setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => (a.createdAt instanceof Date && b.createdAt instanceof Date) ? b.createdAt.getTime() - a.createdAt.getTime() : 0));
 
             toast({ title: 'Template Guardado', description: `Template "${newTemplate.name}" guardado.` });
             setTemplateToSaveName(''); // Clear input field
@@ -1542,7 +1553,7 @@ export default function SchedulePage() {
         // Optionally close the modal
          setIsTemplateModalOpen(false);
 
-    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]); // Removed weekDates
+    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]); // Added filteredDepartments and filteredEmployees
 
 
       const handleDeleteTemplate = (templateId: string) => {
@@ -1743,7 +1754,7 @@ export default function SchedulePage() {
              </div>
 
 
-             {/* Controls Section - Top Bar */}
+             {/* Controls Section - Top Bar - Hidden Card */}
               <div className="bg-transparent border-none shadow-none p-0 mb-6 md:mb-8">
                   <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                      {/* Location Selector */}
@@ -2050,6 +2061,7 @@ export default function SchedulePage() {
                                                                <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle> <AlertDialogDescription> Esta acción eliminará permanentemente el template "{savedTemplates.find(t => t.id === templateToDeleteId)?.name}". No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => templateToDeleteId && handleDeleteTemplate(templateToDeleteId)}> Eliminar Template </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                                                       </AlertDialog>
                                                    </div>
                                                 </li>
@@ -2103,74 +2115,20 @@ export default function SchedulePage() {
 
              {/* Schedule Notes Modal (for adding and general viewing) */}
              <ScheduleNotesModal
-                 isOpen={isNotesModalOpen && !notesModalForDate} // Open only if general notes are requested
-                 onClose={() => setIsNotesModalOpen(false)}
+                 isOpen={isNotesModalOpen} // Controlled by isNotesModalOpen state
+                 onClose={() => { setIsNotesModalOpen(false); setNotesModalForDate(null); }} // Clear date context on close
                  notes={scheduleNotes}
                  employees={employees} // Pass employees for the dropdown
                  onAddNote={addScheduleNote}
                  onDeleteNote={(id) => setNoteToDeleteId(id)} // Trigger confirmation dialog
-                 initialDate={undefined} // No specific date pre-selected
+                 initialDate={notesModalForDate || undefined} // Pass specific date if set
+                 // Pass context for filtering
+                 viewMode={viewMode}
+                 currentDate={currentDate}
+                 weekDates={weekDates}
              />
 
-            {/* Schedule Notes Modal (for viewing/deleting notes of a specific date) */}
-            <Dialog open={!!notesModalForDate} onOpenChange={(open) => !open && setNotesModalForDate(null)}>
-                 <DialogContent className="sm:max-w-md">
-                     <DialogHeader>
-                         <DialogTitle>Anotaciones para {notesModalForDate ? format(notesModalForDate, 'PPP', { locale: es }) : ''}</DialogTitle>
-                         <DialogDescription>Haz clic en una nota para eliminarla.</DialogDescription>
-                     </DialogHeader>
-                     <div className="py-4">
-                         {(notesModalForDate ? getNotesForDate(notesModalForDate) : []).length > 0 ? (
-                             <ul className="space-y-2">
-                                 {(notesModalForDate ? getNotesForDate(notesModalForDate) : []).map(note => (
-                                     <li key={note.id}>
-                                         <AlertDialog>
-                                             <AlertDialogTrigger asChild>
-                                                  <Button variant="outline" className="w-full h-auto justify-start text-left whitespace-normal">
-                                                       <span className="font-medium">{note.note}</span>
-                                                       {note.employeeId && employees.find(e => e.id === note.employeeId) && (
-                                                           <span className="text-xs text-muted-foreground ml-1 italic">
-                                                                - {employees.find(e => e.id === note.employeeId)?.name}
-                                                            </span>
-                                                       )}
-                                                  </Button>
-                                             </AlertDialogTrigger>
-                                             <AlertDialogContent>
-                                                 <AlertDialogHeader>
-                                                     <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
-                                                     <AlertDialogDescription>
-                                                         "{note.note}" ({note.employeeId ? `Vinculada a ${employees.find(e => e.id === note.employeeId)?.name}` : 'General'})
-                                                         <br />Esta acción no se puede deshacer.
-                                                     </AlertDialogDescription>
-                                                 </AlertDialogHeader>
-                                                 <AlertDialogFooter>
-                                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                     <AlertDialogAction
-                                                         onClick={() => deleteScheduleNote(note.id)}
-                                                         className="bg-destructive hover:bg-destructive/90"
-                                                     >
-                                                         Eliminar Anotación
-                                                     </AlertDialogAction>
-                                                 </AlertDialogFooter>
-                                             </AlertDialogContent>
-                                         </AlertDialog>
-                                     </li>
-                                 ))}
-                             </ul>
-                         ) : (
-                             <p className="text-sm text-muted-foreground italic text-center">No hay anotaciones para esta fecha.</p>
-                         )}
-                     </div>
-                     <DialogFooter>
-                         <DialogClose asChild>
-                             <Button variant="secondary">Cerrar</Button>
-                         </DialogClose>
-                     </DialogFooter>
-                 </DialogContent>
-            </Dialog>
-
-
-             {/* Location Modal */}
+            {/* Location Modal */}
              <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
                   <DialogContent>
                       <DialogHeader>
