@@ -328,32 +328,23 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 
 // --- NEW: Function to load Schedule Templates ---
+// This function now explicitly loads from SCHEDULE_TEMPLATES_KEY
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return [];
-    // Correctly load using the SCHEDULE_TEMPLATES_KEY constant
     const loadedTemplatesData = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
 
-    // Ensure the loaded data is an array
     if (!Array.isArray(loadedTemplatesData)) {
         console.warn("[loadScheduleTemplates] Data loaded from localStorage is not an array. Returning empty array.");
-        // Optionally, remove the invalid data from localStorage
-        try {
-            localStorage.removeItem(SCHEDULE_TEMPLATES_KEY);
-            console.warn(`Removed invalid data for key: ${SCHEDULE_TEMPLATES_KEY}`);
-        } catch (removeError) {
-            console.error(`Error removing invalid data for key ${SCHEDULE_TEMPLATES_KEY}:`, removeError);
-        }
+        try { localStorage.removeItem(SCHEDULE_TEMPLATES_KEY); } catch (e) {}
         return [];
     }
 
-    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplatesData.length} templates from localStorage.`); // DEBUG log
-    // Perform any necessary transformations (like reviving dates if stored as strings)
-     return loadedTemplatesData.map(template => ({
+    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplatesData.length} templates from localStorage.`);
+    return loadedTemplatesData.map(template => ({
         ...template,
-        // Revive createdAt date if it exists and is a string
         createdAt: template.createdAt && typeof template.createdAt === 'string'
-                   ? template.createdAt // Keep as ISO string, or parse if needed elsewhere: parseISO(template.createdAt)
-                   : new Date().toISOString() // Fallback if invalid or missing
+                   ? template.createdAt
+                   : new Date().toISOString()
     }));
 };
 
@@ -409,7 +400,7 @@ export default function SchedulePage() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
     // Separate state for templates - NEW
-    const [scheduleTemplates, setScheduleTemplates] = useState<ScheduleTemplate[]>([]);
+    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Renamed from scheduleTemplates for clarity
     const [notes, setNotes] = useState<string>("");
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
@@ -478,7 +469,7 @@ export default function SchedulePage() {
         setDepartments(loadedDepts);
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
-        setScheduleTemplates(loadedTemps); // Set the loaded templates
+        setSavedTemplates(loadedTemps); // Set the loaded templates
         setNotes(loadedNotesStr);
 
         // Set initial selected location and update form defaults accordingly
@@ -584,8 +575,8 @@ export default function SchedulePage() {
      useEffect(() => {
          if (isClient) {
              try {
-                 // Ensure scheduleTemplates is always an array
-                 const templatesToSave = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+                 // Ensure savedTemplates is always an array
+                 const templatesToSave = Array.isArray(savedTemplates) ? savedTemplates : [];
                  console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
                  console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
@@ -598,7 +589,7 @@ export default function SchedulePage() {
                   });
              }
          }
-     }, [scheduleTemplates, isClient, toast]); // Depend on scheduleTemplates state
+     }, [savedTemplates, isClient, toast]); // Depend on savedTemplates state
 
 
     // ---- End LocalStorage Effects ---
@@ -636,18 +627,18 @@ export default function SchedulePage() {
 
      // Filter templates based on current location and view mode for the *Load Template Modal*
      const filteredTemplatesForModal = useMemo(() => {
-         // console.log("[Modal Filter] Running memo. All templates in state:", scheduleTemplates); // Debug
-         // console.log(`[Modal Filter] Current Location ID: ${selectedLocationId}, View Mode: ${viewMode}`); // Debug
-         const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+         console.log("[Modal Filter] Running memo. All templates in state:", savedTemplates); // Debug
+         console.log(`[Modal Filter] Current Location ID: ${selectedLocationId}, View Mode: ${viewMode}`); // Debug
+         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
          const filtered = templatesArray.filter(temp => {
              const locationMatch = temp.locationId === selectedLocationId;
              const typeMatch = temp.type === viewMode;
-             // console.log(`[Modal Filter] Checking template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // Debug
+             console.log(`[Modal Filter] Checking template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // Debug
              return locationMatch && typeMatch;
          });
-         // console.log(`[Modal Filter] Filtered templates for modal:`, filtered); // Debug
+         console.log(`[Modal Filter] Filtered templates for modal:`, filtered); // Debug
          return filtered;
-     }, [scheduleTemplates, selectedLocationId, viewMode]); // Dependencies updated
+     }, [savedTemplates, selectedLocationId, viewMode]); // Dependencies updated
 
 
      const assignedEmployeeIdsForTargetDate = useMemo(() => {
@@ -714,6 +705,11 @@ export default function SchedulePage() {
         }
      }, [selectedLocationId, editingEmployee]); // Depend on editingEmployee state
 
+
+    // Filter departments based on selected location
+    const filteredDepartments = useMemo(() => {
+        return departments.filter(dept => dept.locationId === selectedLocationId);
+    }, [departments, selectedLocationId]);
 
 
     const handleLocationChange = (locationId: string) => {
@@ -1081,7 +1077,7 @@ export default function SchedulePage() {
                     })).filter(emp => emp.locationIds.length > 0)); // Remove employees with no locations left
 
                     // Remove templates associated with the deleted location
-                    setScheduleTemplates(prevTemplates => (Array.isArray(prevTemplates) ? prevTemplates : []).filter(t => t.locationId !== itemToDelete.id));
+                    setSavedTemplates(prevTemplates => (Array.isArray(prevTemplates) ? prevTemplates : []).filter(t => t.locationId !== itemToDelete.id));
                     // Clean up schedule data: remove assignments in departments of the deleted location
                      setScheduleData(prevSchedule => {
                          const updatedSchedule = { ...prevSchedule };
@@ -1125,7 +1121,7 @@ export default function SchedulePage() {
                      setScheduleData(updatedScheduleDept);
 
                     // Remove assignments for this department from templates
-                     const currentTemplatesDept = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+                     const currentTemplatesDept = Array.isArray(savedTemplates) ? savedTemplates : [];
                      const updatedTemplatesDept = currentTemplatesDept.map(t => {
                          let newAssignments = JSON.parse(JSON.stringify(t.assignments));
                          let templateChanged = false;
@@ -1152,7 +1148,7 @@ export default function SchedulePage() {
                           }
                          return templateChanged ? { ...t, assignments: newAssignments } : t;
                      }).filter(t => t !== null) as ShiftTemplate[]; // Filter out nulls
-                     setScheduleTemplates(updatedTemplatesDept);
+                     setSavedTemplates(updatedTemplatesDept);
                     message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
                 case 'employee':
@@ -1180,7 +1176,7 @@ export default function SchedulePage() {
                      setScheduleData(updatedScheduleEmp);
 
                        // Remove assignments for this employee from templates
-                       const currentTemplatesEmp = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+                       const currentTemplatesEmp = Array.isArray(savedTemplates) ? savedTemplates : [];
                        const updatedTemplatesEmp = currentTemplatesEmp.map(t => {
                            let newAssignments = JSON.parse(JSON.stringify(t.assignments));
                            let templateChanged = false;
@@ -1221,13 +1217,13 @@ export default function SchedulePage() {
                             }
                            return templateChanged ? { ...t, assignments: newAssignments } : t;
                        }).filter(t => t !== null) as ShiftTemplate[]; // Filter out nulls
-                      setScheduleTemplates(updatedTemplatesEmp);
+                      setSavedTemplates(updatedTemplatesEmp);
                      message = `Colaborador "${itemToDelete.name}" eliminado.`;
                      break;
                   case 'template':
-                      const currentTemplates = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+                      const currentTemplates = Array.isArray(savedTemplates) ? savedTemplates : [];
                       const updatedTemplates = currentTemplates.filter(t => t.id !== itemToDelete.id);
-                      setScheduleTemplates(updatedTemplates);
+                      setSavedTemplates(updatedTemplates);
                       message = `Template "${itemToDelete.name}" eliminado.`;
                      break;
              }
@@ -1472,7 +1468,7 @@ export default function SchedulePage() {
          };
 
           // Update the state with the new template
-          setScheduleTemplates(prev => {
+          setSavedTemplates(prev => {
               // Ensure 'prev' is an array, defaulting to empty if not
               const validPrev = Array.isArray(prev) ? prev : [];
               const updatedTemplates = [...validPrev, newTemplate];
@@ -1490,7 +1486,7 @@ export default function SchedulePage() {
     const handleLoadTemplate = (templateId: string) => {
          if (typeof window === 'undefined') return;
 
-         const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
          console.log(`[Load Template] Attempting to load template ID: ${templateId}. Current templates:`, templatesArray); // Debug log
          const templateToLoad = templatesArray.find(t => t.id === templateId);
 
@@ -1511,15 +1507,19 @@ export default function SchedulePage() {
              });
              return;
          }
+         // Validate TYPE match (Daily template for Day view, Weekly for Week view)
          if (templateToLoad.type !== viewMode) {
-             const requiredView = templateToLoad.type === 'daily' ? 'diaria' : 'semanal';
-             toast({
-                 title: 'Vista Incorrecta',
-                 description: `El template "${templateToLoad.name}" es ${templateToLoad.type}. Cambia a la vista ${requiredView} para cargarlo.`,
-                 variant: 'destructive',
-             });
-             return;
+            const requiredView = templateToLoad.type === 'daily' ? 'diaria' : 'semanal';
+            const currentView = viewMode === 'day' ? 'diaria' : 'semanal';
+            toast({
+                title: 'Vista Incorrecta',
+                description: `El template "${templateToLoad.name}" es ${templateToLoad.type}. Estás en la vista ${currentView}. Cambia a la vista ${requiredView} para cargarlo.`,
+                variant: 'destructive',
+                duration: 7000,
+            });
+            return;
          }
+
 
          // --- Loading Logic ---
          let updatedScheduleData = { ...scheduleData };
@@ -1533,6 +1533,12 @@ export default function SchedulePage() {
                       console.warn(`[Load Template] Employee ID ${assignTemplate.employee.id} not found while loading template. Skipping.`); // Debug log
                      return null;
                  }
+                 // Ensure employee belongs to the current location
+                  if (!employee.locationIds.includes(selectedLocationId)) {
+                      console.warn(`[Load Template] Employee ${employee.name} (ID: ${employee.id}) not part of current location ${selectedLocationId}. Skipping assignment.`);
+                      return null;
+                  }
+
                  const newAssignId = `shift_${employee.id}_${dateKey}_${assignTemplate.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`;
                  assignmentsLoadedCount++;
                  return {
@@ -1548,6 +1554,13 @@ export default function SchedulePage() {
                  const loadedAssignments: { [deptId: string]: ShiftAssignment[] } = {};
 
                  Object.keys(templateToLoad.assignments).forEach(deptId => {
+                    // Ensure the department exists in the current location's departments
+                    const departmentExists = filteredDepartments.some(d => d.id === deptId);
+                    if (!departmentExists) {
+                        console.warn(`[Load Template - Daily] Department ID ${deptId} from template not found in current location ${selectedLocationId}. Skipping assignments.`);
+                        return; // Skip assignments for this department
+                    }
+
                      const assignmentsForDept = (templateToLoad.assignments as DailyAssignments)[deptId];
                      if (Array.isArray(assignmentsForDept)) {
                          loadedAssignments[deptId] = assignmentsForDept
@@ -1557,7 +1570,7 @@ export default function SchedulePage() {
                  });
 
                  if (assignmentsLoadedCount === 0) {
-                     toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se cargaron turnos válidos de "${templateToLoad.name}".`, variant: 'default' });
+                     toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se cargaron turnos válidos de "${templateToLoad.name}" (verificar empleados y departamentos).`, variant: 'default' });
                      setIsTemplateLoadModalOpen(false); // Close modal
                      return;
                  }
@@ -1592,6 +1605,13 @@ export default function SchedulePage() {
                         const loadedDailyAssignments: { [deptId: string]: ShiftAssignment[] } = {};
 
                         Object.keys(dailyAssignmentsFromTemplate).forEach(deptId => {
+                            // Ensure the department exists in the current location's departments
+                            const departmentExists = filteredDepartments.some(d => d.id === deptId);
+                            if (!departmentExists) {
+                                console.warn(`[Load Template - Weekly] Department ID ${deptId} from template not found in current location ${selectedLocationId} for date ${templateDateKey}. Skipping assignments.`);
+                                return; // Skip assignments for this department
+                            }
+
                             const assignmentsForDept = dailyAssignmentsFromTemplate[deptId];
                             if (Array.isArray(assignmentsForDept)) {
                                 loadedDailyAssignments[deptId] = assignmentsForDept
@@ -1611,7 +1631,7 @@ export default function SchedulePage() {
                  });
 
                  if (assignmentsLoadedCount === 0) {
-                     toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se cargaron turnos válidos de "${templateToLoad.name}".`, variant: 'default' });
+                     toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se cargaron turnos válidos de "${templateToLoad.name}" (verificar empleados y departamentos).`, variant: 'default' });
                       setIsTemplateLoadModalOpen(false); // Close modal
                      return;
                  }
@@ -1634,11 +1654,11 @@ export default function SchedulePage() {
 
         try {
             // Find the template to get its name for the toast message
-            const templateToDelete = scheduleTemplates.find(t => t.id === templateId);
+            const templateToDelete = savedTemplates.find(t => t.id === templateId);
             const templateName = templateToDelete?.name || `ID: ${templateId}`;
 
             // Update state by filtering out the deleted template
-            setScheduleTemplates(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== templateId));
+            setSavedTemplates(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== templateId));
 
             // Remove from localStorage (optional but good practice)
             // localStorage.removeItem(templateId); // Assumes the template ID is the key - THIS IS WRONG, templates are stored under SCHEDULE_TEMPLATES_KEY
@@ -1955,7 +1975,7 @@ export default function SchedulePage() {
     // --- Template Export/Import JSON Handlers ---
 
     const handleExportTemplateJSON = (templateId: string) => {
-         const templateToExport = scheduleTemplates.find(t => t.id === templateId);
+         const templateToExport = savedTemplates.find(t => t.id === templateId);
          if (!templateToExport) {
              toast({ title: 'Template no encontrado', variant: 'destructive' });
              return;
@@ -2005,7 +2025,7 @@ export default function SchedulePage() {
              }
 
              // Check if a template with the same ID already exists
-             const existingIndex = scheduleTemplates.findIndex(t => t.id === parsedTemplate.id);
+             const existingIndex = savedTemplates.findIndex(t => t.id === parsedTemplate.id);
 
              let updatedTemplates;
              let toastTitle = '';
@@ -2014,20 +2034,20 @@ export default function SchedulePage() {
              if (existingIndex > -1) {
                  // Template exists, ask user to confirm overwrite (or just overwrite for now)
                  // For simplicity, we'll overwrite here. Add confirmation dialog if needed.
-                 updatedTemplates = [...scheduleTemplates];
+                 updatedTemplates = [...savedTemplates];
                  updatedTemplates[existingIndex] = parsedTemplate;
                  toastTitle = 'Template Actualizado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido actualizado desde el archivo JSON.`;
                  console.log("[DEBUG JSON Import] Overwriting existing template:", parsedTemplate.id); // DEBUG Log
              } else {
                  // Template is new, add it
-                 updatedTemplates = [...scheduleTemplates, parsedTemplate];
+                 updatedTemplates = [...savedTemplates, parsedTemplate];
                  toastTitle = 'Template Importado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido importado y guardado.`;
                  console.log("[DEBUG JSON Import] Adding new template:", parsedTemplate.id); // DEBUG Log
              }
 
-             setScheduleTemplates(updatedTemplates);
+             setSavedTemplates(updatedTemplates);
              toast({ title: toastTitle, description: toastDescription });
 
          } catch (error) {
@@ -2537,68 +2557,7 @@ export default function SchedulePage() {
                                          </ScrollArea>
                                      </div>
                                       {/* --- Templates Section (Inside Config Modal) --- */}
-                                      <div className="md:col-span-3 space-y-4 border-t pt-4 mt-4">
-                                          <div className="flex justify-between items-center mb-2">
-                                              <h4 className="font-semibold text-foreground flex items-center gap-1"><Library className="h-4 w-4 text-muted-foreground"/>Templates ({scheduleTemplates.length})</h4>
-                                              <div className="flex gap-2">
-                                                  <Button variant="outline" size="sm" onClick={triggerJSONInput} disabled={isImportingJSON} title="Importar Template desde Archivo JSON">
-                                                      {isImportingJSON ? (
-                                                           <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                                      ) : (
-                                                           <Upload className="mr-1 h-4 w-4" />
-                                                      )}
-                                                      Importar JSON
-                                                  </Button>
-                                              </div>
-                                          </div>
-                                          {scheduleTemplates.length > 0 ? (
-                                              <ScrollArea className="h-[20vh]">
-                                                  <ul className="space-y-2 text-sm pr-2">
-                                                      {scheduleTemplates.map((template) => (
-                                                          <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                              <span className="truncate text-muted-foreground" title={template.name}>
-                                                                 {template.name || `Template (${template.id.substring(0, 8)})`} ({template.type === 'daily' ? 'Diario' : 'Semanal'}) - {locations.find(l=>l.id === template.locationId)?.name || 'Sede?'}
-                                                              </span>
-                                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                                   {/* Export JSON Button */}
-                                                                  <Button
-                                                                      variant="ghost"
-                                                                      size="icon"
-                                                                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                                      onClick={() => handleExportTemplateJSON(template.id)}
-                                                                      title="Exportar Template a JSON"
-                                                                  >
-                                                                      <Download className="h-4 w-4" />
-                                                                  </Button>
-                                                                  {/* Load Button (Now outside, this is only delete/export) */}
-                                                                  {/* Delete Button */}
-                                                                   <AlertDialog>
-                                                                      <AlertDialogTrigger asChild>
-                                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                                      </AlertDialogTrigger>
-                                                                      <AlertDialogContent>
-                                                                          <AlertDialogHeader>
-                                                                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                              <AlertDialogDescription>
-                                                                                  Eliminar el Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
-                                                                              </AlertDialogDescription>
-                                                                          </AlertDialogHeader>
-                                                                          <AlertDialogFooter>
-                                                                              <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                              <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                          </AlertDialogFooter>
-                                                                      </AlertDialogContent>
-                                                                   </AlertDialog>
-                                                              </div>
-                                                          </li>
-                                                      ))}
-                                                  </ul>
-                                              </ScrollArea>
-                                          ) : (
-                                              <p className="text-sm text-muted-foreground italic text-center">No hay templates guardados.</p>
-                                          )}
-                                       </div>
-                                       {/* --- End Templates Section --- */}
+                                      {/* Removed this section from config, now has its own button/modal */}
                                  </div>
                                  <DialogFooter>
                                      <DialogClose asChild>
@@ -3048,4 +3007,5 @@ export default function SchedulePage() {
         </main>
     );
 }
+
 
