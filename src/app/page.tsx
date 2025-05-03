@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
@@ -19,7 +20,7 @@ import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDate
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
-import { WorkdayFormValues } from '@/components/workday-form'; // Import form values type
+import type { WorkdayFormValues } from '@/components/workday-form'; // Import form values type
 import {
   AlertDialog,
   AlertDialogAction,
@@ -695,11 +696,11 @@ export default function Home() {
         {/* Decorative Images */}
         <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
             <Image
-                src="https://i.postimg.cc/fRLG89BH/Recurso-2.png" // Coffee cup image
+                src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
                 alt="Ilustración de taza de café"
                 width={120} // Adjust size as needed
                 height={120} // Adjust size as needed
-                className="object-contain relative -top-30 left-8 transform -rotate-12" // Adjusted position UP
+                className="object-contain relative -top-40 left-8 transform -rotate-12" // Further adjusted vertical position
                 data-ai-hint="coffee cup illustration"
             />
         </div>
@@ -938,5 +939,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
