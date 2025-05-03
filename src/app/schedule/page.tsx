@@ -487,7 +487,7 @@ export default function SchedulePage() {
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLoc }));
         setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [] }));
 
-        // console.log("[DEBUG Load Effect] Finished loading data.", { locations: loadedLocations.length, departments: loadedDepts.length, employees: loadedEmps.length, templates: (loadedTemps || []).length }); // DEBUG Log
+        console.log("[DEBUG Load Effect] Finished loading data.", { locations: loadedLocations.length, departments: loadedDepts.length, employees: loadedEmps.length, templates: (loadedTemps || []).length }); // DEBUG Log
 
     }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -1521,10 +1521,6 @@ export default function SchedulePage() {
             return;
         }
 
-        // --- Confirmation Dialog ---
-         // You might want to add a confirmation dialog here before overwriting the schedule
-         // For now, proceeding directly with loading.
-
         // --- Loading Logic ---
         let updatedScheduleData = { ...scheduleData };
         let successMessage = '';
@@ -1580,7 +1576,11 @@ export default function SchedulePage() {
                 // Clear the current week's data before applying the template
                  weekDates.forEach(date => {
                      const dateKey = format(date, 'yyyy-MM-dd');
-                     updatedScheduleData[dateKey] = { date: date, assignments: {} }; // Reset assignments for each day
+                     // Ensure the date object itself is preserved if it exists, otherwise create it
+                     updatedScheduleData[dateKey] = {
+                         date: updatedScheduleData[dateKey]?.date || date,
+                         assignments: {} // Reset assignments for each day
+                     };
                  });
 
                  // Iterate through dates defined in the weekly template's assignments
@@ -1629,11 +1629,12 @@ export default function SchedulePage() {
 
                          // If assignments were loaded for this day, update the scheduleData for the target date
                          if (Object.keys(loadedDailyAssignments).length > 0) {
-                             // Merge with existing data for the target day (though we cleared it earlier)
-                             updatedScheduleData[targetDateKey] = {
-                                ...updatedScheduleData[targetDateKey], // Keep the correct Date object
-                                assignments: loadedDailyAssignments // Apply the loaded assignments
-                             };
+                              // Ensure the target date key exists before assigning
+                              if (!updatedScheduleData[targetDateKey]) {
+                                   updatedScheduleData[targetDateKey] = { date: targetWeekDate, assignments: {} };
+                              }
+                              // Merge with existing data for the target day (though we cleared it earlier)
+                              updatedScheduleData[targetDateKey].assignments = loadedDailyAssignments; // Apply the loaded assignments
                          }
 
                     } else {
@@ -2430,225 +2431,225 @@ export default function SchedulePage() {
                          />
                      </div>
 
-                     {/* Configuration Button */}
+                      {/* Configuration Button */}
                      <div className="flex items-center gap-2">
-                        <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" title="Configuración">
-                                    <Settings className="h-5 w-5"/>
-                                </Button>
-                            </DialogTrigger>
-                            {/* Configuration Modal Content */}
-                            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>Configuración General</DialogTitle>
-                                    <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
-                                </DialogHeader>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
-                                    {/* Locations Column */}
-                                    <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
-                                            <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <ScrollArea className="h-[40vh]">
-                                            <ul className="space-y-2 text-sm pr-2">
-                                                {locations.map((loc) => (
-                                                    <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
-                                                        <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
-                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </ScrollArea>
-                                    </div>
-                                    {/* Departments Column */}
-                                    <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
-                                            <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                         <ScrollArea className="h-[40vh]">
-                                            <ul className="space-y-2 text-sm pr-2">
-                                                {departments.map((dep) => (
-                                                    <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
-                                                        <span className="truncate text-muted-foreground flex items-center gap-1">
-                                                             {dep.icon && <dep.icon className="h-3 w-3 mr-1 flex-shrink-0" />}
-                                                             {dep.name} <span className="text-xs italic ml-1">({locations.find(l => l.id === dep.locationId)?.name || 'Sede?'})</span>
-                                                        </span>
-                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </ScrollArea>
-                                    </div>
-                                    {/* Employees Column */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
-                                            <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <ScrollArea className="h-[40vh]">
-                                            <ul className="space-y-2 text-sm pr-2">
-                                                {employees.map((emp) => (
-                                                    <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                        <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
-                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                             {/* Copy ID Button */}
-                                                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyEmployeeId(emp.id)} title="Copiar ID"><Copy className="h-4 w-4" /></Button>
-                                                            {/* Edit Button */}
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
-                                                            {/* Delete Button */}
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </ScrollArea>
-                                    </div>
-                                     {/* --- Templates Section (Inside Config Modal) --- */}
-                                     <div className="md:col-span-3 space-y-4 border-t pt-4 mt-4">
+                         <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+                             <DialogTrigger asChild>
+                                 <Button variant="ghost" size="icon" title="Configuración">
+                                     <Settings className="h-5 w-5"/>
+                                 </Button>
+                             </DialogTrigger>
+                             {/* Configuration Modal Content */}
+                             <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                                 <DialogHeader>
+                                     <DialogTitle>Configuración General</DialogTitle>
+                                     <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
+                                 </DialogHeader>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+                                     {/* Locations Column */}
+                                     <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
                                          <div className="flex justify-between items-center mb-2">
-                                             <h4 className="font-semibold text-foreground flex items-center gap-1"><Library className="h-4 w-4 text-muted-foreground"/>Templates ({scheduleTemplates.length})</h4>
-                                             <div className="flex gap-2">
-                                                 <Button variant="outline" size="sm" onClick={triggerJSONInput} disabled={isImportingJSON} title="Importar Template desde Archivo JSON">
-                                                     {isImportingJSON ? (
-                                                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                                     ) : (
-                                                          <Upload className="mr-1 h-4 w-4" />
-                                                     )}
-                                                     Importar JSON
-                                                 </Button>
-                                             </div>
+                                             <h4 className="font-semibold text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                             <Button variant="outline" size="sm" onClick={() => handleOpenLocationModal(null)} title="Agregar Sede">
+                                                 <Plus className="h-4 w-4" />
+                                             </Button>
                                          </div>
-                                         {scheduleTemplates.length > 0 ? (
-                                             <ScrollArea className="h-[20vh]">
-                                                 <ul className="space-y-2 text-sm pr-2">
-                                                     {scheduleTemplates.map((template) => (
-                                                         <li key={template.id} className="flex items-center justify-between group py-1 border-b">
-                                                             <span className="truncate text-muted-foreground" title={template.name}>
-                                                                {template.name || `Template (${template.id.substring(0, 8)})`} ({template.type === 'daily' ? 'Diario' : 'Semanal'}) - {locations.find(l=>l.id === template.locationId)?.name || 'Sede?'}
-                                                             </span>
-                                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                                                  {/* Export JSON Button */}
-                                                                 <Button
-                                                                     variant="ghost"
-                                                                     size="icon"
-                                                                     className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                                     onClick={() => handleExportTemplateJSON(template.id)}
-                                                                     title="Exportar Template a JSON"
-                                                                 >
-                                                                     <Download className="h-4 w-4" />
-                                                                 </Button>
-                                                                 {/* Load Button (Check compatibility before loading) */}
-                                                                 <Button
-                                                                     variant="ghost"
-                                                                     size="icon"
-                                                                     className="h-6 w-6 text-muted-foreground hover:text-primary"
-                                                                     onClick={() => handleLoadTemplate(template.id)}
-                                                                     title="Cargar Template"
-                                                                     // Optionally disable if type/location doesn't match current view
-                                                                     disabled={template.locationId !== selectedLocationId || template.type !== viewMode}
-                                                                 >
-                                                                     <Upload className="h-4 w-4" />
-                                                                 </Button>
-                                                                 {/* Delete Button */}
-                                                                  <AlertDialog>
-                                                                     <AlertDialogTrigger asChild>
-                                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
-                                                                     </AlertDialogTrigger>
-                                                                     <AlertDialogContent>
-                                                                         <AlertDialogHeader>
-                                                                             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                                             <AlertDialogDescription>
-                                                                                 Eliminar el Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
-                                                                             </AlertDialogDescription>
-                                                                         </AlertDialogHeader>
-                                                                         <AlertDialogFooter>
-                                                                             <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                                                                             <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                                                                         </AlertDialogFooter>
-                                                                     </AlertDialogContent>
-                                                                  </AlertDialog>
-                                                             </div>
-                                                         </li>
-                                                     ))}
-                                                 </ul>
-                                             </ScrollArea>
-                                         ) : (
-                                             <p className="text-sm text-muted-foreground italic text-center">No hay templates guardados.</p>
-                                         )}
-                                      </div>
-                                      {/* --- End Templates Section --- */}
-                                </div>
-                                <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button variant="secondary">Cerrar</Button>
-                                    </DialogClose>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                     </div>
+                                         <ScrollArea className="h-[40vh]">
+                                             <ul className="space-y-2 text-sm pr-2">
+                                                 {locations.map((loc) => (
+                                                     <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
+                                                         <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
+                                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
+                                                             <AlertDialog>
+                                                                 <AlertDialogTrigger asChild>
+                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                                 </AlertDialogTrigger>
+                                                                 <AlertDialogContent>
+                                                                     <AlertDialogHeader>
+                                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                         <AlertDialogDescription>
+                                                                             Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), y se borrarán templates y turnos relacionados. Esta acción no se puede deshacer.
+                                                                         </AlertDialogDescription>
+                                                                     </AlertDialogHeader>
+                                                                     <AlertDialogFooter>
+                                                                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                     </AlertDialogFooter>
+                                                                 </AlertDialogContent>
+                                                             </AlertDialog>
+                                                         </div>
+                                                     </li>
+                                                 ))}
+                                             </ul>
+                                         </ScrollArea>
+                                     </div>
+                                     {/* Departments Column */}
+                                     <div className="space-y-4 border-r pr-4 md:border-r-0 md:pb-0">
+                                         <div className="flex justify-between items-center mb-2">
+                                             <h4 className="font-semibold text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
+                                             <Button variant="outline" size="sm" onClick={() => handleOpenDepartmentModal(null)} title="Agregar Departamento">
+                                                 <Plus className="h-4 w-4" />
+                                             </Button>
+                                         </div>
+                                          <ScrollArea className="h-[40vh]">
+                                             <ul className="space-y-2 text-sm pr-2">
+                                                 {departments.map((dep) => (
+                                                     <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
+                                                         <span className="truncate text-muted-foreground flex items-center gap-1">
+                                                              {dep.icon && <dep.icon className="h-3 w-3 mr-1 flex-shrink-0" />}
+                                                              {dep.name} <span className="text-xs italic ml-1">({locations.find(l => l.id === dep.locationId)?.name || 'Sede?'})</span>
+                                                         </span>
+                                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenDepartmentModal(dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
+                                                             <AlertDialog>
+                                                                 <AlertDialogTrigger asChild>
+                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                                 </AlertDialogTrigger>
+                                                                 <AlertDialogContent>
+                                                                     <AlertDialogHeader>
+                                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                         <AlertDialogDescription>
+                                                                             Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en los horarios y templates. Esta acción no se puede deshacer.
+                                                                         </AlertDialogDescription>
+                                                                     </AlertDialogHeader>
+                                                                     <AlertDialogFooter>
+                                                                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                     </AlertDialogFooter>
+                                                                 </AlertDialogContent>
+                                                             </AlertDialog>
+                                                         </div>
+                                                     </li>
+                                                 ))}
+                                             </ul>
+                                         </ScrollArea>
+                                     </div>
+                                     {/* Employees Column */}
+                                     <div className="space-y-4">
+                                         <div className="flex justify-between items-center mb-2">
+                                             <h4 className="font-semibold text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
+                                             <Button variant="outline" size="sm" onClick={() => handleOpenEmployeeModal(null)} title="Agregar Colaborador">
+                                                 <Plus className="h-4 w-4" />
+                                             </Button>
+                                         </div>
+                                         <ScrollArea className="h-[40vh]">
+                                             <ul className="space-y-2 text-sm pr-2">
+                                                 {employees.map((emp) => (
+                                                     <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
+                                                         <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
+                                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                              {/* Copy ID Button */}
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyEmployeeId(emp.id)} title="Copiar ID"><Copy className="h-4 w-4" /></Button>
+                                                             {/* Edit Button */}
+                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEmployeeModal(emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
+                                                             {/* Delete Button */}
+                                                             <AlertDialog>
+                                                                 <AlertDialogTrigger asChild>
+                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                                 </AlertDialogTrigger>
+                                                                 <AlertDialogContent>
+                                                                     <AlertDialogHeader>
+                                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                         <AlertDialogDescription>
+                                                                             Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.
+                                                                         </AlertDialogDescription>
+                                                                     </AlertDialogHeader>
+                                                                     <AlertDialogFooter>
+                                                                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                     </AlertDialogFooter>
+                                                                 </AlertDialogContent>
+                                                             </AlertDialog>
+                                                         </div>
+                                                     </li>
+                                                 ))}
+                                             </ul>
+                                         </ScrollArea>
+                                     </div>
+                                      {/* --- Templates Section (Inside Config Modal) --- */}
+                                      <div className="md:col-span-3 space-y-4 border-t pt-4 mt-4">
+                                          <div className="flex justify-between items-center mb-2">
+                                              <h4 className="font-semibold text-foreground flex items-center gap-1"><Library className="h-4 w-4 text-muted-foreground"/>Templates ({scheduleTemplates.length})</h4>
+                                              <div className="flex gap-2">
+                                                  <Button variant="outline" size="sm" onClick={triggerJSONInput} disabled={isImportingJSON} title="Importar Template desde Archivo JSON">
+                                                      {isImportingJSON ? (
+                                                           <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                                      ) : (
+                                                           <Upload className="mr-1 h-4 w-4" />
+                                                      )}
+                                                      Importar JSON
+                                                  </Button>
+                                              </div>
+                                          </div>
+                                          {scheduleTemplates.length > 0 ? (
+                                              <ScrollArea className="h-[20vh]">
+                                                  <ul className="space-y-2 text-sm pr-2">
+                                                      {scheduleTemplates.map((template) => (
+                                                          <li key={template.id} className="flex items-center justify-between group py-1 border-b">
+                                                              <span className="truncate text-muted-foreground" title={template.name}>
+                                                                 {template.name || `Template (${template.id.substring(0, 8)})`} ({template.type === 'daily' ? 'Diario' : 'Semanal'}) - {locations.find(l=>l.id === template.locationId)?.name || 'Sede?'}
+                                                              </span>
+                                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                                                   {/* Export JSON Button */}
+                                                                  <Button
+                                                                      variant="ghost"
+                                                                      size="icon"
+                                                                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                      onClick={() => handleExportTemplateJSON(template.id)}
+                                                                      title="Exportar Template a JSON"
+                                                                  >
+                                                                      <Download className="h-4 w-4" />
+                                                                  </Button>
+                                                                  {/* Load Button (Check compatibility before loading) */}
+                                                                  <Button
+                                                                      variant="ghost"
+                                                                      size="icon"
+                                                                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                                                      onClick={() => handleLoadTemplate(template.id)}
+                                                                      title="Cargar Template"
+                                                                      // Optionally disable if type/location doesn't match current view
+                                                                      disabled={template.locationId !== selectedLocationId || template.type !== viewMode}
+                                                                  >
+                                                                      <Upload className="h-4 w-4" />
+                                                                  </Button>
+                                                                  {/* Delete Button */}
+                                                                   <AlertDialog>
+                                                                      <AlertDialogTrigger asChild>
+                                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('template', template.id, template.name)} title="Eliminar Template"><Trash2 className="h-4 w-4" /></Button>
+                                                                      </AlertDialogTrigger>
+                                                                      <AlertDialogContent>
+                                                                          <AlertDialogHeader>
+                                                                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                              <AlertDialogDescription>
+                                                                                  Eliminar el Template "{itemToDelete?.name}"? Esta acción no se puede deshacer.
+                                                                              </AlertDialogDescription>
+                                                                          </AlertDialogHeader>
+                                                                          <AlertDialogFooter>
+                                                                              <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                              <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                          </AlertDialogFooter>
+                                                                      </AlertDialogContent>
+                                                                   </AlertDialog>
+                                                              </div>
+                                                          </li>
+                                                      ))}
+                                                  </ul>
+                                              </ScrollArea>
+                                          ) : (
+                                              <p className="text-sm text-muted-foreground italic text-center">No hay templates guardados.</p>
+                                          )}
+                                       </div>
+                                       {/* --- End Templates Section --- */}
+                                 </div>
+                                 <DialogFooter>
+                                     <DialogClose asChild>
+                                         <Button variant="secondary">Cerrar</Button>
+                                     </DialogClose>
+                                 </DialogFooter>
+                             </DialogContent>
+                         </Dialog>
+                      </div>
 
                       {/* --- Day View Date Selector OR Week View Navigator --- */}
                       <div className="flex items-center justify-center gap-2">
@@ -2776,9 +2777,9 @@ export default function SchedulePage() {
                     <Button variant="outline" onClick={handleOpenTemplateSaveModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
                        <Download className="mr-2 h-4 w-4" /> Guardar Template
                     </Button>
-                    {/* Load Template Button - Moved */}
+                     {/* Load Template Button - New Position */}
                      <Button variant="outline" onClick={() => setIsTemplateLoadModalOpen(true)} title="Cargar o gestionar templates">
-                        <Upload className="mr-2 h-4 w-4" /> Cargar Template
+                        <Library className="mr-2 h-4 w-4" /> Templates {/* Changed Icon and Text */}
                      </Button>
                     {/* Export Current View as JSON Button */}
                     <Button variant="outline" onClick={handleExportCurrentViewAsJSON} title={`Exportar horario actual (${viewMode === 'day' ? 'Día' : 'Semana'}) como archivo JSON`}>
@@ -3058,9 +3059,9 @@ export default function SchedulePage() {
                  </DialogContent>
              </Dialog>
 
-            {/* Load Template Modal */}
+            {/* Load Template Modal - Replaces the list previously in config */}
              <Dialog open={isTemplateLoadModalOpen} onOpenChange={setIsTemplateLoadModalOpen}>
-                 <DialogContent className="max-w-md">
+                 <DialogContent className="max-w-lg"> {/* Larger width for template list */}
                      <DialogHeader>
                           <DialogTitle>Cargar Template</DialogTitle>
                           <DialogDescription>
@@ -3073,14 +3074,9 @@ export default function SchedulePage() {
                          {/* Pass filtered templates here */}
                          <ScheduleTemplateList
                              templates={filteredTemplatesForModal} // Pass the correctly filtered templates
-                             onLoadTemplate={(templateId) => {
-                                 handleLoadTemplate(templateId);
-                                 setIsTemplateLoadModalOpen(false); // Close modal after loading
-                             }}
+                             onLoadTemplate={handleLoadTemplate} // Pass the actual load handler
                              onDeleteTemplate={handleDeleteTemplate} // Pass delete handler
                          />
-                         {/* Log the filtered templates being passed to the component */}
-                         {/* <pre><code>{JSON.stringify(filteredTemplatesForModal, null, 2)}</code></pre> */}
                      </div>
                      <DialogFooter>
                          <DialogClose asChild>
