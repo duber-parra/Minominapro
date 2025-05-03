@@ -3,10 +3,9 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import Image from 'next/image'; // Import next/image
-import { WorkdayForm } from '@/components/workday-form'; // Removed formSchema import as it's not used directly here
+import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
-// Removed unused import ShiftTemplate
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -15,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react'; // Removed FileUp, FileSpreadsheet icons
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -160,8 +159,6 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
     });
 };
 
-// --- Removed CSV Parsing logic ---
-
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
@@ -183,7 +180,6 @@ export default function Home() {
     const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]);
     const [payrollToDeleteKey, setPayrollToDeleteKey] = useState<string | null>(null);
-    // Removed isDraggingOver state
 
     const [otrosIngresos, setOtrosIngresos] = useState<AdjustmentItem[]>([]);
     const [otrasDeducciones, setOtrasDeducciones] = useState<AdjustmentItem[]>([]);
@@ -318,7 +314,7 @@ export default function Home() {
 
                         if (employeeShift) {
                             const shiftValues: WorkdayFormValues = {
-                                startDate: parseDateFns(dateKey, 'yyyy-MM-dd', new Date()),
+                                startDate: parseDateFnsInternal(dateKey, 'yyyy-MM-dd', new Date()),
                                 startTime: employeeShift.startTime,
                                 endTime: employeeShift.endTime,
                                 endsNextDay: parseInt(employeeShift.endTime.split(':')[0]) < parseInt(employeeShift.startTime.split(':')[0]),
@@ -366,17 +362,7 @@ export default function Home() {
     }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]);
 
 
-    // --- Removed CSV Handling ---
-
-     // --- Removed Drag and Drop Handlers ---
-     // Removed handleDragOver
-     // Removed handleDragLeave
-     // Removed handleDrop
-     // Removed handleFileChange
-     // Removed triggerFileInput
-
-
-    const handleClearPeriodData = () => {
+     const handleClearPeriodData = () => {
          const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
          if (storageKey && typeof window !== 'undefined') {
             localStorage.removeItem(storageKey);
@@ -633,7 +619,7 @@ export default function Home() {
     } finally {
         setIsLoadingDay(false);
     }
-}, [calculatedDays, payPeriodStart, payPeriodEnd, toast, handleDayCalculationStart, handleDayCalculationComplete, isDateCalculated]);
+}, [calculatedDays, payPeriodStart, payPeriodEnd, toast, handleDayCalculationStart, handleDayCalculationComplete, isDateCalculated, setValue]);
 
 
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
@@ -700,12 +686,10 @@ export default function Home() {
       }
     };
 
-    // --- Removed CSV Export Handlers ---
 
   return (
     <main
         className="container mx-auto p-4 md:p-8 max-w-7xl relative" // Added relative for overlay positioning
-        // Removed drag and drop handlers
     >
 
         {/* Decorative Images */}
@@ -719,14 +703,14 @@ export default function Home() {
                 data-ai-hint="coffee cup illustration"
             />
         </div>
-         <div className="absolute top-0 right-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+         <div className="absolute top-[-120px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted positioning */}
              <Image
-                src="https://i.postimg.cc/Rq5KYKzj/Recurso-1.png" // Hand writing image
-                alt="Ilustración de mano escribiendo"
+                src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
+                alt="Ilustración de elementos de oficina" // Updated alt text
                 width={150} // Adjust size as needed
                 height={150} // Adjust size as needed
-                className="object-contain relative -top-20 right-0 transform rotate-12" // Adjusted position UP
-                data-ai-hint="hand writing illustration"
+                className="object-contain transform rotate-12" // Removed relative positioning
+                data-ai-hint="office elements illustration" // Updated hint
              />
          </div>
 
@@ -769,7 +753,6 @@ export default function Home() {
               </div>
 
                 <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4"> {/* Changed to 3 columns */}
-                    {/* Removed CSV Import Button */}
                    {/* Import Schedule Button */}
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
@@ -905,7 +888,6 @@ export default function Home() {
                    onLoad={handleLoadSavedPayroll}
                    onDelete={(key) => setPayrollToDeleteKey(key)}
                    onBulkExport={handleBulkExportPDF} // Passed for PDF export
-                   // Removed CSV props
                />
                 <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
                    <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
@@ -957,3 +939,4 @@ export default function Home() {
   );
 }
 
+    
