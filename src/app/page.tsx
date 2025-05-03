@@ -1609,7 +1609,7 @@ export default function Home() {
                         ) : (
                              <FileUp className="mr-2 h-4 w-4" />
                         )}
-                         Importar CSV
+                         Importar CSV {/* Button text updated */}
                    </Button>
 
                    {/* Import Schedule Button */}
@@ -1976,4 +1976,3 @@ export default function Home() {
     </main>
   );
 }
-
