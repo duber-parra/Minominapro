@@ -20,7 +20,7 @@ import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDate
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
-import type { WorkdayFormValues } from '@/components/workday-form';
+import { WorkdayFormValues } from '@/components/workday-form'; // Import form values type
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,14 +41,7 @@ import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the s
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
-// Removed Zod import and CSV utils import
-// Import DropdownMenu components
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useForm } from 'react-hook-form'; // Import useForm
 
 
 // Constants
@@ -199,9 +192,10 @@ export default function Home() {
 
     const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
 
-    // Removed fileInputRef
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
 
     const { toast } = useToast();
+    const { setValue } = useForm<WorkdayFormValues>(); // Use useForm hook to get setValue
 
     // Load ALL saved payrolls on initial mount
     useEffect(() => {
@@ -240,7 +234,7 @@ export default function Home() {
              setIsIncomeModalOpen(false);
              setIsDeductionModalOpen(false);
         }
-    }, [employeeId, payPeriodStart, payPeriodEnd, isDataLoaded]); // Removed toast
+    }, [employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Added toast dependency
 
     // Save current employee/period data to localStorage
     useEffect(() => {
@@ -721,7 +715,7 @@ export default function Home() {
                 alt="Ilustración de taza de café"
                 width={120} // Adjust size as needed
                 height={120} // Adjust size as needed
-                className="object-contain relative top-24 left-8 transform -rotate-12" // Position and slight rotation
+                className="object-contain relative -top-6 left-8 transform -rotate-12" // Adjusted position UP by reducing top (was top-24)
                 data-ai-hint="coffee cup illustration"
             />
         </div>
@@ -731,7 +725,7 @@ export default function Home() {
                 alt="Ilustración de mano escribiendo"
                 width={150} // Adjust size as needed
                 height={150} // Adjust size as needed
-                className="object-contain relative top-20 right-8 transform rotate-12" // Position and slight rotation
+                className="object-contain relative top-0 right-0 transform rotate-12" // Adjusted top to 0, right to 0 for full top right corner
                 data-ai-hint="hand writing illustration"
              />
          </div>
@@ -854,7 +848,7 @@ export default function Home() {
                                    <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingDayId === day.id}> <PencilLine className="h-4 w-4" /> </Button>
                                    <AlertDialog>
                                       <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => confirmDeleteDay(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button>
                                       </AlertDialogTrigger>
                                      <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar cálculo para turno iniciado el {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'}? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                                    </AlertDialog>
@@ -962,4 +956,3 @@ export default function Home() {
     </main>
   );
 }
-
