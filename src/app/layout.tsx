@@ -1,4 +1,5 @@
 
+
 'use client'; // Add 'use client' because we need hooks for loading state
 
 import type { Metadata } from 'next';
@@ -8,21 +9,12 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { useState, useEffect, ReactNode } from 'react'; // Import hooks
 import { usePathname } from 'next/navigation'; // Import usePathname
-import { Loader2 } from 'lucide-react'; // Import Loader icon
+import { Loader2, LogIn } from 'lucide-react'; // Import Loader icon and LogIn icon
 import { Separator } from '@/components/ui/separator'; // Import Separator
 import CalculadoraLaboral from '@/components/labor-calculator'; // Import the new component
+import { Button } from '@/components/ui/button'; // Import Button
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-
-// Metadata cannot be used directly in 'use client' component, needs to be exported separately or handled differently if dynamic metadata is needed.
-// For static metadata, keep it in a separate file or move RootLayout to a wrapping server component.
-// For simplicity here, we'll comment it out, assuming static metadata is handled elsewhere or not strictly required for this change.
-/*
-export const metadata: Metadata = {
-  title: 'Calculadora y Planificador',
-  description: 'Calcula nómina y planifica horarios de trabajo.',
-};
-*/
 
 // Separate component for the loading overlay
 function LoadingIndicator() {
@@ -50,8 +42,8 @@ export default function RootLayout({
   }, [pathname]);
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    // Prevent navigation if already on the target page
-    if (pathname === href) {
+    // Prevent navigation if already on the target page or a login/register page
+    if (pathname === href || pathname === '/login' || pathname === '/register') {
         e.preventDefault();
         return;
     }
@@ -59,53 +51,67 @@ export default function RootLayout({
     // Let the default Link behavior handle navigation after setting loading state
   };
 
+  // Hide main navigation and footer on login/register pages
+  const hideLayoutForAuth = pathname === '/login' || pathname === '/register';
+
   return (
     // Ensure no whitespace or comments directly inside the <html> tag
     <html lang="es">
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground relative flex flex-col min-h-screen`}>
          {isLoading && <LoadingIndicator />} {/* Show loading indicator */}
-         {/* Basic Navigation Example */}
-         <nav className="bg-card border-b p-4 sticky top-0 z-40"> {/* Make nav sticky */}
-            <div className="container mx-auto flex justify-center gap-6">
-                <Link
-                    href="/"
-                    onClick={(e) => handleNavClick(e, '/')}
-                    className={`text-foreground hover:text-primary transition-colors ${pathname === '/' ? 'font-bold text-primary' : ''}`}
-                    aria-current={pathname === '/' ? 'page' : undefined}
-                >
-                    Calculadora Nómina
-                </Link>
-                <Link
-                    href="/schedule"
-                    onClick={(e) => handleNavClick(e, '/schedule')}
-                    className={`text-foreground hover:text-primary transition-colors ${pathname === '/schedule' ? 'font-bold text-primary' : ''}`}
-                     aria-current={pathname === '/schedule' ? 'page' : undefined}
-                >
-                    Planificador Horarios
-                </Link>
-            </div>
-         </nav>
-        {/* Add padding top to main content to account for sticky nav height, make content grow */}
-        <main className="flex-grow pt-[calc(2rem+1rem)] pb-16"> {/* Reduced top padding, Added bottom padding */}
+         {/* Navigation */}
+         {!hideLayoutForAuth && ( // Only show nav if not on auth pages
+             <nav className="bg-card border-b p-4 sticky top-0 z-40"> {/* Make nav sticky */}
+                <div className="container mx-auto flex justify-between items-center"> {/* Changed to justify-between */}
+                    {/* Main Navigation Links */}
+                    <div className="flex justify-center gap-6">
+                        <Link
+                            href="/"
+                            onClick={(e) => handleNavClick(e, '/')}
+                            className={`text-foreground hover:text-primary transition-colors ${pathname === '/' ? 'font-bold text-primary' : ''}`}
+                            aria-current={pathname === '/' ? 'page' : undefined}
+                        >
+                            Calculadora Nómina
+                        </Link>
+                        <Link
+                            href="/schedule"
+                            onClick={(e) => handleNavClick(e, '/schedule')}
+                            className={`text-foreground hover:text-primary transition-colors ${pathname === '/schedule' ? 'font-bold text-primary' : ''}`}
+                            aria-current={pathname === '/schedule' ? 'page' : undefined}
+                        >
+                            Planificador Horarios
+                        </Link>
+                    </div>
+                    {/* Login Button */}
+                    <Link href="/login" passHref>
+                        <Button variant="outline" size="sm" onClick={(e) => handleNavClick(e, '/login')}>
+                            <LogIn className="mr-2 h-4 w-4" /> Ingresar
+                        </Button>
+                    </Link>
+                </div>
+             </nav>
+         )}
+        {/* Adjust padding top only if nav is visible */}
+        <main className={`flex-grow ${!hideLayoutForAuth ? 'pt-[calc(2rem+1rem)]' : ''} pb-16`}>
             {children}
         </main>
         <Toaster />
 
         {/* Footer */}
-        <footer className="mt-auto w-full"> {/* Ensure footer is at the bottom */}
-           <div className="max-w-5xl mx-auto px-[150px]"> {/* Horizontal margins/padding */}
-             <Separator className="bg-border/50" /> {/* Thin gray line */}
-           </div>
-           <div className="py-4 text-center text-xs text-muted-foreground">
-              Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos
-           </div>
-        </footer>
+        {!hideLayoutForAuth && ( // Only show footer if not on auth pages
+            <footer className="mt-auto w-full"> {/* Ensure footer is at the bottom */}
+               <div className="max-w-5xl mx-auto px-[150px]"> {/* Horizontal margins/padding */}
+                 <Separator className="bg-border/50" /> {/* Thin gray line */}
+               </div>
+               <div className="py-4 text-center text-xs text-muted-foreground">
+                  Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos
+               </div>
+            </footer>
+        )}
 
-         {/* Floating Labor Calculator */}
-         <CalculadoraLaboral />
+         {/* Floating Labor Calculator - Optionally hide on auth pages */}
+         {!hideLayoutForAuth && <CalculadoraLaboral />}
       </body>
     </html>
   );
 }
-
-    
