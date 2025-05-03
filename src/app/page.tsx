@@ -6,7 +6,7 @@ import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, 
 import Image from 'next/image'; // Import next/image
 import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, ScheduleTemplate } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react'; // Removed CSV icon, added Library, FileSearch
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy, Upload } from 'lucide-react'; // Removed CSV icon, added Library, FileSearch, Upload
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -427,10 +427,10 @@ export default function Home() {
 
              // Only show success toast and advance date if ADDING, not editing
              if (!isEditing) {
-                toast({
-                    title: 'Turno Agregado',
-                    description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} agregado. Fecha avanzada.`,
-                });
+                // toast({
+                //     title: 'Turno Agregado',
+                //     description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} agregado. Fecha avanzada.`,
+                // });
                 // Advance date automatically after successful ADDITION
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
@@ -700,7 +700,7 @@ export default function Home() {
                 alt="Ilustración de taza de café"
                 width={120} // Adjust size as needed
                 height={120} // Adjust size as needed
-                className="object-contain relative -top-40 left-8 transform -rotate-12" // Further adjusted vertical position
+                className="object-contain relative -top-10 left-8 transform -rotate-12" // Adjusted vertical position slightly
                 data-ai-hint="coffee cup illustration"
             />
         </div>
@@ -716,7 +716,11 @@ export default function Home() {
          </div>
 
 
-      <h1 className="text-3xl font-bold text-center mb-8 text-foreground">Calculadora de Nómina Quincenal</h1>
+      <div className="text-center mb-8">
+         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
+            Calculadora de Nómina Quincenal
+         </h1>
+      </div>
 
       <Card className="mb-8 shadow-lg bg-card">
           <CardHeader>
@@ -935,7 +939,6 @@ export default function Home() {
       <AdjustmentModal type="ingreso" isOpen={isIncomeModalOpen} onClose={() => setIsIncomeModalOpen(false)} onSave={handleAddIngreso} />
        <AdjustmentModal type="deduccion" isOpen={isDeductionModalOpen} onClose={() => setIsDeductionModalOpen(false)} onSave={handleAddDeduccion} />
 
-      <Toaster />
     </main>
   );
 }

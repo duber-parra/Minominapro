@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useState, useEffect, ReactNode } from 'react'; // Import hooks
 import { usePathname } from 'next/navigation'; // Import usePathname
 import { Loader2 } from 'lucide-react'; // Import Loader icon
+import { Separator } from '@/components/ui/separator'; // Import Separator
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -60,10 +61,10 @@ export default function RootLayout({
   return (
     // Ensure no whitespace or comments directly inside the <html> tag
     <html lang="es">
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground relative`}>
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground relative flex flex-col min-h-screen`}>
          {isLoading && <LoadingIndicator />} {/* Show loading indicator */}
          {/* Basic Navigation Example */}
-         <nav className="bg-card border-b p-4 mb-4 sticky top-0 z-40"> {/* Make nav sticky */}
+         <nav className="bg-card border-b p-4 sticky top-0 z-40"> {/* Make nav sticky */}
             <div className="container mx-auto flex justify-center gap-6">
                 <Link
                     href="/"
@@ -83,11 +84,21 @@ export default function RootLayout({
                 </Link>
             </div>
          </nav>
-        {/* Add padding top to main content to account for sticky nav height */}
-        <div className="pt-[calc(4rem+1rem)]"> {/* Adjust padding based on nav height + margin */}
+        {/* Add padding top to main content to account for sticky nav height, make content grow */}
+        <main className="flex-grow pt-[calc(2rem+1rem)] pb-16"> {/* Reduced top padding, Added bottom padding */}
             {children}
-        </div>
+        </main>
         <Toaster />
+
+        {/* Footer */}
+        <footer className="mt-auto w-full"> {/* Ensure footer is at the bottom */}
+           <div className="max-w-5xl mx-auto px-[150px]"> {/* Horizontal margins/padding */}
+             <Separator className="bg-border/50" /> {/* Thin gray line */}
+           </div>
+           <div className="py-4 text-center text-xs text-muted-foreground">
+              Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos
+           </div>
+        </footer>
       </body>
     </html>
   );
