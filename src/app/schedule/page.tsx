@@ -346,12 +346,13 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
         return [];
     }
 
-    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplatesData.length} templates.`);
+    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplatesData.length} templates from localStorage.`); // DEBUG log
     // Perform any necessary transformations (like reviving dates if stored as strings)
      return loadedTemplatesData.map(template => ({
         ...template,
+        // Revive createdAt date if it exists and is a string
         createdAt: template.createdAt && typeof template.createdAt === 'string'
-                   ? template.createdAt // Keep as ISO string
+                   ? template.createdAt // Keep as ISO string, or parse if needed elsewhere: parseISO(template.createdAt)
                    : new Date().toISOString() // Fallback if invalid or missing
     }));
 };
@@ -635,16 +636,20 @@ export default function SchedulePage() {
 
     const filteredDepartments = useMemo(() => departments.filter(dep => dep.locationId === selectedLocationId), [departments, selectedLocationId]);
 
-    // Filter templates based on current location and view mode for the *Load Template Modal*
-    const filteredTemplatesForModal = useMemo(() => {
-        // console.log("[Modal Filter] All templates:", scheduleTemplates); // Debug
-        const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
-        const filtered = templatesArray.filter(temp =>
-             temp.locationId === selectedLocationId && temp.type === viewMode
-        );
-        // console.log(`[Modal Filter] Filtered for modal (loc: ${selectedLocationId}, view: ${viewMode}):`, filtered); // Debug
-        return filtered;
-    }, [scheduleTemplates, selectedLocationId, viewMode]);
+     // Filter templates based on current location and view mode for the *Load Template Modal*
+     const filteredTemplatesForModal = useMemo(() => {
+         console.log("[Modal Filter] Running memo. All templates in state:", scheduleTemplates); // Debug
+         console.log(`[Modal Filter] Current Location ID: ${selectedLocationId}, View Mode: ${viewMode}`); // Debug
+         const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+         const filtered = templatesArray.filter(temp => {
+             const locationMatch = temp.locationId === selectedLocationId;
+             const typeMatch = temp.type === viewMode;
+             console.log(`[Modal Filter] Checking template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // Debug
+             return locationMatch && typeMatch;
+         });
+         console.log(`[Modal Filter] Filtered templates for modal:`, filtered); // Debug
+         return filtered;
+     }, [scheduleTemplates, selectedLocationId, viewMode]); // Dependencies updated
 
 
      const assignedEmployeeIdsForTargetDate = useMemo(() => {
@@ -1487,7 +1492,7 @@ export default function SchedulePage() {
         if (typeof window === 'undefined') return; // Client-side only
 
         const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
-        // console.log(`[DEBUG Load Template] Attempting load. ID: ${templateId}. All templates in state:`, templatesArray); // DEBUG Log
+        console.log(`[DEBUG Load Template] Attempting load. ID: ${templateId}. All templates in state:`, templatesArray); // DEBUG Log
         const templateToLoad = templatesArray.find(t => t.id === templateId);
 
         if (!templateToLoad) {
@@ -1495,7 +1500,7 @@ export default function SchedulePage() {
             toast({ title: 'Template no encontrado', variant: 'destructive' });
             return;
         }
-        // console.log(`[DEBUG Load Template] Found template:`, templateToLoad); // DEBUG Log
+        console.log(`[DEBUG Load Template] Found template:`, templateToLoad); // DEBUG Log
 
         // --- Validations ---
         if (templateToLoad.locationId !== selectedLocationId) {
@@ -2134,7 +2139,7 @@ export default function SchedulePage() {
              return;
          }
 
-         const templateToExport: Omit<ShiftTemplate, 'id' | 'createdAt'> & { id?: string; createdAt?: string } = {
+         const templateToExport: Omit<ScheduleTemplate, 'id' | 'createdAt'> & { id?: string; createdAt?: string } = {
              name: defaultTemplateName, // Use a default name or prompt user later
              locationId: selectedLocationId,
              type: templateType,
@@ -2582,7 +2587,7 @@ export default function SchedulePage() {
                                                      {scheduleTemplates.map((template) => (
                                                          <li key={template.id} className="flex items-center justify-between group py-1 border-b">
                                                              <span className="truncate text-muted-foreground" title={template.name}>
-                                                                {template.name} ({template.type === 'daily' ? 'Diario' : 'Semanal'}) - {locations.find(l=>l.id === template.locationId)?.name || 'Sede?'}
+                                                                {template.name || `Template (${template.id.substring(0, 8)})`} ({template.type === 'daily' ? 'Diario' : 'Semanal'}) - {locations.find(l=>l.id === template.locationId)?.name || 'Sede?'}
                                                              </span>
                                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                                                   {/* Export JSON Button */}
@@ -2771,10 +2776,10 @@ export default function SchedulePage() {
                     <Button variant="outline" onClick={handleOpenTemplateSaveModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
                        <Download className="mr-2 h-4 w-4" /> Guardar Template
                     </Button>
-                    {/* Load Template Button - Opens Modal */}
-                    <Button variant="outline" onClick={() => setIsTemplateLoadModalOpen(true)} title="Cargar o gestionar templates">
+                    {/* Load Template Button - Moved */}
+                     <Button variant="outline" onClick={() => setIsTemplateLoadModalOpen(true)} title="Cargar o gestionar templates">
                         <Upload className="mr-2 h-4 w-4" /> Cargar Template
-                    </Button>
+                     </Button>
                     {/* Export Current View as JSON Button */}
                     <Button variant="outline" onClick={handleExportCurrentViewAsJSON} title={`Exportar horario actual (${viewMode === 'day' ? 'Día' : 'Semana'}) como archivo JSON`}>
                         <FileJson className="mr-2 h-4 w-4" /> Exportar Horario (JSON)
@@ -3067,13 +3072,15 @@ export default function SchedulePage() {
                      <div className="py-4">
                          {/* Pass filtered templates here */}
                          <ScheduleTemplateList
-                             templates={filteredTemplatesForModal}
+                             templates={filteredTemplatesForModal} // Pass the correctly filtered templates
                              onLoadTemplate={(templateId) => {
                                  handleLoadTemplate(templateId);
                                  setIsTemplateLoadModalOpen(false); // Close modal after loading
                              }}
                              onDeleteTemplate={handleDeleteTemplate} // Pass delete handler
                          />
+                         {/* Log the filtered templates being passed to the component */}
+                         {/* <pre><code>{JSON.stringify(filteredTemplatesForModal, null, 2)}</code></pre> */}
                      </div>
                      <DialogFooter>
                          <DialogClose asChild>
