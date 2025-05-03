@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy, Upload } from 'lucide-react'; // Removed CSV icon, added Library, FileSearch, Upload
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -427,13 +427,13 @@ export default function Home() {
 
              // Only show success toast and advance date if ADDING, not editing
              if (!isEditing) {
-                // toast({
-                //     title: 'Turno Agregado',
-                //     description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} agregado. Fecha avanzada.`,
-                // });
-                // Advance date automatically after successful ADDITION
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
+                 toast({
+                     title: 'Día Agregado, Fecha Avanzada',
+                     description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
+                     variant: 'default'
+                 });
              } else {
                  // Show a different toast for successful EDIT
                  toast({
@@ -827,6 +827,12 @@ export default function Home() {
                                <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
                                <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1"> <CalendarIcon className="h-4 w-4" /> {format(day.inputData.startDate, 'PPPP', { locale: es })} </div>
                                <div className="flex items-center text-sm text-muted-foreground gap-2"> <Clock className="h-4 w-4" /> {formatTo12Hour(day.inputData.startTime)} - {formatTo12Hour(day.inputData.endTime)} {day.inputData.endsNextDay ? ' (+1d)' : ''} </div>
+                                {day.inputData.includeBreak && day.inputData.breakStartTime && day.inputData.breakEndTime && (
+                                    <div className="flex items-center text-sm text-muted-foreground/80 gap-2 mt-1">
+                                        <Coffee className="h-4 w-4 text-blue-500" /> {/* Break icon */}
+                                        Descanso: {formatTo12Hour(day.inputData.breakStartTime)} - {formatTo12Hour(day.inputData.breakEndTime)}
+                                    </div>
+                                )}
                              </div>
                              <div className="text-right flex-shrink-0 ml-4">
                                  <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
@@ -942,3 +948,4 @@ export default function Home() {
     </main>
   );
 }
+
