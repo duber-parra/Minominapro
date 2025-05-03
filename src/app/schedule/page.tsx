@@ -13,7 +13,7 @@ import {
   CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check, FileUp, Copy } from 'lucide-react'; // Added Copy icon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Library, Eraser, Download, Upload, FileX2, FileSpreadsheet, FileDown, PencilLine, Share2, Loader2, Check, FileUp, Copy, FileJson } from 'lucide-react'; // Added Copy icon, FileJson
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -435,7 +435,7 @@ export default function SchedulePage() {
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
         const loadedTemps = loadFromLocalStorage<ShiftTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
-        console.log("Loaded templates from localStorage on mount:", loadedTemps); // Log loaded templates
+        console.log("[Load Effect] Loaded templates from localStorage:", loadedTemps); // Log loaded templates
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
@@ -1658,7 +1658,7 @@ export default function SchedulePage() {
          const data: CsvRowData[] = [];
 
          // Define the required headers for template mode (case-insensitive check)
-         const requiredHeadersListVariable = ['ID_Empleado', 'Departamento', 'Hora_Inicio', 'Hora_Fin'];
+         const requiredHeadersListVariable = ['ID_Empleado', 'Departamento', 'Hora_Inicio', 'Hora_Fin']; // Removed 'Fecha' as it's optional for template import
          console.log('DEBUG: Required Headers List (Code):', requiredHeadersListVariable);
 
          // Check if all required headers are present
@@ -2024,6 +2024,91 @@ export default function SchedulePage() {
         jsonInputRef.current?.click();
     };
 
+    // --- Export Current View as JSON Template ---
+    const handleExportCurrentViewAsJSON = () => {
+         let hasAssignments = false;
+         let templateAssignments: ShiftTemplate['assignments'];
+         const templateType = viewMode === 'day' ? 'daily' : 'weekly';
+         const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+         const defaultTemplateName = `${templateType === 'daily' ? 'Diario' : 'Semanal'}_${locations.find(l => l.id === selectedLocationId)?.name || 'Sede'}_${timestamp}`;
+
+         if (templateType === 'daily') {
+             const sourceDate = targetDate;
+             const currentDayKey = format(sourceDate, 'yyyy-MM-dd');
+             const currentAssignmentsRaw = scheduleData[currentDayKey]?.assignments || {};
+             const cleanedAssignments: DailyAssignments = {};
+             Object.keys(currentAssignmentsRaw).forEach(deptId => {
+                  if (currentAssignmentsRaw[deptId]?.length > 0) {
+                     cleanedAssignments[deptId] = currentAssignmentsRaw[deptId].map(({ id, employee, ...rest }) => ({
+                          ...rest,
+                          employee: { id: employee.id }
+                     }));
+                     hasAssignments = true;
+                  }
+             });
+             templateAssignments = cleanedAssignments;
+         } else { // Weekly template
+             templateAssignments = {};
+             weekDates.forEach(date => {
+                 const dateKey = format(date, 'yyyy-MM-dd');
+                 const dailyAssignmentsRaw = scheduleData[dateKey]?.assignments || {};
+                 const cleanedDailyAssignments: DailyAssignments = {};
+                 let dayHasData = false;
+                 Object.keys(dailyAssignmentsRaw).forEach(deptId => {
+                      if (dailyAssignmentsRaw[deptId]?.length > 0) {
+                         cleanedDailyAssignments[deptId] = dailyAssignmentsRaw[deptId].map(({ id, employee, ...rest }) => ({
+                             ...rest,
+                             employee: { id: employee.id }
+                         }));
+                         dayHasData = true;
+                         hasAssignments = true;
+                      }
+                 });
+                 if (dayHasData) {
+                      (templateAssignments as WeeklyAssignments)[dateKey] = cleanedDailyAssignments;
+                 }
+             });
+         }
+
+         if (!hasAssignments) {
+             const contextDescription = viewMode === 'day' ? `el ${format(targetDate, 'PPP', { locale: es })}` : 'la semana actual';
+             toast({ title: 'Horario Vacío', description: `No hay turnos asignados en ${contextDescription} para exportar.`, variant: 'default' });
+             return;
+         }
+
+         const templateToExport: Omit<ShiftTemplate, 'id' | 'createdAt'> & { id?: string; createdAt?: string } = {
+             name: defaultTemplateName, // Use a default name or prompt user later
+             locationId: selectedLocationId,
+             type: templateType,
+             assignments: templateAssignments,
+         };
+
+         // Simulate the full template structure for export
+         const fullTemplateToExport: ShiftTemplate = {
+             id: `tpl-export-${Date.now()}`, // Temporary ID for export file
+             createdAt: new Date().toISOString(),
+             ...templateToExport,
+         };
+
+         try {
+             const jsonString = JSON.stringify(fullTemplateToExport, null, 2);
+             const blob = new Blob([jsonString], { type: 'application/json' });
+             const href = URL.createObjectURL(blob);
+             const link = document.createElement('a');
+             link.href = href;
+             const locationNameSafe = locations.find(l => l.id === selectedLocationId)?.name.replace(/[^a-zA-Z0-9]/g, '_') || selectedLocationId;
+             link.download = `Horario_${locationNameSafe}_${templateType}_${timestamp}.json`;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(href);
+             toast({ title: 'Horario Exportado (JSON)', description: `El horario actual se exportó como ${link.download}.` });
+         } catch (error) {
+             console.error("Error exporting current view to JSON:", error);
+             toast({ title: 'Error al Exportar Horario', description: 'No se pudo generar el archivo JSON del horario actual.', variant: 'destructive' });
+         }
+     };
+
 
 
     const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -2267,9 +2352,9 @@ export default function SchedulePage() {
                   className="hidden"
                />
 
-             {/* Controls Section - Invisible Card for layout */}
-             <Card className="mb-6 md:mb-8 bg-transparent border-none shadow-none">
-                 <CardContent className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
+             {/* Controls Section - Removed Card for invisibility */}
+             <div className="mb-6 md:mb-8">
+                 <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
 
                       {/* Sede Selector */}
                       <div className="flex items-center gap-2">
@@ -2281,7 +2366,7 @@ export default function SchedulePage() {
                           />
                       </div>
 
-                      {/* Configuration Button */}
+                       {/* Configuration Button */}
                       <div className="flex items-center gap-2">
                          <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                              <DialogTrigger asChild>
@@ -2427,7 +2512,6 @@ export default function SchedulePage() {
                          </Dialog>
                     </div>
 
-
                      {/* --- Day View Date Selector OR Week View Navigator --- */}
                      <div className="flex items-center justify-center gap-2">
                          {viewMode === 'day' ? (
@@ -2507,8 +2591,8 @@ export default function SchedulePage() {
 
 
 
-                 </CardContent>
-             </Card>
+                 </div>
+             </div>
 
 
               {/* Main content grid */}
@@ -2571,6 +2655,10 @@ export default function SchedulePage() {
                    {/* Template Buttons */}
                    <Button variant="outline" onClick={handleOpenTemplateModal} title={`Guardar horario actual como template ${viewMode === 'day' ? 'diario' : 'semanal'}`}>
                       <Download className="mr-2 h-4 w-4" /> Guardar Template
+                   </Button>
+                   {/* Export Current View as JSON Button */}
+                   <Button variant="outline" onClick={handleExportCurrentViewAsJSON} title={`Exportar horario actual (${viewMode === 'day' ? 'Día' : 'Semana'}) como archivo JSON`}>
+                       <FileJson className="mr-2 h-4 w-4" /> Exportar Horario (JSON)
                    </Button>
                     {/* Import JSON Template Button */}
                     <Button variant="outline" onClick={triggerJSONInput} disabled={isImportingJSON} title="Importar Template desde Archivo JSON">
