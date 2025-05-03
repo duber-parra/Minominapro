@@ -221,18 +221,39 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                            {employeeName ? ` - ${employeeName}` : ''}
                         </span>
                       </div>
-                       {/* Delete Button Trigger */}
-                       <AlertDialogTrigger asChild>
-                          <Button
-                             variant="ghost"
-                             size="icon"
-                             className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
-                             title="Eliminar anotación"
-                             onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
-                          >
-                             <Trash2 className="h-4 w-4" />
-                          </Button>
-                       </AlertDialogTrigger>
+                       {/* Wrap the trigger and dialog inside the map */}
+                       <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                              <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
+                                 title="Eliminar anotación"
+                                 onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
+                              >
+                                 <Trash2 className="h-4 w-4" />
+                              </Button>
+                           </AlertDialogTrigger>
+                           {/* Keep the confirmation dialog content here, it needs the context */}
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                   "{note.note}"
+                                   <br />
+                                   Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                   onClick={confirmDeleteNote} // Call the delete function on confirm
+                                   className="bg-destructive hover:bg-destructive/90">
+                                   Eliminar Anotación
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                           </AlertDialogContent>
+                       </AlertDialog>
                     </li>
                   );
                  })}
@@ -254,26 +275,15 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
         </DialogFooter>
       </DialogContent>
 
-       {/* Confirmation Dialog for Deleting Note */}
+       {/* Confirmation Dialog for Deleting Note - MOVED inside the map loop */}
+       {/* This standalone dialog is no longer needed here as it's rendered per item */}
+       {/*
        <AlertDialog open={!!noteToDeleteId} onOpenChange={(open) => !open && setNoteToDeleteId(null)}>
          <AlertDialogContent>
-           <AlertDialogHeader>
-             <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
-             <AlertDialogDescription>
-                {/* Optionally show note details here */}
-                Esta acción no se puede deshacer.
-             </AlertDialogDescription>
-           </AlertDialogHeader>
-           <AlertDialogFooter>
-             <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
-             <AlertDialogAction
-                onClick={confirmDeleteNote} // Call the delete function on confirm
-                className="bg-destructive hover:bg-destructive/90">
-                Eliminar Anotación
-             </AlertDialogAction>
-           </AlertDialogFooter>
+           ... (Dialog content moved inside the loop) ...
          </AlertDialogContent>
        </AlertDialog>
+       */}
 
     </Dialog>
   );
