@@ -214,37 +214,6 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              const parsed = JSON.parse(savedData);
              // console.log(`[DEBUG loadFromLocalStorage] Parsed data for key ${key}:`, parsed); // DEBUG Log
 
-             // Specific parsing for templates to ensure dates are handled if necessary
-             if (key === SCHEDULE_TEMPLATES_KEY) {
-                  // console.log(`[DEBUG Load Templates] Attempting to parse templates. Raw data:`, savedData); // Log raw data
-                 if (!savedData || savedData === "null") { // Check for empty or null string
-                    console.warn(`[DEBUG Load Templates] No template data found in localStorage. Returning default.`);
-                    return defaultValue;
-                  }
-                 let parsedTemplates;
-                 try {
-                     parsedTemplates = JSON.parse(savedData); // Parse here
-                 } catch (parseError) {
-                    console.error(`[DEBUG Load Templates] Failed to parse JSON for key ${key}. Error:`, parseError, "Raw data:", savedData);
-                    return defaultValue; // Return default if parsing fails
-                 }
-                 // console.log(`[DEBUG Load Templates] Parsed template data:`, parsedTemplates); // Log parsed data
-
-                 if (Array.isArray(parsedTemplates)) {
-                      const validatedTemplates = parsedTemplates.map((template: any) => ({
-                          ...template,
-                          // Ensure createdAt exists, fallback to now if missing/invalid
-                          createdAt: template.createdAt && isValid(parseISO(template.createdAt)) ? template.createdAt : new Date().toISOString(),
-                          // Ensure assignments are correctly structured (basic check)
-                          assignments: typeof template.assignments === 'object' ? template.assignments : {}
-                      }));
-                       // console.log(`[DEBUG Load Templates] Validated templates:`, validatedTemplates); // Log validated data
-                      return validatedTemplates as T;
-                 } else {
-                      console.warn(`[DEBUG Load Templates] Expected array for templates, found:`, typeof parsedTemplates, ". Returning default.");
-                      return defaultValue;
-                 }
-             }
 
              // Basic check for other array types
              if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY) {
@@ -349,6 +318,45 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
      }
 };
 
+// --- NEW: Function to load Schedule Templates ---
+const loadScheduleTemplates = (): ShiftTemplate[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+        const savedData = localStorage.getItem(SCHEDULE_TEMPLATES_KEY);
+        if (!savedData || savedData === "null") {
+            console.log("[Load Templates] No template data found in localStorage.");
+            return [];
+        }
+        let parsedTemplates;
+        try {
+            parsedTemplates = JSON.parse(savedData);
+        } catch (parseError) {
+            console.error(`[Load Templates] Failed to parse JSON for key ${SCHEDULE_TEMPLATES_KEY}. Error:`, parseError, "Raw data:", savedData);
+            return [];
+        }
+
+        if (Array.isArray(parsedTemplates)) {
+             const validatedTemplates = parsedTemplates.map((template: any) => ({
+                ...template,
+                // Ensure createdAt exists, fallback to now if missing/invalid
+                createdAt: template.createdAt && isValid(parseISO(template.createdAt)) ? template.createdAt : new Date().toISOString(),
+                // Ensure assignments are correctly structured (basic check)
+                assignments: typeof template.assignments === 'object' ? template.assignments : {}
+             }));
+            console.log("[Load Templates] Loaded and validated templates:", validatedTemplates);
+            return validatedTemplates;
+        } else {
+            console.warn(`[Load Templates] Expected array for templates, found:`, typeof parsedTemplates, ". Returning empty array.");
+            return [];
+        }
+    } catch (error) {
+        console.error(`Error loading templates from localStorage:`, error);
+        return [];
+    }
+};
+
+
+
 // Define a Zod schema for basic CSV row validation
 // Make Fecha optional for template mode
 const csvRowSchema = z.object({
@@ -397,8 +405,8 @@ export default function SchedulePage() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
-    // Separate state for templates
-    const [savedTemplates, setSavedTemplates] = useState<ShiftTemplate[]>([]);
+    // Separate state for templates - NEW
+    const [scheduleTemplates, setScheduleTemplates] = useState<ShiftTemplate[]>([]);
     const [notes, setNotes] = useState<string>("");
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
@@ -459,16 +467,15 @@ export default function SchedulePage() {
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
-        // Load templates using the dedicated key
-        const loadedTemps = loadFromLocalStorage<ShiftTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
-        // console.log("[DEBUG Load Effect] Loaded templates from localStorage:", loadedTemps); // DEBUG Log
+        // Load templates using the NEW separate function
+        const loadedTemps = loadScheduleTemplates();
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
-        setSavedTemplates(loadedTemps || []); // Ensure it's an array
+        setScheduleTemplates(loadedTemps || []); // Set the loaded templates
         setNotes(loadedNotesStr);
 
         // Set initial selected location and update form defaults accordingly
@@ -574,11 +581,11 @@ export default function SchedulePage() {
      useEffect(() => {
          if (isClient) {
              try {
-                 // Ensure savedTemplates is always an array
-                 const templatesToSave = Array.isArray(savedTemplates) ? savedTemplates : [];
-                 // console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // DEBUG Log before saving
+                 // Ensure scheduleTemplates is always an array
+                 const templatesToSave = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+                 console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                 // console.log("[Save Effect] Templates saved successfully."); // DEBUG Log if saving succeeds
+                 console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
              } catch (error) {
                   console.error("Error saving templates to localStorage:", error);
                   toast({
@@ -588,7 +595,7 @@ export default function SchedulePage() {
                   });
              }
          }
-     }, [savedTemplates, isClient, toast]); // Depend on savedTemplates state
+     }, [scheduleTemplates, isClient, toast]); // Depend on scheduleTemplates state
 
 
     // ---- End LocalStorage Effects ---
@@ -628,15 +635,18 @@ export default function SchedulePage() {
 
     // Filter templates based on current location and view mode
     const filteredTemplates = useMemo(() => {
-        // console.log("[DEBUG Filter Memo] All templates in state:", savedTemplates);
-        // Ensure savedTemplates is always an array before filtering
-        const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-        const filtered = templatesArray.filter(temp =>
-             temp.locationId === selectedLocationId && temp.type === viewMode // Match current viewMode ('day' or 'week')
-        );
+        // console.log("[DEBUG Filter Memo] All templates in state:", scheduleTemplates);
+        // Ensure scheduleTemplates is always an array before filtering
+        const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
+        const filtered = templatesArray.filter(temp => {
+             const locationMatch = temp.locationId === selectedLocationId;
+             const typeMatch = temp.type === viewMode;
+             // console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
+             return locationMatch && typeMatch;
+        });
         // console.log(`[DEBUG Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // DEBUG Log the result
         return filtered;
-    }, [savedTemplates, selectedLocationId, viewMode]);
+    }, [scheduleTemplates, selectedLocationId, viewMode]);
 
 
      const assignedEmployeeIdsForTargetDate = useMemo(() => {
@@ -1070,7 +1080,7 @@ export default function SchedulePage() {
                     })).filter(emp => emp.locationIds.length > 0)); // Remove employees with no locations left
 
                     // Remove templates associated with the deleted location
-                    setSavedTemplates(prevTemplates => (Array.isArray(prevTemplates) ? prevTemplates : []).filter(t => t.locationId !== itemToDelete.id));
+                    setScheduleTemplates(prevTemplates => (Array.isArray(prevTemplates) ? prevTemplates : []).filter(t => t.locationId !== itemToDelete.id));
                     // Clean up schedule data: remove assignments in departments of the deleted location
                      setScheduleData(prevSchedule => {
                          const updatedSchedule = { ...prevSchedule };
@@ -1114,7 +1124,7 @@ export default function SchedulePage() {
                      setScheduleData(updatedScheduleDept);
 
                     // Remove assignments for this department from templates
-                     const currentTemplatesDept = Array.isArray(savedTemplates) ? savedTemplates : [];
+                     const currentTemplatesDept = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
                      const updatedTemplatesDept = currentTemplatesDept.map(t => {
                          let newAssignments = JSON.parse(JSON.stringify(t.assignments));
                          let templateChanged = false;
@@ -1141,7 +1151,7 @@ export default function SchedulePage() {
                           }
                          return templateChanged ? { ...t, assignments: newAssignments } : t;
                      }).filter(t => t !== null) as ShiftTemplate[]; // Filter out nulls
-                     setSavedTemplates(updatedTemplatesDept);
+                     setScheduleTemplates(updatedTemplatesDept);
                     message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
                 case 'employee':
@@ -1169,7 +1179,7 @@ export default function SchedulePage() {
                      setScheduleData(updatedScheduleEmp);
 
                        // Remove assignments for this employee from templates
-                       const currentTemplatesEmp = Array.isArray(savedTemplates) ? savedTemplates : [];
+                       const currentTemplatesEmp = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
                        const updatedTemplatesEmp = currentTemplatesEmp.map(t => {
                            let newAssignments = JSON.parse(JSON.stringify(t.assignments));
                            let templateChanged = false;
@@ -1210,13 +1220,13 @@ export default function SchedulePage() {
                             }
                            return templateChanged ? { ...t, assignments: newAssignments } : t;
                        }).filter(t => t !== null) as ShiftTemplate[]; // Filter out nulls
-                      setSavedTemplates(updatedTemplatesEmp);
+                      setScheduleTemplates(updatedTemplatesEmp);
                      message = `Colaborador "${itemToDelete.name}" eliminado.`;
                      break;
                   case 'template':
-                      const currentTemplates = Array.isArray(savedTemplates) ? savedTemplates : [];
+                      const currentTemplates = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
                       const updatedTemplates = currentTemplates.filter(t => t.id !== itemToDelete.id);
-                      setSavedTemplates(updatedTemplates);
+                      setScheduleTemplates(updatedTemplates);
                       message = `Template "${itemToDelete.name}" eliminado.`;
                      break;
              }
@@ -1461,11 +1471,11 @@ export default function SchedulePage() {
          };
 
           // Update the state with the new template
-          setSavedTemplates(prev => {
+          setScheduleTemplates(prev => {
               // Ensure 'prev' is an array, defaulting to empty if not
               const validPrev = Array.isArray(prev) ? prev : [];
               const updatedTemplates = [...validPrev, newTemplate];
-               // console.log("[DEBUG Save Template] Updating state with new templates:", updatedTemplates); // DEBUG Log
+               console.log("[DEBUG Save Template] Updating state with new templates:", updatedTemplates); // DEBUG Log
               return updatedTemplates; // Return the updated array
           });
 
@@ -1478,7 +1488,7 @@ export default function SchedulePage() {
     const handleLoadTemplate = (templateId: string) => {
         if (typeof window === 'undefined') return; // Client-side only
 
-        const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
+        const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
         // console.log(`[DEBUG Load Template] Attempting load. ID: ${templateId}. All templates in state:`, templatesArray); // DEBUG Log
         const templateToLoad = templatesArray.find(t => t.id === templateId);
 
@@ -1668,29 +1678,29 @@ export default function SchedulePage() {
      // Parse CSV content into structured data
      const parseScheduleCSV = (content: string): CsvRowData[] => {
          const rows = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
-         // console.log(`[CSV Parse] Found ${rows.length} rows (incl. header)`);
+         console.log(`[CSV Parse] Found ${rows.length} rows (incl. header)`); // DEBUG Log
          if (rows.length < 2) return [];
 
          const rawFirstLineVariable = rows[0]; // Get the header line
-         // console.log('DEBUG: Raw Header Line Read:', rawFirstLineVariable);
+         console.log('DEBUG: Raw Header Line Read:', rawFirstLineVariable); // DEBUG Log
 
          const delimiterVariable = ','; // Assuming comma for now
-         // console.log('DEBUG: Delimiter Used:', delimiterVariable);
+         console.log('DEBUG: Delimiter Used:', delimiterVariable); // DEBUG Log
 
          const extractedHeadersArrayVariable = rawFirstLineVariable.split(delimiterVariable).map(h => h.trim());
-         // console.log('DEBUG: Extracted Headers Array:', extractedHeadersArrayVariable);
+         console.log('DEBUG: Extracted Headers Array:', extractedHeadersArrayVariable); // DEBUG Log
 
          const data: CsvRowData[] = [];
 
          // Define the required headers for template mode (case-insensitive check)
          const requiredHeadersListVariable = ['ID_Empleado', 'Departamento', 'Hora_Inicio', 'Hora_Fin']; // Removed 'Fecha' as it's optional for template import
-         // console.log('DEBUG: Required Headers List (Code):', requiredHeadersListVariable);
+         console.log('DEBUG: Required Headers List (Code):', requiredHeadersListVariable); // DEBUG Log
 
          // Check if all required headers are present
          const missingHeaders = requiredHeadersListVariable.filter(reqHeader =>
              !extractedHeadersArrayVariable.some(h => h.toLowerCase() === reqHeader.toLowerCase())
          );
-         // console.log('DEBUG: Missing Headers Found:', missingHeaders);
+         console.log('DEBUG: Missing Headers Found:', missingHeaders); // DEBUG Log
 
 
          if (missingHeaders.length > 0) {
@@ -1705,7 +1715,7 @@ export default function SchedulePage() {
             const foundHeader = extractedHeadersArrayVariable.find(h => h.toLowerCase() === key.toLowerCase());
             if (foundHeader) {
                 headerMapping[key] = foundHeader;
-                 // console.log(`[CSV Parse] Mapped schema key "${key}" to CSV header "${foundHeader}"`);
+                 console.log(`[CSV Parse] Mapped schema key "${key}" to CSV header "${foundHeader}"`); // DEBUG Log
             } else if (key !== 'Fecha') { // Don't warn if 'Fecha' is missing, as it's optional for template import
                 console.warn(`[CSV Parse] Optional header not found for schema key: "${key}"`);
             }
@@ -1714,13 +1724,13 @@ export default function SchedulePage() {
           const fechaHeader = extractedHeadersArrayVariable.find(h => h.toLowerCase() === 'fecha');
           if (fechaHeader) {
               headerMapping['Fecha'] = fechaHeader;
-              // console.log(`[CSV Parse] Mapped schema key "Fecha" to CSV header "${fechaHeader}"`);
+              console.log(`[CSV Parse] Mapped schema key "Fecha" to CSV header "${fechaHeader}"`); // DEBUG Log
           } else {
-               console.log('[CSV Parse] "Fecha" header not found, will use day of week logic.');
+               console.log('[CSV Parse] "Fecha" header not found, will use day of week logic.'); // DEBUG Log
           }
 
 
-         // console.log('[CSV Parse] Header Mapping:', headerMapping);
+         console.log('[CSV Parse] Header Mapping:', headerMapping); // DEBUG Log
 
          for (let i = 1; i < rows.length; i++) {
              if (!rows[i].trim()) continue;
@@ -1751,33 +1761,33 @@ export default function SchedulePage() {
                   const firstMondayOfYear = startOfWeek(new Date(new Date().getFullYear(), 0, 1), { weekStartsOn: 1 });
                   // We need a valid date string for Zod validation, even if we ignore it later
                   rowObject['Fecha'] = format(firstMondayOfYear, 'yyyy-MM-dd');
-                  // console.log(`[CSV Parse] Row ${i + 1}: Using default date ${rowObject['Fecha']} as 'Fecha' header was missing.`);
+                  console.log(`[CSV Parse] Row ${i + 1}: Using default date ${rowObject['Fecha']} as 'Fecha' header was missing.`); // DEBUG Log
               } else if (headerMapping['Fecha'] && !rowObject['Fecha']) {
                    // If the Fecha header exists but the value is empty, treat it as an error or skip
                    console.warn(`[CSV Parse] Skipping row ${i + 1}: 'Fecha' header exists but value is empty.`);
                    continue;
               }
 
-             // console.log(`[CSV Parse] Processing row ${i + 1} data:`, rowObject);
+             console.log(`[CSV Parse] Processing row ${i + 1} data:`, rowObject); // DEBUG Log
 
 
              try {
                  // Validate the row against the schema (Fecha is optional now)
                  const validatedRow = csvRowSchema.parse(rowObject);
                  data.push(validatedRow);
-                  // console.log(`[CSV Parse] Row ${i + 1} passed validation.`);
+                  console.log(`[CSV Parse] Row ${i + 1} passed validation.`); // DEBUG Log
              } catch (error) {
                  console.warn(`[CSV Parse] Skipping row ${i + 1} due to validation error:`, error instanceof z.ZodError ? error.errors : error);
              }
          }
-         // console.log(`[CSV Parse] Finished parsing. ${data.length} valid rows found.`);
+         console.log(`[CSV Parse] Finished parsing. ${data.length} valid rows found.`); // DEBUG Log
          return data;
      };
 
 
      // Process the parsed CSV data (Template Import Logic)
     const processCSVAsTemplate = useCallback((parsedData: CsvRowData[]) => {
-        // console.log('[CSV Process] Starting processCSVAsTemplate with parsed data:', parsedData);
+        console.log('[CSV Process] Starting processCSVAsTemplate with parsed data:', parsedData); // DEBUG Log
         if (parsedData.length === 0) {
             toast({ title: 'Sin Datos Válidos', description: 'No se encontraron filas válidas en el archivo CSV.', variant: 'destructive' });
             return;
@@ -1793,7 +1803,7 @@ export default function SchedulePage() {
         });
 
         parsedData.forEach((row, rowIndex) => {
-             // console.log(`[CSV Process] Processing row ${rowIndex + 1}:`, row);
+             console.log(`[CSV Process] Processing row ${rowIndex + 1}:`, row); // DEBUG Log
             // --- Find Employee ---
             const employee = employees.find(emp => emp.id === row.ID_Empleado);
             if (!employee) {
@@ -1829,7 +1839,7 @@ export default function SchedulePage() {
             }
              let csvDayIndex = getDay(csvDate); // 0=Sun, 1=Mon,...
              csvDayIndex = (csvDayIndex === 0) ? 6 : csvDayIndex - 1; // Map Sunday(0) to index 6, Monday(1) to 0, etc.
-             // console.log(`[CSV Process] Row ${rowIndex + 1}: CSV Date=${csvDateStr}, Day Index (Mon=0):${csvDayIndex}`);
+             console.log(`[CSV Process] Row ${rowIndex + 1}: CSV Date=${csvDateStr}, Day Index (Mon=0):${csvDayIndex}`); // DEBUG Log
 
             // Ensure the index is within the bounds of the weekDates array
             if (csvDayIndex < 0 || csvDayIndex >= weekDates.length) {
@@ -1845,7 +1855,7 @@ export default function SchedulePage() {
                 return;
             }
             const targetDateKey = format(targetDateForShift, 'yyyy-MM-dd');
-             // console.log(`[CSV Process] Row ${rowIndex + 1}: Target Date Key=${targetDateKey}`);
+             console.log(`[CSV Process] Row ${rowIndex + 1}: Target Date Key=${targetDateKey}`); // DEBUG Log
 
             // Initialize department array if it doesn't exist for the target date
             if (!newScheduleAssignmentsForWeek[targetDateKey].assignments[department.id]) {
@@ -1873,15 +1883,15 @@ export default function SchedulePage() {
                 breakStartTime: includeBreakParsed ? row.Inicio_Descanso : undefined,
                 breakEndTime: includeBreakParsed ? row.Fin_Descanso : undefined,
             };
-             // console.log(`[CSV Process] Row ${rowIndex + 1}: Created new assignment for ${employee.name} on ${targetDateKey}`, newAssignment);
+             console.log(`[CSV Process] Row ${rowIndex + 1}: Created new assignment for ${employee.name} on ${targetDateKey}`, newAssignment); // DEBUG Log
 
             // Add the new assignment
             newScheduleAssignmentsForWeek[targetDateKey].assignments[department.id].push(newAssignment);
             importedCount++;
         });
 
-        // console.log('[CSV Process] Finished processing. Summary:', { importedCount, skippedCount, errorCount });
-        // console.log('[CSV Process] New schedule data for week:', newScheduleAssignmentsForWeek);
+        console.log('[CSV Process] Finished processing. Summary:', { importedCount, skippedCount, errorCount }); // DEBUG Log
+        console.log('[CSV Process] New schedule data for week:', newScheduleAssignmentsForWeek); // DEBUG Log
 
         // --- Update State ---
         // Overwrite the schedule for the current week with the imported data
@@ -1912,12 +1922,12 @@ export default function SchedulePage() {
      const handleCSVFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
          const file = event.target.files?.[0];
          if (!file) return;
-         // console.log('[CSV Import] File selected:', file.name);
+         console.log('[CSV Import] File selected:', file.name); // DEBUG Log
 
          setIsImportingCSV(true);
          try {
              const content = await file.text();
-              // console.log('[CSV Import] File content read, length:', content.length);
+              console.log('[CSV Import] File content read, length:', content.length); // DEBUG Log
               if (!content.trim()) {
                   throw new Error('El archivo CSV está vacío.');
               }
@@ -1934,7 +1944,7 @@ export default function SchedulePage() {
                  duration: 9000, // Slightly longer duration
              });
          } finally {
-              // console.log('[CSV Import] Finalizing file change handler.');
+              console.log('[CSV Import] Finalizing file change handler.'); // DEBUG Log
              setIsImportingCSV(false);
              // Reset the file input so the same file can be selected again
              if (fileInputRef.current) {
@@ -1952,7 +1962,7 @@ export default function SchedulePage() {
     // --- Template Export/Import JSON Handlers ---
 
     const handleExportTemplateJSON = (templateId: string) => {
-         const templateToExport = savedTemplates.find(t => t.id === templateId);
+         const templateToExport = scheduleTemplates.find(t => t.id === templateId);
          if (!templateToExport) {
              toast({ title: 'Template no encontrado', variant: 'destructive' });
              return;
@@ -1981,12 +1991,12 @@ export default function SchedulePage() {
     const handleImportTemplateJSON = async (event: ChangeEvent<HTMLInputElement>) => {
          const file = event.target.files?.[0];
          if (!file) return;
-         // console.log('[JSON Import] File selected:', file.name);
+         console.log('[JSON Import] File selected:', file.name); // DEBUG Log
 
          setIsImportingJSON(true);
          try {
              const content = await file.text();
-             // console.log('[JSON Import] File content read, length:', content.length);
+             console.log('[JSON Import] File content read, length:', content.length); // DEBUG Log
              if (!content.trim()) {
                  throw new Error('El archivo JSON está vacío.');
              }
@@ -2002,7 +2012,7 @@ export default function SchedulePage() {
              }
 
              // Check if a template with the same ID already exists
-             const existingIndex = savedTemplates.findIndex(t => t.id === parsedTemplate.id);
+             const existingIndex = scheduleTemplates.findIndex(t => t.id === parsedTemplate.id);
 
              let updatedTemplates;
              let toastTitle = '';
@@ -2011,20 +2021,20 @@ export default function SchedulePage() {
              if (existingIndex > -1) {
                  // Template exists, ask user to confirm overwrite (or just overwrite for now)
                  // For simplicity, we'll overwrite here. Add confirmation dialog if needed.
-                 updatedTemplates = [...savedTemplates];
+                 updatedTemplates = [...scheduleTemplates];
                  updatedTemplates[existingIndex] = parsedTemplate;
                  toastTitle = 'Template Actualizado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido actualizado desde el archivo JSON.`;
-                 // console.log("[DEBUG JSON Import] Overwriting existing template:", parsedTemplate.id); // DEBUG Log
+                 console.log("[DEBUG JSON Import] Overwriting existing template:", parsedTemplate.id); // DEBUG Log
              } else {
                  // Template is new, add it
-                 updatedTemplates = [...savedTemplates, parsedTemplate];
+                 updatedTemplates = [...scheduleTemplates, parsedTemplate];
                  toastTitle = 'Template Importado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido importado y guardado.`;
-                 // console.log("[DEBUG JSON Import] Adding new template:", parsedTemplate.id); // DEBUG Log
+                 console.log("[DEBUG JSON Import] Adding new template:", parsedTemplate.id); // DEBUG Log
              }
 
-             setSavedTemplates(updatedTemplates);
+             setScheduleTemplates(updatedTemplates);
              toast({ title: toastTitle, description: toastDescription });
 
          } catch (error) {
@@ -2037,7 +2047,7 @@ export default function SchedulePage() {
                  duration: 9000,
              });
          } finally {
-             // console.log('[JSON Import] Finalizing file change handler.');
+             console.log('[JSON Import] Finalizing file change handler.'); // DEBUG Log
              setIsImportingJSON(false);
              // Reset the file input
              if (jsonInputRef.current) {
@@ -2381,7 +2391,7 @@ export default function SchedulePage() {
 
              {/* Controls Section - Top Bar */}
              {/* Card removed to hide the background/border */}
-             <div className="mb-6 md:mb-8 p-4"> {/* Adjusted padding */}
+             <div className="mb-6 md:mb-8 p-0 bg-transparent"> {/* Changed padding to 0, removed background */}
                   <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap">
 
                        {/* Sede Selector */}
@@ -2393,68 +2403,7 @@ export default function SchedulePage() {
                                onLocationChange={handleLocationChange}
                            />
                        </div>
-
-                      {/* --- Day View Date Selector OR Week View Navigator --- */}
-                      <div className="flex items-center justify-center gap-2">
-                          {viewMode === 'day' ? (
-                              <Popover>
-                                  <PopoverTrigger asChild>
-                                      <Button
-                                          variant={'outline'}
-                                          className={cn(
-                                              'w-[200px] sm:w-[280px] justify-start text-left font-normal',
-                                              !targetDate && 'text-muted-foreground',
-                                              // Conditional border for holiday, primary color border
-                                              isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2'
-                                          )}
-                                          disabled={isCheckingHoliday}
-                                      >
-                                          {isCheckingHoliday ? (
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          ) : (
-                                              <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
-                                          )}
-                                          {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                                          {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
-                                      </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0">
-                                      <Calendar
-                                          mode="single"
-                                          selected={targetDate}
-                                          onSelect={(date) => { if (date) setTargetDate(date) }}
-                                          initialFocus
-                                          locale={es}
-                                          modifiers={{ holiday: (date) => isHoliday(date) }}
-                                          modifiersClassNames={{
-                                               holiday: 'text-primary font-medium border border-primary', // Style holiday
-                                          }}
-                                      />
-                                  </PopoverContent>
-                              </Popover>
-                          ) : (
-                              <WeekNavigator
-                                  currentDate={currentDate}
-                                  onPreviousWeek={handlePreviousWeek}
-                                  onNextWeek={handleNextWeek}
-                              />
-                          )}
-                      </div>
-
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center justify-center gap-2">
-                          <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-                              <SelectTrigger className="w-[120px]">
-                                  <SelectValue placeholder="Vista" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="day">Día</SelectItem>
-                                  <SelectItem value="week">Semana</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-
-                      {/* Configuration Button */}
+                         {/* Configuration Button - Moved next to location */}
                        <div className="flex items-center gap-2">
                           <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                               <DialogTrigger asChild>
@@ -2599,6 +2548,67 @@ export default function SchedulePage() {
                               </DialogContent>
                           </Dialog>
                      </div>
+
+                      {/* --- Day View Date Selector OR Week View Navigator --- */}
+                      <div className="flex items-center justify-center gap-2">
+                          {viewMode === 'day' ? (
+                              <Popover>
+                                  <PopoverTrigger asChild>
+                                      <Button
+                                          variant={'outline'}
+                                          className={cn(
+                                              'w-[200px] sm:w-[280px] justify-start text-left font-normal',
+                                              !targetDate && 'text-muted-foreground',
+                                              // Conditional border for holiday, primary color border
+                                              isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2'
+                                          )}
+                                          disabled={isCheckingHoliday}
+                                      >
+                                          {isCheckingHoliday ? (
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          ) : (
+                                              <CalendarModernIcon className="mr-2 h-4 w-4 text-primary" /> // Icon color
+                                          )}
+                                          {targetDate ? format(targetDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                                          {isHoliday(targetDate) && !isCheckingHoliday && <span className="ml-auto text-xs font-semibold text-primary">(Festivo)</span>}
+                                      </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0">
+                                      <Calendar
+                                          mode="single"
+                                          selected={targetDate}
+                                          onSelect={(date) => { if (date) setTargetDate(date) }}
+                                          initialFocus
+                                          locale={es}
+                                          modifiers={{ holiday: (date) => isHoliday(date) }}
+                                          modifiersClassNames={{
+                                               holiday: 'text-primary font-medium border border-primary', // Style holiday
+                                          }}
+                                      />
+                                  </PopoverContent>
+                              </Popover>
+                          ) : (
+                              <WeekNavigator
+                                  currentDate={currentDate}
+                                  onPreviousWeek={handlePreviousWeek}
+                                  onNextWeek={handleNextWeek}
+                              />
+                          )}
+                      </div>
+
+                      {/* View Mode Toggle */}
+                      <div className="flex items-center justify-center gap-2">
+                          <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
+                              <SelectTrigger className="w-[120px]">
+                                  <SelectValue placeholder="Vista" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="day">Día</SelectItem>
+                                  <SelectItem value="week">Semana</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+
 
                  </div>
              </div>
