@@ -57,15 +57,7 @@ export type WeeklyAssignments = {
 };
 
 
-// Interface for shift templates
-export interface ScheduleTemplate {
-  id: string; // Template's own unique ID (e.g., tpl-...)
-  name: string;
-  locationId: string;
-  type: 'daily' | 'weekly'; // Differentiates template scope
-  assignments: DailyAssignments | WeeklyAssignments; // Union type based on 'type'
-  createdAt: string; // ISO Date string when the template was created
-}
+// Removed ScheduleTemplate interface
 
 
 // Interface for data sent to Payroll Calculator
