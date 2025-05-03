@@ -10,6 +10,7 @@ import { useState, useEffect, ReactNode } from 'react'; // Import hooks
 import { usePathname } from 'next/navigation'; // Import usePathname
 import { Loader2 } from 'lucide-react'; // Import Loader icon
 import { Separator } from '@/components/ui/separator'; // Import Separator
+import CalculadoraLaboral from '@/components/labor-calculator'; // Import the new component
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -99,7 +100,12 @@ export default function RootLayout({
               Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos
            </div>
         </footer>
+
+         {/* Floating Labor Calculator */}
+         <CalculadoraLaboral />
       </body>
     </html>
   );
 }
+
+    
