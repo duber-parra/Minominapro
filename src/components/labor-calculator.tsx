@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -323,19 +324,6 @@ const CalculadoraLaboral: React.FC = () => {
     }
   };
 
-  // Render minimized button if not open or during SSR/initial mount
-  if (!isOpen || !hasMounted) {
-    return (
-      <Button
-        className="fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 p-0 shadow-lg"
-        onClick={() => setIsOpen(true)}
-        aria-label="Abrir Calculadora Laboral"
-        title="Abrir Calculadora"
-      >
-        <Calculator className="h-6 w-6" />
-      </Button>
-    );
-  }
 
   // Format display value - show raw number for valorHoras, duration string otherwise
   const formattedDisplayValue = mode === 'valorHoras'
@@ -343,110 +331,134 @@ const CalculadoraLaboral: React.FC = () => {
     : durationResult || '0 horas, 0 minutos'; // Show duration result
 
 
-  // Render the full calculator only on the client side after mount
+  // Render the full calculator card and the minimized button,
+  // Use CSS classes to hide/show them based on `isOpen` and `hasMounted`.
+  // This prevents the hydration error by ensuring both versions exist in the initial server render.
   return (
-    <Card ref={calculatorRef} className="fixed bottom-4 right-4 z-50 w-80 shadow-lg bg-card text-card-foreground rounded-lg">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary rounded-t-lg"> {/* Removed text-primary-foreground */}
-        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white"> {/* Explicitly white */}
-           {mode === 'valorHoras' ? <Calculator className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-           Calculadora Laboral
-        </CardTitle>
-        <div className="flex items-center gap-1">
-           <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground hover:bg-primary/80" onClick={handleCopy} title="Copiar Resultado">
-             <Copy className="h-4 w-4" />
-           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground hover:bg-primary/80" onClick={() => setIsOpen(false)} title="Cerrar">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-center space-x-2 mb-2">
-           <Label htmlFor="mode-switch" className={cn(mode === 'valorHoras' ? 'text-primary font-medium' : 'text-muted-foreground')}>Valor Horas</Label>
-          <Switch
-            id="mode-switch"
-            checked={mode === 'duracionTurno'}
-            onCheckedChange={(checked) => setMode(checked ? 'duracionTurno' : 'valorHoras')}
-          />
-           <Label htmlFor="mode-switch" className={cn(mode === 'duracionTurno' ? 'text-primary font-medium' : 'text-muted-foreground')}>Duración Turno</Label>
-        </div>
-
-        <div className={cn(
-            "bg-background border rounded-md p-3 text-right text-2xl font-mono h-14 overflow-hidden text-ellipsis whitespace-nowrap",
-            displayValue === "Error" && "text-destructive"
-         )}>
-           {formattedDisplayValue}
-        </div>
-
-        {mode === 'valorHoras' ? (
-          <>
-             <div className="grid grid-cols-4 gap-1">
-               {Object.keys(valoresHoraLaboral).filter(k => k !== 'JD').map((key, index) => (
-                 <Button
-                    key={key}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs p-1 h-auto"
-                    onClick={() => handleHourTypeClick(key as HourType)}
-                    title={`${key} (${formatCurrency(valoresHoraLaboral[key as HourType], false)}/hr)`} // Exclude symbol in title
-                 >
-                    {key}
-                 </Button>
-              ))}
-            </div>
-             <div className="h-px bg-border my-2"></div>
-            <div className="grid grid-cols-4 gap-2">
-              <Button variant="secondary" className="col-span-1 text-lg hover:bg-destructive hover:text-destructive-foreground" onClick={clearCalculator}>C</Button> {/* Use secondary, hover destructive */}
-              <Button variant="secondary" className="text-lg" onClick={toggleSign}>+/-</Button>
-              <Button variant="secondary" className="text-lg" onClick={inputPercent}>%</Button>
-              <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('÷')}>÷</Button>
-
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('7')}>7</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('8')}>8</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('9')}>9</Button>
-              <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('x')}>x</Button>
-
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('4')}>4</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('5')}>5</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('6')}>6</Button>
-              <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('-')}>-</Button>
-
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('1')}>1</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('2')}>2</Button>
-              <Button variant="secondary" className="text-lg" onClick={() => inputDigit('3')}>3</Button>
-              <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('+')}>+</Button>
-
-              <Button variant="secondary" className="col-span-2 text-lg" onClick={() => inputDigit('0')}>0</Button>
-              <Button variant="secondary" className="text-lg" onClick={inputDecimal}>.</Button>
-              <Button variant="default" className="text-lg bg-primary hover:bg-primary/90" onClick={handleEquals}>=</Button>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 items-end">
-               <div>
-                 <Label htmlFor="start-time-calc">Hora Inicio</Label>
-                 <Input
-                    id="start-time-calc"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                 />
-               </div>
-               <div>
-                 <Label htmlFor="end-time-calc">Hora Fin</Label>
-                 <Input
-                    id="end-time-calc"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                 />
-               </div>
-            </div>
-          </div>
+    <>
+      {/* Minimized Button - Rendered on server, hidden on client when isOpen or !hasMounted */}
+      <Button
+        className={cn(
+          "fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 p-0 shadow-lg",
+          (isOpen && hasMounted) && "hidden" // Hide if calculator is open on client
         )}
-      </CardContent>
-    </Card>
+        onClick={() => setIsOpen(true)}
+        aria-label="Abrir Calculadora Laboral"
+        title="Abrir Calculadora"
+      >
+        <Calculator className="h-6 w-6" />
+      </Button>
+
+       {/* Full Calculator Card - Rendered on server, hidden initially or when !isOpen */}
+      <Card
+        ref={calculatorRef}
+        className={cn(
+          "fixed bottom-4 right-4 z-50 w-80 shadow-lg bg-card text-card-foreground rounded-lg",
+          (!isOpen || !hasMounted) && "hidden" // Hide if calculator is closed or not mounted on client
+        )}
+      >
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary rounded-t-lg">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+            {mode === 'valorHoras' ? <Calculator className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+            Calculadora Laboral
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground hover:bg-primary/80" onClick={handleCopy} title="Copiar Resultado">
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground hover:bg-primary/80" onClick={() => setIsOpen(false)} title="Cerrar">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-center space-x-2 mb-2">
+            <Label htmlFor="mode-switch" className={cn(mode === 'valorHoras' ? 'text-primary font-medium' : 'text-muted-foreground')}>Valor Horas</Label>
+            <Switch
+              id="mode-switch"
+              checked={mode === 'duracionTurno'}
+              onCheckedChange={(checked) => setMode(checked ? 'duracionTurno' : 'valorHoras')}
+            />
+            <Label htmlFor="mode-switch" className={cn(mode === 'duracionTurno' ? 'text-primary font-medium' : 'text-muted-foreground')}>Duración Turno</Label>
+          </div>
+
+          <div className={cn(
+              "bg-background border rounded-md p-3 text-right text-2xl font-mono h-14 overflow-hidden text-ellipsis whitespace-nowrap",
+              displayValue === "Error" && "text-destructive"
+           )}>
+            {formattedDisplayValue}
+          </div>
+
+          {mode === 'valorHoras' ? (
+            <>
+              <div className="grid grid-cols-4 gap-1">
+                {Object.keys(valoresHoraLaboral).filter(k => k !== 'JD').map((key, index) => (
+                  <Button
+                      key={key}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs p-1 h-auto"
+                      onClick={() => handleHourTypeClick(key as HourType)}
+                      title={`${key} (${formatCurrency(valoresHoraLaboral[key as HourType], false)}/hr)`} // Exclude symbol in title
+                  >
+                      {key}
+                  </Button>
+                ))}
+              </div>
+              <div className="h-px bg-border my-2"></div>
+              <div className="grid grid-cols-4 gap-2">
+                <Button variant="secondary" className="col-span-1 text-lg hover:bg-destructive hover:text-destructive-foreground" onClick={clearCalculator}>C</Button> {/* Use secondary, hover destructive */}
+                <Button variant="secondary" className="text-lg" onClick={toggleSign}>+/-</Button>
+                <Button variant="secondary" className="text-lg" onClick={inputPercent}>%</Button>
+                <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('÷')}>÷</Button>
+
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('7')}>7</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('8')}>8</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('9')}>9</Button>
+                <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('x')}>x</Button>
+
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('4')}>4</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('5')}>5</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('6')}>6</Button>
+                <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('-')}>-</Button>
+
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('1')}>1</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('2')}>2</Button>
+                <Button variant="secondary" className="text-lg" onClick={() => inputDigit('3')}>3</Button>
+                <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('+')}>+</Button>
+
+                <Button variant="secondary" className="col-span-2 text-lg" onClick={() => inputDigit('0')}>0</Button>
+                <Button variant="secondary" className="text-lg" onClick={inputDecimal}>.</Button>
+                <Button variant="default" className="text-lg bg-primary hover:bg-primary/90" onClick={handleEquals}>=</Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <div>
+                  <Label htmlFor="start-time-calc">Hora Inicio</Label>
+                  <Input
+                      id="start-time-calc"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-time-calc">Hora Fin</Label>
+                  <Input
+                      id="end-time-calc"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 };
 
