@@ -1,11 +1,13 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
-import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
+// Removed unused import ShiftTemplate, using schedule types directly
+import type { ScheduleData, ShiftAssignment, ShiftTemplate } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,7 @@ import { z } from 'zod'; // Import zod for CSV validation
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
 const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance
 const SCHEDULE_DATA_KEY = 'schedulePlannerData'; // LocalStorage key for schedule data
+const SCHEDULE_TEMPLATES_KEY = 'scheduleTemplates'; // LocalStorage key for schedule templates
 
 // --- LocalStorage Key Generation ---
 const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
@@ -287,6 +290,8 @@ export default function Home() {
     // Ref for the hidden file input
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // State for schedule templates
+    const [scheduleTemplates, setScheduleTemplates] = useState<ShiftTemplate[]>([]); // Define TemplateType with the structure of your templates
 
     const { toast } = useToast();
 
@@ -1976,3 +1981,4 @@ export default function Home() {
     </main>
   );
 }
+
