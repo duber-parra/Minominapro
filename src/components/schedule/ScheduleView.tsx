@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip" // Import Tooltip components
+import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; // Import AlertDialogTrigger
 
 interface ScheduleViewProps {
   departments: Department[];
@@ -31,6 +32,7 @@ interface ScheduleViewProps {
   isHoliday: (date: Date | null | undefined) => boolean; // Function to check if a date is a holiday
   isMobile: boolean; // Flag to detect mobile view
   getNotesForDate: (date: Date) => ScheduleNote[]; // Function to get notes for a date
+  onOpenNotesModal: (date: Date) => void; // Handler to open notes modal for a specific date
   employees: Employee[]; // Pass employees to render tooltip content correctly
 }
 
@@ -49,6 +51,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     isHoliday, // Receive holiday check function
     isMobile, // Receive mobile flag
     getNotesForDate, // Receive notes function
+    onOpenNotesModal, // Receive the handler to open the notes modal
     employees, // Receive employees
 }) => {
   const [isClient, setIsClient] = useState(false); // State for client-side rendering check
@@ -65,6 +68,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             <p className="font-medium mb-1">Anotaciones:</p>
             {notes.map(note => {
                 const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
+                // Format date for tooltip: Abbreviated day, numeric day, abbreviated month
+                const noteDate = parseDateFnsInternal(note.date, 'yyyy-MM-dd', new Date());
+                const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE d MMM', { locale: es }) : note.date;
                 return (
                     <p key={note.id}>
                        • {note.note} {employeeName ? <span className="italic text-muted-foreground">({employeeName})</span> : ''}
@@ -96,16 +102,23 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                             Horario para el {format(currentDate, 'PPPP', { locale: es })}
                             {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
                         </span>
-                        {/* Notes Indicator and Tooltip */}
+                        {/* Notes Indicator and Tooltip/Click */}
                         {notesForDay.length > 0 && (
                              <TooltipProvider delayDuration={100}>
                                  <Tooltip>
                                      <TooltipTrigger asChild>
-                                         <span className="cursor-help text-muted-foreground hover:text-foreground">
+                                         {/* Wrap the icon in a button for click handling */}
+                                         <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
+                                            onClick={() => onOpenNotesModal(currentDate)} // Open notes modal on click
+                                            aria-label="Ver/Eliminar anotaciones"
+                                         >
                                              <NotebookPen className="h-4 w-4" />
-                                         </span>
+                                         </Button>
                                      </TooltipTrigger>
-                                     <TooltipContent side="bottom"> {/* Changed side to bottom */}
+                                     <TooltipContent side="bottom">
                                          {renderNotesTooltip(notesForDay)}
                                      </TooltipContent>
                                  </Tooltip>
@@ -148,15 +161,19 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          <Copy className="mr-2 h-4 w-4" /> Duplicar Día Sig.
                      </Button>
                       {/* Clear Day Button */}
-                     <Button
-                         variant="destructive"
-                         size="sm"
-                         onClick={() => onClearDay(currentDate)} // Trigger clear confirmation
-                         title="Limpiar turnos del día"
-                         disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
-                     >
-                         <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
-                     </Button>
+                     <AlertDialog>
+                         <AlertDialogTrigger asChild>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                title="Limpiar turnos del día"
+                                disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                            >
+                                <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
+                            </Button>
+                         </AlertDialogTrigger>
+                         {/* AlertDialogContent defined in parent page.tsx for confirmation */}
+                    </AlertDialog>
                  </CardFooter>
             </Card>
         );
@@ -191,14 +208,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                       isCurrentHoliday ? "text-primary" : "text-foreground" // Highlight title text with primary color
                                   )}>
                                       <span>{format(date, 'EEE d', { locale: es })}</span> {/* Wrap date text */}
-                                      {/* Notes Indicator and Tooltip */}
+                                      {/* Notes Indicator and Tooltip/Click */}
                                       {notesForDay.length > 0 && (
                                            <TooltipProvider delayDuration={100}>
                                                <Tooltip>
                                                    <TooltipTrigger asChild>
-                                                        <span className="cursor-help text-muted-foreground hover:text-foreground">
+                                                       <Button
+                                                           variant="ghost"
+                                                           size="icon"
+                                                           className="h-4 w-4 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
+                                                           onClick={() => onOpenNotesModal(date)} // Open notes modal on click
+                                                           aria-label="Ver/Eliminar anotaciones"
+                                                        >
                                                            <NotebookPen className="h-3 w-3" />
-                                                        </span>
+                                                       </Button>
                                                    </TooltipTrigger>
                                                    <TooltipContent side="top">
                                                         {renderNotesTooltip(notesForDay)}
@@ -224,16 +247,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                               <Copy className="h-2.5 w-2.5" /> {/* Smaller icon */}
                                           </Button>
                                       )}
-                                      <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
-                                          onClick={() => onClearDay(date)}
-                                          title="Limpiar turnos del día"
-                                          disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
-                                      >
-                                          <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
-                                      </Button>
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
+                                                title="Limpiar turnos del día"
+                                                disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                                            >
+                                                <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                         {/* AlertDialogContent defined in parent page.tsx */}
+                                     </AlertDialog>
                                   </div>
                               </CardHeader>
                               <CardContent className="p-1 space-y-1 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}

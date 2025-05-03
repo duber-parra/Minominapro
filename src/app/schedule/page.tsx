@@ -1,7 +1,7 @@
 // src/app/schedule/page.tsx
 'use client'; // Ensure this directive is present
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent, DragEvent } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import Image from 'next/image'; // Import next/image
@@ -55,7 +55,6 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
@@ -345,15 +344,14 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 // --- Function to Load Schedule Templates ---
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    if (typeof window === 'undefined') return []; // Solo en cliente
+    if (typeof window === 'undefined') return []; // Only on client
 
     const loadedTemplates: ScheduleTemplate[] = [];
-    const templateKeyPrefix = "tpl-"; // Your template key prefix
 
     try {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith(templateKeyPrefix)) {
+            if (key && key.startsWith(SCHEDULE_TEMPLATES_KEY)) { // Correctly use the constant
                 const storedData = localStorage.getItem(key);
                 if (storedData) {
                     try {
@@ -396,6 +394,8 @@ export default function SchedulePage() {
     const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for confirming template deletion
     const [templateToSaveName, setTemplateToSaveName] = useState<string>(''); // State for template name input
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // Loading state for saving template
+    const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
+    const [notesModalForDate, setNotesModalForDate] = useState<Date | null>(null); // State to open notes modal for a specific date
 
 
     const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default general notes
@@ -444,8 +444,8 @@ export default function SchedulePage() {
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText, false); // Load general notes as string
-        const loadedEvents = loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, [], true); // Load calendar notes/events
-        const loadedTemplates = loadScheduleTemplates(); // Load schedule templates
+        const loadedEvents = loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, []); // Load calendar notes/events
+        const loadedTpls = loadScheduleTemplates(); // Load schedule templates using the new function
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
@@ -453,7 +453,7 @@ export default function SchedulePage() {
         setScheduleData(loadedSched);
         setNotes(loadedNotesStr);
         setScheduleNotes(loadedEvents); // Set loaded calendar notes
-        setSavedTemplates(loadedTemplates); // Set loaded schedule templates
+        setSavedTemplates(loadedTpls); // Set loaded schedule templates
 
         // Set initial selected location and update form defaults accordingly
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
@@ -604,6 +604,7 @@ export default function SchedulePage() {
     const deleteScheduleNote = useCallback((noteId: string) => {
         setScheduleNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
         toast({ title: "Anotación Eliminada", variant: 'destructive' });
+        setNoteToDeleteId(null); // Close the confirmation dialog after deletion
     }, [toast]);
 
     // Function to get notes for a specific date
@@ -612,6 +613,12 @@ export default function SchedulePage() {
          const dateKey = format(date, 'yyyy-MM-dd');
          return scheduleNotes.filter(note => note.date === dateKey);
      }, [scheduleNotes]);
+
+    // Function to open the notes modal specifically for a date, filtering the notes
+    const handleOpenNotesModalForDate = (date: Date) => {
+        setNotesModalForDate(date); // Set the date context
+        setIsNotesModalOpen(true);
+    };
 
     const weekDates = getWeekDates(currentDate);
 
@@ -1395,7 +1402,7 @@ export default function SchedulePage() {
             }
 
             const newTemplate: ScheduleTemplate = {
-                id: `tpl-${Date.now()}`,
+                id: `${SCHEDULE_TEMPLATES_KEY}${Date.now()}`, // Use constant in key
                 name: name.trim(),
                 locationId: selectedLocationId,
                 type: templateType,
@@ -1403,7 +1410,12 @@ export default function SchedulePage() {
                 createdAt: new Date(),
             };
 
-            setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+            // Save directly to localStorage using the template ID as the key
+            localStorage.setItem(newTemplate.id, JSON.stringify(newTemplate));
+
+            // Update the state by reloading all templates
+            setSavedTemplates(loadScheduleTemplates());
+
             toast({ title: 'Template Guardado', description: `Template "${newTemplate.name}" guardado.` });
             setTemplateToSaveName(''); // Clear input field
          } catch (error) {
@@ -1416,6 +1428,7 @@ export default function SchedulePage() {
 
      const handleLoadTemplate = useCallback((templateId: string) => {
         console.log("Intentando cargar template con ID:", templateId);
+        // Find template directly from state
         const templateToLoad = savedTemplates.find(t => t.id === templateId);
 
         if (!templateToLoad) {
@@ -1529,13 +1542,20 @@ export default function SchedulePage() {
         // Optionally close the modal
          setIsTemplateModalOpen(false);
 
-    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate, weekDates]); // Added dependencies
+    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]); // Removed weekDates
 
 
       const handleDeleteTemplate = (templateId: string) => {
-         setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
-         toast({ title: 'Template Eliminado', variant: 'destructive' });
-         setTemplateToDeleteId(null); // Close confirmation dialog if open
+         try {
+             localStorage.removeItem(templateId); // Remove from localStorage using its ID as the key
+             setSavedTemplates(prev => prev.filter(t => t.id !== templateId)); // Update state
+             toast({ title: 'Template Eliminado', variant: 'destructive' });
+             setTemplateToDeleteId(null); // Close confirmation dialog if open
+         } catch (error) {
+             console.error("Error deleting template from localStorage:", error);
+             toast({ title: 'Error al Eliminar', description: 'No se pudo eliminar el template.', variant: 'destructive' });
+             setTemplateToDeleteId(null);
+         }
      };
 
       const handleConfirmDeleteTemplate = (templateId: string) => {
@@ -1756,7 +1776,7 @@ export default function SchedulePage() {
                                                  <Plus className="h-4 w-4" />
                                              </Button>
                                          </div>
-                                         <ScrollArea className="flex-grow"> {/* ScrollArea takes remaining space */}
+                                         <ScrollArea className="h-[40vh]"> {/* Fixed height */}
                                              <ul className="space-y-2 text-sm pr-2">
                                                  {locations.map((loc) => (
                                                      <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
@@ -1783,7 +1803,7 @@ export default function SchedulePage() {
                                                  <Plus className="h-4 w-4" />
                                              </Button>
                                          </div>
-                                         <ScrollArea className="flex-grow"> {/* ScrollArea takes remaining space */}
+                                         <ScrollArea className="h-[40vh]"> {/* Fixed height */}
                                              <ul className="space-y-2 text-sm pr-2">
                                                  {departments.map((dep) => (
                                                      <li key={dep.id} className="flex items-center justify-between group py-1 border-b">
@@ -1813,7 +1833,7 @@ export default function SchedulePage() {
                                                  <Plus className="h-4 w-4" />
                                              </Button>
                                          </div>
-                                         <ScrollArea className="flex-grow"> {/* ScrollArea takes remaining space */}
+                                         <ScrollArea className="h-[40vh]"> {/* Fixed height */}
                                              <ul className="space-y-2 text-sm pr-2">
                                                  {employees.map((emp) => (
                                                      <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
@@ -1940,6 +1960,7 @@ export default function SchedulePage() {
                               isHoliday={isHoliday}
                               isMobile={isMobile}
                               getNotesForDate={getNotesForDate}
+                              onOpenNotesModal={handleOpenNotesModalForDate} // Pass the new handler
                               employees={employees} // Pass employees to ScheduleView
                           />
                        </div>
@@ -1948,59 +1969,6 @@ export default function SchedulePage() {
 
                  {/* --- Bottom Actions Row --- */}
                   <div className="flex flex-wrap justify-end gap-2 mt-6">
-                    {/* Template Button */}
-                    <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                                <List className="mr-2 h-4 w-4" /> Templates
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>Gestionar Templates de Horario</DialogTitle>
-                                <DialogDescription>
-                                    Guarda la vista actual como template o carga uno existente para la sede '{locations.find(l => l.id === selectedLocationId)?.name}' en vista {viewMode === 'day' ? 'Diaria' : 'Semanal'}.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                             {/* Save Template Section */}
-                             <div className="pt-4 border-t">
-                                 <Label htmlFor="template-name" className="mb-2 block">Nombre del Nuevo Template:</Label>
-                                <div className="flex gap-2">
-                                     <Input
-                                         id="template-name"
-                                         value={templateToSaveName}
-                                         onChange={(e) => setTemplateToSaveName(e.target.value)}
-                                         placeholder={`Template ${viewMode === 'day' ? 'Diario' : 'Semanal'} ${format(viewMode === 'day' ? targetDate : currentDate, 'dd-MMM', { locale: es })}`}
-                                         disabled={isSavingTemplate}
-                                     />
-                                     <Button onClick={() => handleSaveTemplate(templateToSaveName)} disabled={!templateToSaveName.trim() || isSavingTemplate} className="flex-shrink-0">
-                                         {isSavingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                          <span className="ml-2">Guardar Actual</span>
-                                     </Button>
-                                </div>
-                             </div>
-
-                              <Separator className="my-4" />
-
-                             {/* Load/Delete Template Section */}
-                             <div className="flex-grow overflow-hidden">
-                                 <h4 className="mb-3 font-medium">Templates Guardados ({filteredTemplates.length} para esta vista):</h4>
-                                 <ScheduleTemplateList
-                                     templates={filteredTemplates} // Pass filtered templates
-                                     onLoadTemplate={handleLoadTemplate}
-                                     onDeleteTemplate={handleConfirmDeleteTemplate} // Use confirmation for delete
-                                 />
-                             </div>
-
-                            <DialogFooter className="mt-4">
-                                <DialogClose asChild>
-                                    <Button variant="secondary">Cerrar</Button>
-                                </DialogClose>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-
                      {/* Notes Button */}
                      <Button onClick={() => setIsNotesModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
@@ -2022,6 +1990,86 @@ export default function SchedulePage() {
                             <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
                         </Button>
                     )}
+                    {/* Template Button */}
+                     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+                         <DialogTrigger asChild>
+                             <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                                 <List className="mr-2 h-4 w-4" /> Templates
+                             </Button>
+                         </DialogTrigger>
+                         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+                             <DialogHeader>
+                                 <DialogTitle>Gestionar Templates de Horario</DialogTitle>
+                                 <DialogDescription>
+                                     Guarda la vista actual como template o carga uno existente para la sede '{locations.find(l => l.id === selectedLocationId)?.name}' en vista {viewMode === 'day' ? 'Diaria' : 'Semanal'}.
+                                 </DialogDescription>
+                             </DialogHeader>
+
+                              {/* Save Template Section */}
+                              <div className="pt-4 border-t">
+                                  <Label htmlFor="template-name" className="mb-2 block">Nombre del Nuevo Template:</Label>
+                                 <div className="flex gap-2">
+                                      <Input
+                                          id="template-name"
+                                          value={templateToSaveName}
+                                          onChange={(e) => setTemplateToSaveName(e.target.value)}
+                                          placeholder={`Template ${viewMode === 'day' ? 'Diario' : 'Semanal'} ${format(viewMode === 'day' ? targetDate : currentDate, 'dd-MMM', { locale: es })}`}
+                                          disabled={isSavingTemplate}
+                                      />
+                                      <Button onClick={() => handleSaveTemplate(templateToSaveName)} disabled={!templateToSaveName.trim() || isSavingTemplate} className="flex-shrink-0">
+                                          {isSavingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                           <span className="ml-2">Guardar Actual</span>
+                                      </Button>
+                                 </div>
+                              </div>
+
+                               <Separator className="my-4" />
+
+                              {/* Load/Delete Template Section */}
+                              <div className="flex-grow overflow-hidden">
+                                  <h4 className="mb-3 font-medium">Templates Guardados ({filteredTemplates.length} para esta vista):</h4>
+                                  {filteredTemplates.length > 0 ? (
+                                       <ScrollArea className="h-[250px] pr-4">
+                                          <ul className="space-y-3">
+                                             {filteredTemplates.map((template) => (
+                                                <li key={template.id} className="flex items-center justify-between p-3 border rounded-md bg-background hover:bg-accent">
+                                                   <span className="font-medium truncate mr-2 flex flex-col" title={template.name}>
+                                                      {template.name || `Template (${template.id.substring(0, 8)})`}
+                                                       <span className="text-xs text-muted-foreground">
+                                                           ({template.type === 'week' ? 'Semanal' : 'Diario'})
+                                                           {template.createdAt instanceof Date ? ` - ${format(template.createdAt, 'dd/MM/yy', { locale: es })}` : ''}
+                                                       </span>
+                                                   </span>
+                                                   <div className="flex items-center gap-1 flex-shrink-0">
+                                                      <Button variant="outline" size="sm" onClick={() => handleLoadTemplate(template.id)} title="Cargar Template">
+                                                         <Upload className="h-4 w-4" />
+                                                      </Button>
+                                                      <AlertDialog>
+                                                         <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDeleteTemplate(template.id)} title="Eliminar Template">
+                                                               <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                         </AlertDialogTrigger>
+                                                      </AlertDialog>
+                                                   </div>
+                                                </li>
+                                             ))}
+                                          </ul>
+                                       </ScrollArea>
+                                  ) : (
+                                       <p className="text-sm text-muted-foreground italic text-center py-4">
+                                           No hay templates guardados para esta sede y vista.
+                                       </p>
+                                  )}
+                              </div>
+
+                             <DialogFooter className="mt-4">
+                                 <DialogClose asChild>
+                                     <Button variant="secondary">Cerrar</Button>
+                                 </DialogClose>
+                             </DialogFooter>
+                         </DialogContent>
+                     </Dialog>
                     <Button onClick={handleSaveSchedule} variant="default" className="hover:bg-primary/90">
                         <Save className="mr-2 h-4 w-4" /> Guardar Horario
                     </Button>
@@ -2030,34 +2078,97 @@ export default function SchedulePage() {
 
 
             {/* Editable Notes Section */}
-            <div className="mt-8 bg-transparent border-none shadow-none p-0"> {/* Removed card styling */}
-                 <h3 className="text-lg font-semibold text-foreground mb-2">Notas Generales</h3>
-                 <p className="text-sm text-muted-foreground mb-4">
-                    Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
-                 </p>
-                <Textarea
-                    value={notes}
-                    onChange={handleNotesChange}
-                    placeholder="Ej: Cierre anticipado el jueves por fumigación..."
-                    rows={4}
-                    className="w-full bg-card border border-border rounded-md shadow-sm" // Added card-like styling to textarea
-                />
-                <div className="flex justify-end mt-4">
-                    <Button onClick={handleSaveNotes}>Guardar Notas</Button>
-                </div>
-            </div>
+             <Card className="mt-8 bg-transparent border-none shadow-none p-0"> {/* Removed card styling */}
+                 <CardHeader className="px-0 pt-0 pb-2">
+                     <CardTitle className="text-lg font-semibold text-foreground mb-2">Notas Generales</CardTitle>
+                     <CardDescription className="text-sm text-muted-foreground">
+                        Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
+                     </CardDescription>
+                 </CardHeader>
+                 <CardContent className="px-0 pb-0">
+                    <Textarea
+                        value={notes}
+                        onChange={handleNotesChange}
+                        placeholder="Ej: Cierre anticipado el jueves por fumigación..."
+                        rows={4}
+                        className="w-full bg-card border border-border rounded-md shadow-sm" // Added card-like styling to textarea
+                    />
+                 </CardContent>
+                 <CardFooter className="flex justify-end mt-4 px-0 pb-0">
+                     <Button onClick={handleSaveNotes}>Guardar Notas</Button>
+                 </CardFooter>
+             </Card>
 
              {/* --- Modals --- */}
 
-             {/* Schedule Notes Modal */}
+             {/* Schedule Notes Modal (for adding and general viewing) */}
              <ScheduleNotesModal
-                 isOpen={isNotesModalOpen}
+                 isOpen={isNotesModalOpen && !notesModalForDate} // Open only if general notes are requested
                  onClose={() => setIsNotesModalOpen(false)}
                  notes={scheduleNotes}
                  employees={employees} // Pass employees for the dropdown
                  onAddNote={addScheduleNote}
-                 onDeleteNote={deleteScheduleNote}
+                 onDeleteNote={(id) => setNoteToDeleteId(id)} // Trigger confirmation dialog
+                 initialDate={undefined} // No specific date pre-selected
              />
+
+            {/* Schedule Notes Modal (for viewing/deleting notes of a specific date) */}
+            <Dialog open={!!notesModalForDate} onOpenChange={(open) => !open && setNotesModalForDate(null)}>
+                 <DialogContent className="sm:max-w-md">
+                     <DialogHeader>
+                         <DialogTitle>Anotaciones para {notesModalForDate ? format(notesModalForDate, 'PPP', { locale: es }) : ''}</DialogTitle>
+                         <DialogDescription>Haz clic en una nota para eliminarla.</DialogDescription>
+                     </DialogHeader>
+                     <div className="py-4">
+                         {(notesModalForDate ? getNotesForDate(notesModalForDate) : []).length > 0 ? (
+                             <ul className="space-y-2">
+                                 {(notesModalForDate ? getNotesForDate(notesModalForDate) : []).map(note => (
+                                     <li key={note.id}>
+                                         <AlertDialog>
+                                             <AlertDialogTrigger asChild>
+                                                  <Button variant="outline" className="w-full h-auto justify-start text-left whitespace-normal">
+                                                       <span className="font-medium">{note.note}</span>
+                                                       {note.employeeId && employees.find(e => e.id === note.employeeId) && (
+                                                           <span className="text-xs text-muted-foreground ml-1 italic">
+                                                                - {employees.find(e => e.id === note.employeeId)?.name}
+                                                            </span>
+                                                       )}
+                                                  </Button>
+                                             </AlertDialogTrigger>
+                                             <AlertDialogContent>
+                                                 <AlertDialogHeader>
+                                                     <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                                                     <AlertDialogDescription>
+                                                         "{note.note}" ({note.employeeId ? `Vinculada a ${employees.find(e => e.id === note.employeeId)?.name}` : 'General'})
+                                                         <br />Esta acción no se puede deshacer.
+                                                     </AlertDialogDescription>
+                                                 </AlertDialogHeader>
+                                                 <AlertDialogFooter>
+                                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                     <AlertDialogAction
+                                                         onClick={() => deleteScheduleNote(note.id)}
+                                                         className="bg-destructive hover:bg-destructive/90"
+                                                     >
+                                                         Eliminar Anotación
+                                                     </AlertDialogAction>
+                                                 </AlertDialogFooter>
+                                             </AlertDialogContent>
+                                         </AlertDialog>
+                                     </li>
+                                 ))}
+                             </ul>
+                         ) : (
+                             <p className="text-sm text-muted-foreground italic text-center">No hay anotaciones para esta fecha.</p>
+                         )}
+                     </div>
+                     <DialogFooter>
+                         <DialogClose asChild>
+                             <Button variant="secondary">Cerrar</Button>
+                         </DialogClose>
+                     </DialogFooter>
+                 </DialogContent>
+            </Dialog>
+
 
              {/* Location Modal */}
              <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
@@ -2278,6 +2389,28 @@ export default function SchedulePage() {
                      </AlertDialogFooter>
                  </AlertDialogContent>
              </AlertDialog>
+
+             {/* Note Delete Confirmation Dialog */}
+             <AlertDialog open={!!noteToDeleteId} onOpenChange={(open) => !open && setNoteToDeleteId(null)}>
+                 <AlertDialogContent>
+                     <AlertDialogHeader>
+                         <AlertDialogTitle>¿Eliminar Anotación?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                             ¿Estás seguro de que quieres eliminar esta anotación? No se puede deshacer.
+                         </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                         <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction
+                             className="bg-destructive hover:bg-destructive/90"
+                             onClick={() => noteToDeleteId && deleteScheduleNote(noteToDeleteId)}
+                         >
+                             Eliminar Anotación
+                         </AlertDialogAction>
+                     </AlertDialogFooter>
+                 </AlertDialogContent>
+             </AlertDialog>
+
 
         </main>
     );

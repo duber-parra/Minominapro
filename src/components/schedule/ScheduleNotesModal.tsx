@@ -14,6 +14,17 @@ import {
   DialogTitle,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,32 +43,39 @@ interface ScheduleNotesModalProps {
   notes: ScheduleNote[];
   employees: Employee[]; // To populate the dropdown
   onAddNote: (newNoteData: Omit<ScheduleNote, 'id'>) => void;
-  onDeleteNote: (noteId: string) => void;
+  onDeleteNote: (noteId: string) => void; // Changed prop name to onDeleteNote
+  initialDate?: Date; // Optional initial date
 }
 
 export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
   isOpen,
   onClose,
-  notes,
+  notes: allNotes, // Rename prop to avoid conflict
   employees,
   onAddNote,
-  onDeleteNote,
+  onDeleteNote, // Use the renamed prop
+  initialDate, // Receive initial date
 }) => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
   const [noteText, setNoteText] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Reset form when modal opens
+  // Filter notes based on initialDate if provided
+  const filteredNotes = initialDate
+    ? allNotes.filter(note => note.date === format(initialDate, 'yyyy-MM-dd'))
+    : allNotes;
+
+  // Reset form when modal opens or initialDate changes
   useEffect(() => {
     if (isOpen) {
-      setSelectedDate(new Date());
+      setSelectedDate(initialDate || new Date()); // Use initialDate if available
       setNoteText('');
       setSelectedEmployeeId(undefined);
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialDate]);
 
   const handleAddClick = () => {
     setError(null);
@@ -90,118 +108,142 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <NotebookPen className="h-5 w-5" />
-            Anotaciones Futuras / Eventos
+            {initialDate ? `Anotaciones para ${format(initialDate, 'PPP', { locale: es })}` : 'Anotaciones Futuras / Eventos'}
           </DialogTitle>
           <DialogDescription>
-            Agrega o elimina notas para fechas específicas. Se mostrará un indicador (🗓️) en el planificador esos días.
+            {initialDate ? 'Haz clic en una nota para eliminarla.' : 'Agrega o elimina notas para fechas específicas.'}
           </DialogDescription>
         </DialogHeader>
 
-        {/* --- Formulario para añadir nota --- */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b pb-6">
-          {/* Date Picker */}
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="note-date">Fecha</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="note-date"
-                  variant={'outline'}
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !selectedDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  initialFocus
-                  locale={es}
+        {/* --- Formulario para añadir nota (only if not viewing specific date) --- */}
+        {!initialDate && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b pb-6">
+            {/* Date Picker */}
+            <div className="space-y-2 sm:col-span-1">
+                <Label htmlFor="note-date">Fecha</Label>
+                <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                    id="note-date"
+                    variant={'outline'}
+                    className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !selectedDate && 'text-muted-foreground'
+                    )}
+                    >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, 'PPP', { locale: es }) : <span>Selecciona fecha</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    locale={es}
+                    />
+                </PopoverContent>
+                </Popover>
+            </div>
+
+            {/* Note Text */}
+            <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="note-text">Nota / Descripción</Label>
+                <Textarea
+                    id="note-text"
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Ej: Cumpleaños Carlos P., Solo hasta mediodía..."
+                    rows={3}
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
+            </div>
 
-          {/* Note Text */}
-          <div className="space-y-2 sm:col-span-2">
-             <Label htmlFor="note-text">Nota / Descripción</Label>
-             <Textarea
-                id="note-text"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Ej: Cumpleaños Carlos P., Solo hasta mediodía..."
-                rows={3}
-             />
-          </div>
+            {/* Optional Employee Link */}
+            <div className="space-y-2 sm:col-span-3">
+                <Label htmlFor="note-employee">Colaborador (Opcional)</Label>
+                <Select value={selectedEmployeeId} onValueChange={(value) => setSelectedEmployeeId(value === 'ninguno' ? undefined : value)}>
+                <SelectTrigger id="note-employee">
+                    <SelectValue placeholder="Vincular a colaborador..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="ninguno">Ninguno</SelectItem>
+                    {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
 
-          {/* Optional Employee Link */}
-          <div className="space-y-2 sm:col-span-3">
-            <Label htmlFor="note-employee">Colaborador (Opcional)</Label>
-            <Select value={selectedEmployeeId} onValueChange={(value) => setSelectedEmployeeId(value === 'ninguno' ? undefined : value)}>
-              <SelectTrigger id="note-employee">
-                <SelectValue placeholder="Vincular a colaborador..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ninguno">Ninguno</SelectItem>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Error Message */}
+            {error && <p className="text-sm text-destructive sm:col-span-3">{error}</p>}
 
-           {/* Error Message */}
-          {error && <p className="text-sm text-destructive sm:col-span-3">{error}</p>}
+            {/* Add Button */}
+            <div className="sm:col-span-3 flex justify-end">
+                <Button onClick={handleAddClick}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Añadir Anotación
+                </Button>
+            </div>
+            </div>
+        )}
 
-          {/* Add Button */}
-          <div className="sm:col-span-3 flex justify-end">
-             <Button onClick={handleAddClick}>
-                 <PlusCircle className="mr-2 h-4 w-4" /> Añadir Anotación
-             </Button>
-          </div>
-        </div>
 
         {/* --- Lista de notas existentes --- */}
         <div className="flex-grow overflow-hidden py-4">
-          <h4 className="mb-3 font-medium text-sm text-foreground">Anotaciones Guardadas</h4>
-          {notes.length > 0 ? (
+          <h4 className="mb-3 font-medium text-sm text-foreground">
+              {initialDate ? `Anotaciones Existentes (${filteredNotes.length})` : `Anotaciones Guardadas (${allNotes.length})`}
+          </h4>
+          {(initialDate ? filteredNotes : allNotes).length > 0 ? (
             <ScrollArea className="h-[35vh] pr-4"> {/* Ajusta altura según necesites */}
               <ul className="space-y-2">
-                {notes.map((note) => {
+                {(initialDate ? filteredNotes : allNotes).map((note) => {
                    const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
                    const noteDate = parseDateFns(note.date, 'yyyy-MM-dd', new Date());
-                   const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE dd MMM', { locale: es }) : note.date;
+                   // Format date for display: Abbreviated day, numeric day, abbreviated month
+                   const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE d MMM', { locale: es }) : note.date;
                   return (
                     <li key={note.id} className="flex items-start justify-between p-2 border rounded-md bg-background text-sm">
-                      <div className="flex-grow mr-2">
-                         <span className="font-medium text-foreground">{note.note}</span>
-                         <span className="block text-xs text-muted-foreground">
-                            {formattedDate}
-                            {employeeName ? ` - ${employeeName}` : ''}
-                         </span>
+                      <div className="flex-grow mr-2 overflow-hidden"> {/* Added overflow-hidden */}
+                         {/* Trigger AlertDialog on click */}
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <button className="text-left w-full cursor-pointer hover:text-primary transition-colors">
+                                     <span className="font-medium text-foreground block truncate">{note.note}</span> {/* Added truncate */}
+                                     <span className="block text-xs text-muted-foreground truncate"> {/* Added truncate */}
+                                        {formattedDate}
+                                        {employeeName ? ` - ${employeeName}` : ''}
+                                     </span>
+                                </button>
+                            </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                   <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                      "{note.note}" ({formattedDate}{employeeName ? ` - ${employeeName}` : ''})
+                                      <br/>Esta acción no se puede deshacer.
+                                   </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction
+                                      onClick={() => onDeleteNote(note.id)}
+                                      className="bg-destructive hover:bg-destructive/90">
+                                      Eliminar Anotación
+                                   </AlertDialogAction>
+                                </AlertDialogFooter>
+                             </AlertDialogContent>
+                         </AlertDialog>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 flex-shrink-0 text-destructive hover:bg-destructive/10"
-                        onClick={() => onDeleteNote(note.id)}
-                        title="Eliminar anotación"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Removed direct delete button, now handled by clicking the note */}
                     </li>
                   );
                  })}
               </ul>
             </ScrollArea>
           ) : (
-            <p className="text-sm text-muted-foreground italic text-center py-4">No hay anotaciones guardadas.</p>
+            <p className="text-sm text-muted-foreground italic text-center py-4">
+                {initialDate ? 'No hay anotaciones para esta fecha.' : 'No hay anotaciones guardadas.'}
+            </p>
           )}
         </div>
 
