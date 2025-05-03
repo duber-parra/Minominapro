@@ -3,10 +3,10 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import Image from 'next/image'; // Import next/image
-import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
+import { WorkdayForm } from '@/components/workday-form'; // Removed formSchema import as it's not used directly here
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, ScheduleTemplate } from '@/types'; // Added AdjustmentItem and SavedPayrollData, ScheduleTemplate
-// Removed unused import ShiftTemplate, using schedule types directly
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
+// Removed unused import ShiftTemplate
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, Copy, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet icon
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react'; // Removed FileUp, FileSpreadsheet icons
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -41,8 +41,7 @@ import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the s
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
-import { z } from 'zod'; // Import Zod
-import { generateSinglePayrollCSV, generateBulkPayrollCSV, downloadCSV } from '@/lib/csv-utils'; // Import CSV utils
+// Removed Zod import and CSV utils import
 // Import DropdownMenu components
 import {
   DropdownMenu,
@@ -168,107 +167,7 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
     });
 };
 
-// --- CSV Parsing ---
-// Define Zod schema for expected CSV row structure
-const csvRowSchema = z.object({
-  ID_Empleado: z.string().min(1, "ID_Empleado no puede estar vacío."),
-  Fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de Fecha inválido (AAAA-MM-DD)."),
-  Hora_Inicio: z.string().regex(/^\d{2}:\d{2}$/, "Formato de Hora_Inicio inválido (HH:MM)."),
-  Hora_Fin: z.string().regex(/^\d{2}:\d{2}$/, "Formato de Hora_Fin inválido (HH:MM)."),
-  Descanso_Inicio: z.string().optional(), // Optional, format validation later if present
-  Descanso_Fin: z.string().optional(),    // Optional, format validation later if present
-});
-
-// Type inferred from Zod schema
-type CsvRow = z.infer<typeof csvRowSchema>;
-
-// Helper function to parse CSV content
-const parseScheduleCSV = (csvContent: string): { data: CsvRow[], errors: z.ZodError[] } => {
-    const lines = csvContent.trim().split('\n');
-    if (lines.length < 2) {
-        throw new Error("El archivo CSV está vacío o no contiene datos.");
-    }
-
-    const headerLine = lines[0].trim();
-    console.log('DEBUG: Raw Header Line Read:', headerLine); // Log raw header
-
-    // Basic check for essential headers (adjust as needed)
-    const requiredHeaders = ["ID_Empleado", "Fecha", "Hora_Inicio", "Hora_Fin"]; // Simplified check
-    console.log('DEBUG: Required Headers List (Code):', requiredHeaders); // Log required headers
-
-    // Attempt to detect delimiter (comma or semicolon)
-    let delimiter = ',';
-    if (headerLine.includes(';') && !headerLine.includes(',')) {
-        delimiter = ';';
-    }
-    console.log('DEBUG: Delimiter Used:', delimiter); // Log detected delimiter
-
-    const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, '')); // Trim spaces and remove surrounding quotes
-    console.log('DEBUG: Extracted Headers Array:', headers); // Log extracted headers
-
-    const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
-    if (missingHeaders.length > 0) {
-        console.error("[CSV Parse] Missing required headers:", missingHeaders.join(', '));
-        // console.error("[CSV Parse] Extracted Headers:", headers); // Already logged above
-        // console.error("[CSV Parse] Required Headers:", requiredHeaders); // Already logged above
-        throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}. Asegúrate de que el archivo incluya estas columnas.`);
-    }
-
-    const data: CsvRow[] = [];
-    const errors: z.ZodError[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue; // Skip empty lines
-
-        // Split line based on detected delimiter, handle quoted fields if necessary
-        // Basic split for now, consider a more robust CSV parser library for complex cases
-        const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
-
-        const rowObject: { [key: string]: string } = {};
-        headers.forEach((header, index) => {
-            rowObject[header] = values[index] || ''; // Use detected headers
-        });
-
-        // Validate row using Zod
-        const result = csvRowSchema.safeParse(rowObject);
-
-        if (result.success) {
-            // Additional validation for optional break times if they exist
-            const rowData = result.data;
-            let breakValid = true;
-            if (rowData.Descanso_Inicio || rowData.Descanso_Fin) {
-                 if (!rowData.Descanso_Inicio || !rowData.Descanso_Fin ||
-                     !/^\d{2}:\d{2}$/.test(rowData.Descanso_Inicio) ||
-                     !/^\d{2}:\d{2}$/.test(rowData.Descanso_Fin)) {
-                     errors.push(new z.ZodError([{ code: z.ZodIssueCode.custom, path: [`line ${i+1}`, 'Descanso'], message: "Si se incluye Descanso_Inicio o Descanso_Fin, ambos deben estar presentes y en formato HH:MM." }]));
-                     breakValid = false;
-                 } else if (rowData.Descanso_Inicio >= rowData.Descanso_Fin) {
-                     errors.push(new z.ZodError([{ code: z.ZodIssueCode.custom, path: [`line ${i+1}`, 'Descanso_Fin'], message: "Descanso_Fin debe ser posterior a Descanso_Inicio." }]));
-                     breakValid = false;
-                 }
-            }
-            if (breakValid) {
-                data.push(rowData);
-            }
-        } else {
-            // Add line number information to Zod errors
-             const zodErrorWithLine = new z.ZodError(
-                result.error.issues.map(issue => ({
-                    ...issue,
-                    path: [`line ${i + 1}`, ...issue.path] // Prepend line number
-                }))
-             );
-            errors.push(zodErrorWithLine);
-             console.warn(`[CSV Parse] Validation error on line ${i + 1}:`, result.error.issues); // Log validation errors
-        }
-    }
-    console.log('DEBUG: Final Parsed Data Count:', data.length);
-    console.log('DEBUG: Final Parse Errors Count:', errors.length);
-
-    return { data, errors };
-};
-
+// --- Removed CSV Parsing logic ---
 
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
@@ -291,7 +190,7 @@ export default function Home() {
     const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
     const [savedPayrolls, setSavedPayrolls] = useState<SavedPayrollData[]>([]);
     const [payrollToDeleteKey, setPayrollToDeleteKey] = useState<string | null>(null);
-    const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+    // Removed isDraggingOver state
 
     const [otrosIngresos, setOtrosIngresos] = useState<AdjustmentItem[]>([]);
     const [otrasDeducciones, setOtrasDeducciones] = useState<AdjustmentItem[]>([]);
@@ -300,7 +199,7 @@ export default function Home() {
 
     const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Removed fileInputRef
 
     const { toast } = useToast();
 
@@ -473,194 +372,14 @@ export default function Home() {
     }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]);
 
 
-    // --- CSV Handling ---
-    const processCSVFile = async (file: File): Promise<{ results: (CalculationResults | CalculationError)[], summary?: string }> => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const csvContent = event.target?.result as string;
-                if (!csvContent) {
-                    resolve({ results: [{ error: "No se pudo leer el archivo CSV." }] });
-                    return;
-                }
-                try {
-                    console.log("CSV Content:", csvContent); // Log raw content
-                    const { data: parsedData, errors: parseErrors } = parseScheduleCSV(csvContent);
-                    console.log("Parsed Data:", parsedData); // Log parsed data
-                    console.log("Parse Errors:", parseErrors); // Log parsing errors
+    // --- Removed CSV Handling ---
 
-                    if (parseErrors.length > 0) {
-                        const errorMessages = parseErrors.map(err =>
-                            err.issues.map(issue => `Línea ${issue.path[0]}: ${issue.message} (Campo: ${issue.path.slice(1).join('.')})`)
-                        ).flat();
-                        resolve({ results: [{ error: `Errores al validar CSV:\n- ${errorMessages.join('\n- ')}` }] });
-                        return;
-                    }
-
-                    if (parsedData.length === 0) {
-                        resolve({ results: [{ error: "El archivo CSV no contiene datos válidos o está vacío después del encabezado." }] });
-                        return;
-                    }
-
-                    const calculationPromises: Promise<CalculationResults | CalculationError>[] = [];
-                    let processedRows = 0;
-                    let skippedAlreadyCalculated = 0;
-
-                    for (const row of parsedData) {
-                        // Validate row employee ID against selected employee ID
-                        if (employeeId && row.ID_Empleado !== employeeId) {
-                           console.warn(`Omitiendo fila: ID de empleado (${row.ID_Empleado}) no coincide con el seleccionado (${employeeId}).`);
-                            continue; // Skip rows for different employees
-                        }
-                        const startDate = parseDateFns(row.Fecha, 'yyyy-MM-dd', new Date());
-                        if (!isValidDate(startDate)) {
-                            calculationPromises.push(Promise.resolve({ error: `Fecha inválida en fila CSV: ${row.Fecha}` }));
-                            continue;
-                        }
-
-                        // Check if date is within the selected pay period
-                         if (!payPeriodStart || !payPeriodEnd || startDate < payPeriodStart || startDate > payPeriodEnd) {
-                            console.warn(`Omitiendo fila: Fecha (${row.Fecha}) fuera del período seleccionado.`);
-                            continue; // Skip rows outside the selected period
-                         }
-
-                         // Check if the date is already calculated
-                        if (isDateCalculated(startDate)) {
-                             skippedAlreadyCalculated++;
-                             continue; // Skip already calculated dates
-                        }
-
-
-                        const values: WorkdayFormValues = {
-                            startDate: startDate,
-                            startTime: row.Hora_Inicio,
-                            endTime: row.Hora_Fin,
-                            endsNextDay: parseInt(row.Hora_Fin.split(':')[0]) < parseInt(row.Hora_Inicio.split(':')[0]),
-                            includeBreak: !!row.Descanso_Inicio && !!row.Descanso_Fin,
-                            breakStartTime: row.Descanso_Inicio || undefined,
-                            breakEndTime: row.Descanso_Fin || undefined,
-                        };
-
-                        const calculationId = `csv_${row.ID_Empleado}_${row.Fecha}_${Date.now()}`;
-                        calculationPromises.push(calculateSingleWorkday(values, calculationId));
-                        processedRows++;
-                    }
-
-                    if (processedRows === 0 && skippedAlreadyCalculated === 0) {
-                         resolve({ results: [{ error: "Ninguna fila del CSV coincide con el empleado/período seleccionado o todas ya estaban calculadas." }] });
-                         return;
-                    }
-
-                    const results = await Promise.all(calculationPromises);
-
-                    const summary = `CSV Procesado: ${processedRows} filas calculadas.` + (skippedAlreadyCalculated > 0 ? ` ${skippedAlreadyCalculated} filas omitidas (ya calculadas/fuera de período/otro empleado).` : '');
-
-                    resolve({ results, summary });
-
-                } catch (error) {
-                    console.error("Error processing CSV:", error);
-                    const message = error instanceof Error ? error.message : "Error desconocido al procesar CSV.";
-                    resolve({ results: [{ error: `Error procesando CSV: ${message}` }] });
-                }
-            };
-            reader.onerror = () => {
-                resolve({ results: [{ error: "Error al leer el archivo." }] });
-            };
-            reader.readAsText(file);
-        });
-    };
-
-    const handleCSVImport = async (file: File | null) => {
-        if (!file) return;
-        if (!employeeId || !payPeriodStart || !payPeriodEnd) {
-            toast({ title: 'Información Incompleta', description: 'Selecciona colaborador y período antes de importar CSV.', variant: 'destructive' });
-            return;
-        }
-        setIsLoadingDay(true); // Use isLoadingDay for CSV import as well
-        setErrorDay(null);
-
-        const { results, summary } = await processCSVFile(file);
-
-        const successfulCalculations = results.filter((r): r is CalculationResults => !isCalculationError(r));
-        const errors = results.filter(isCalculationError);
-
-        if (successfulCalculations.length > 0) {
-             setCalculatedDays(prevDays =>
-                [...prevDays, ...successfulCalculations].sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime())
-             );
-        }
-
-        setIsLoadingDay(false);
-
-        if (errors.length > 0) {
-            setErrorDay(`Errores durante importación CSV: ${errors.map(e => e.error).join('; ')}`);
-            toast({
-                title: 'Errores en Importación CSV',
-                description: `${errors.length} error(es) encontrado(s). ${summary || ''}`,
-                variant: 'destructive',
-                duration: 10000
-            });
-        } else if (successfulCalculations.length > 0) {
-            toast({
-                title: 'Importación CSV Exitosa',
-                description: summary || 'Turnos importados y calculados.',
-            });
-        } else {
-            // Handle case where no rows were processed or only skipped rows
-            toast({
-                title: 'Importación CSV',
-                description: summary || 'No se procesaron filas nuevas.',
-                variant: 'default',
-            });
-        }
-    };
-
-
-     // --- Drag and Drop Handlers ---
-     const handleDragOver = (event: DragEvent<HTMLElement>) => {
-         event.preventDefault();
-         setIsDraggingOver(true);
-     };
-
-     const handleDragLeave = (event: DragEvent<HTMLElement>) => {
-         event.preventDefault();
-         setIsDraggingOver(false);
-     };
-
-     const handleDrop = async (event: DragEvent<HTMLElement>) => {
-         event.preventDefault();
-         setIsDraggingOver(false);
-         const files = event.dataTransfer.files;
-         if (files && files.length > 0) {
-             const file = files[0];
-             if (file.type === "text/csv" || file.name.toLowerCase().endsWith('.csv')) { // More robust check
-                await handleCSVImport(file);
-             } else {
-                 toast({
-                     title: 'Archivo Inválido',
-                     description: 'Por favor, arrastra un archivo CSV.',
-                     variant: 'destructive',
-                 });
-             }
-         }
-     };
-
-     // Handler for file input change
-     const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-         const file = event.target.files?.[0];
-         if (file) {
-             await handleCSVImport(file);
-         }
-          // Reset file input to allow selecting the same file again
-          if (fileInputRef.current) {
-             fileInputRef.current.value = '';
-          }
-     };
-
-     // Trigger file input click
-     const triggerFileInput = () => {
-         fileInputRef.current?.click();
-     };
+     // --- Removed Drag and Drop Handlers ---
+     // Removed handleDragOver
+     // Removed handleDragLeave
+     // Removed handleDrop
+     // Removed handleFileChange
+     // Removed triggerFileInput
 
 
     const handleClearPeriodData = () => {
@@ -733,12 +452,7 @@ export default function Home() {
                 });
                 // Advance date automatically after successful ADDITION
                 const nextDay = addDays(data.inputData.startDate, 1);
-                // Use form's setValue to update the date in the form
-                // Check if form context exists (might not if rendered conditionally)
-                // Assuming WorkdayForm updates its own state, we might not need this?
-                // If WorkdayForm needs parent to update date, pass a handler prop.
-                // For now, relying on the toast message.
-                // setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true }); // Need form instance here
+                setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
              } else {
                  // Show a different toast for successful EDIT
                  toast({
@@ -992,57 +706,13 @@ export default function Home() {
       }
     };
 
-    // --- CSV Export Handlers ---
-    const handleExportSingleToCSV = () => {
-        if (!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
-            toast({ title: 'Datos Incompletos', description: 'No hay una nómina calculada para exportar.', variant: 'destructive' });
-            return;
-        }
-        const payrollData: SavedPayrollData = {
-            key: getStorageKey(employeeId, payPeriodStart, payPeriodEnd) || `temp_${Date.now()}`,
-            employeeId,
-            periodStart,
-            periodEnd,
-            summary: quincenalSummary,
-            otrosIngresosLista: otrosIngresos,
-            otrasDeduccionesLista: otrasDeducciones,
-            incluyeAuxTransporte
-        };
-        const csvContent = generateSinglePayrollCSV(payrollData);
-        const filename = `Nomina_${employeeId}_${format(payPeriodStart, 'yyyyMMdd')}.csv`;
-        downloadCSV(csvContent, filename);
-        toast({ title: 'CSV Exportado', description: `Nómina individual para ${employeeId} generada.` });
-    };
-
-    const handleBulkExportToCSV = () => {
-         const allPayrollData = loadAllSavedPayrolls();
-         if (allPayrollData.length === 0) {
-             toast({ title: 'No hay datos', description: 'No se encontraron nóminas guardadas para exportar.', variant: 'default' });
-             return;
-         }
-        const csvContent = generateBulkPayrollCSV(allPayrollData);
-        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
-        const filename = `Nominas_Guardadas_${timestamp}.csv`;
-        downloadCSV(csvContent, filename);
-        toast({ title: 'Exportación Masiva CSV Completa', description: `Se generó un CSV con ${allPayrollData.length} nóminas.` });
-    };
+    // --- Removed CSV Export Handlers ---
 
   return (
     <main
         className="container mx-auto p-4 md:p-8 max-w-7xl relative" // Added relative for overlay positioning
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        // Removed drag and drop handlers
     >
-       {/* Drag and Drop Overlay */}
-       {isDraggingOver && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-4 border-dashed border-primary rounded-lg pointer-events-none">
-                <div className="text-center text-primary font-semibold">
-                    <FileUp className="mx-auto h-12 w-12 mb-2" />
-                    <p>Suelta el archivo CSV aquí para importar</p>
-                </div>
-            </div>
-       )}
 
         {/* Decorative Images */}
         <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
@@ -1104,18 +774,8 @@ export default function Home() {
                   </Popover>
               </div>
 
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> {/* Increased to 4 columns */}
-                    {/* Hidden File Input */}
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".csv" style={{ display: 'none' }} />
-                    {/* Import CSV Button */}
-                     <Button onClick={triggerFileInput} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isLoadingDay}>
-                         {isLoadingDay && fileInputRef.current?.files?.length ? (
-                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         ) : (
-                             <FileUp className="mr-2 h-4 w-4" />
-                         )}
-                        Importar CSV
-                    </Button>
+                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4"> {/* Changed to 3 columns */}
+                    {/* Removed CSV Import Button */}
                    {/* Import Schedule Button */}
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
@@ -1133,22 +793,15 @@ export default function Home() {
                          <AlertDialogFooter> <AlertDialogCancel>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleClearPeriodData} className="bg-destructive hover:bg-destructive/90"> Limpiar Datos </AlertDialogAction> </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
-                   {/* Bulk Export Buttons */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                                <FileDown className="mr-2 h-4 w-4" /> Exportar Todo
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handleBulkExportPDF} disabled={savedPayrolls.length === 0}>
-                                <FileDown className="mr-2 h-4 w-4" /> PDF (Lista)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleBulkExportToCSV} disabled={savedPayrolls.length === 0}>
-                                <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                   {/* Bulk Export PDF Button */}
+                    <Button
+                         onClick={handleBulkExportPDF}
+                         variant="outline"
+                         className="w-full"
+                         disabled={savedPayrolls.length === 0}
+                    >
+                         <FileDown className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
+                    </Button>
                </div>
           </CardContent>
       </Card>
@@ -1258,8 +911,7 @@ export default function Home() {
                    onLoad={handleLoadSavedPayroll}
                    onDelete={(key) => setPayrollToDeleteKey(key)}
                    onBulkExport={handleBulkExportPDF} // Passed for PDF export
-                   onBulkExportCSV={handleBulkExportToCSV} // Passed for CSV export
-                   onExportSingleCSV={handleExportSingleToCSV} // Pass handler for single CSV
+                   // Removed CSV props
                />
                 <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
                    <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
@@ -1275,22 +927,13 @@ export default function Home() {
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados para {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
-                {/* Single Export Buttons */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
-                            <FileDown className="mr-2 h-4 w-4" /> Exportar Actual
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleExportPDF}>
-                            <FileDown className="mr-2 h-4 w-4" /> PDF (Detallado)
-                        </DropdownMenuItem>
-                         <DropdownMenuItem onClick={handleExportSingleToCSV}>
-                             <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
-                         </DropdownMenuItem>
-                    </DropdownMenuContent>
-                 </DropdownMenu>
+                {/* Single PDF Export Button */}
+                <Button
+                     onClick={handleExportPDF}
+                     variant="secondary"
+                     disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
+                     <FileDown className="mr-2 h-4 w-4" /> Exportar PDF Actual
+                </Button>
             </CardHeader>
             <CardContent>
                <ResultsDisplay
@@ -1320,4 +963,3 @@ export default function Home() {
   );
 }
 
-    

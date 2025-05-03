@@ -5,7 +5,7 @@
 import type { FC } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSearch, FileDown, Trash2, Users, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet
+import { FileSearch, FileDown, Trash2, Users } from 'lucide-react'; // Removed FileSpreadsheet
 import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,8 +25,7 @@ interface SavedPayrollListProps {
   onLoad: (key: string) => void;
   onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog in parent
   onBulkExport: () => void; // For PDF
-  onBulkExportCSV: () => void; // For bulk CSV export
-  onExportSingleCSV: (key: string) => void; // Pass callback with key
+  // Removed CSV props
 }
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({
@@ -34,8 +33,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     onLoad,
     onDelete, // Receives the function to initiate deletion (open dialog)
     onBulkExport,
-    onBulkExportCSV, // Receive bulk CSV handler
-    onExportSingleCSV // Receive single CSV handler
+    // Removed CSV props
 }) => {
 
     // Helper function to calculate final net pay for display
@@ -65,22 +63,17 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
             <CardDescription> Carga, elimina o exporta nóminas guardadas. </CardDescription>
         </div>
          <div className="absolute top-4 right-4 flex items-center gap-1">
-             {/* Bulk Export Dropdown */}
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
-                        <FileDown className="mr-1 h-3 w-3" /> Exportar Todo
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={onBulkExport} disabled={payrolls.length === 0}>
-                        <FileDown className="mr-2 h-4 w-4" /> PDF (Lista)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onBulkExportCSV} disabled={payrolls.length === 0}>
-                        <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
-                    </DropdownMenuItem>
-                 </DropdownMenuContent>
-             </DropdownMenu>
+             {/* Bulk Export PDF Button */}
+             <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={onBulkExport}
+                 disabled={payrolls.length === 0}
+                 className="px-2 py-1 h-auto"
+             >
+                 <FileDown className="mr-1 h-3 w-3" /> PDF
+             </Button>
+             {/* Removed Bulk Export Dropdown */}
         </div>
       </CardHeader>
       <CardContent>
@@ -99,11 +92,8 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                          </div>
                         <p className="text-xs text-muted-foreground mt-1"> Guardado: {payroll.createdAt ? format(payroll.createdAt, 'dd/MM/yyyy HH:mm', { locale: es }) : 'Fecha no disponible'} </p>
                       </div>
-                      <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0">
-                         {/* Export Single CSV Button */}
-                         <Button variant="ghost" size="icon" onClick={() => onExportSingleCSV(payroll.key)} title="Exportar a CSV" className="h-8 w-8">
-                             <FileSpreadsheet className="h-4 w-4" />
-                         </Button>
+                      <div className="absolute top-2 right-2 flex flex-col gap-1 flex-shrink-0"> {/* Changed to flex-col */}
+                         {/* Removed Export Single CSV Button */}
                         {/* Load Button */}
                         <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
                           <FileSearch className="h-4 w-4" />
@@ -131,5 +121,3 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     </Card>
   );
 };
-
-    
