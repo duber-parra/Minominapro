@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -42,20 +41,34 @@ const CalculadoraLaboral: React.FC = () => {
   const [endTime, setEndTime] = useState<string>('23:00');
   const [durationResult, setDurationResult] = useState<string>('');
 
+  // State to prevent hydration errors for client-only rendering parts
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+
   // --- Effect to handle clicks outside the calculator ---
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (calculatorRef.current && !calculatorRef.current.contains(event.target as Node)) {
+      // Only close if clicking outside AND it's currently open
+      if (isOpen && calculatorRef.current && !calculatorRef.current.contains(event.target as Node)) {
         setIsOpen(false); // Minimize if click is outside
       }
     }
-    // Bind the event listener
-    document.addEventListener("mousedown", handleClickOutside);
+    // Bind the event listener only if the component is open
+    if (isOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+    } else {
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
     return () => {
-      // Unbind the event listener on clean up
+      // Always remove listener on cleanup
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [calculatorRef]); // Only re-run if ref changes (shouldn't happen)
+  }, [calculatorRef, isOpen]); // Re-run if ref or isOpen changes
+
 
   const calculate = (op1: number, op2: number, op: OperatorType): number => {
     switch (op) {
@@ -115,9 +128,10 @@ const CalculadoraLaboral: React.FC = () => {
                      ? operand1 * (currentValue / 100)
                      : currentValue / 100;
       setDisplayValue(String(result));
-      setWaitingForOperand2(false);
+      setWaitingForOperand2(false); // Percent calculation is usually final for the current input
     }
   };
+
 
   const performOperation = (nextOperator: OperatorType) => {
     const inputValue = parseFloat(displayValue);
@@ -132,7 +146,7 @@ const CalculadoraLaboral: React.FC = () => {
            setWaitingForOperand2(false);
            return;
        }
-      setDisplayValue(String(result)); // Keep as string/number internally
+      setDisplayValue(String(result));
       setOperand1(result);
     } else {
       setOperand1(inputValue);
@@ -141,7 +155,8 @@ const CalculadoraLaboral: React.FC = () => {
     setOperator(nextOperator);
   };
 
-  const handleHourTypeClick = (type: HourType) => {
+
+   const handleHourTypeClick = (type: HourType) => {
     const hours = parseFloat(displayValue);
     const rate = valoresHoraLaboral[type];
 
@@ -161,44 +176,40 @@ const CalculadoraLaboral: React.FC = () => {
             setWaitingForOperand2(false);
             return;
        }
-      setDisplayValue(String(result)); // Store result as number/string
+      setDisplayValue(String(result));
       setOperand1(result);
-      setOperator(null);
-      setWaitingForOperand2(true);
+      setOperator(null); // Operator is consumed
+      setWaitingForOperand2(true); // Set wait=true to allow chaining next operator
     } else {
-      setDisplayValue(String(monetaryValue)); // Show calculated value as number/string
+      setDisplayValue(String(monetaryValue));
       setOperand1(monetaryValue);
-      setOperator(null);
-      setWaitingForOperand2(true);
+      setOperator(null); // No operator was pending
+      setWaitingForOperand2(true); // Set wait=true to allow chaining next operator
     }
   };
+
 
   const handleEquals = () => {
     const inputValue = parseFloat(displayValue);
+     if (isNaN(inputValue)) return; // Prevent NaN issues if display is "Error"
 
-    if (operator && operand1 !== null && !waitingForOperand2) {
-      const result = calculate(operand1, inputValue, operator);
+    if (operator && operand1 !== null) {
+      // If waitingForOperand2 is true, it means user pressed op1, operator, then equals (use op1 as op2)
+      // If waitingForOperand2 is false, it means user pressed op1, operator, op2, then equals
+      const operand2 = waitingForOperand2 ? operand1 : inputValue;
+      const result = calculate(operand1, operand2, operator);
       if (isNaN(result)) {
         setDisplayValue("Error");
       } else {
-        setDisplayValue(String(result)); // Display final result as number/string
+        setDisplayValue(String(result));
       }
-      setOperand1(null);
-      setOperator(null);
-      setWaitingForOperand2(false);
-    } else if (operand1 !== null && operator && waitingForOperand2) {
-       const result = calculate(operand1, operand1, operator);
-       if (isNaN(result)) {
-           setDisplayValue("Error");
-       } else {
-           setDisplayValue(String(result)); // Display repeated result as number/string
-           setOperand1(result);
-       }
-    } else if (operand1 !== null && !operator && waitingForOperand2) {
-        setDisplayValue(String(operand1)); // Display the existing operand1 as number/string
-        setWaitingForOperand2(false);
+      setOperand1(null); // Reset operand1 after equals
+      setOperator(null); // Reset operator
+      setWaitingForOperand2(false); // Ready for new calculation
     }
+    // If no operator, '=' does nothing, just keeps the current displayValue
   };
+
 
   const calculateDuration = useCallback(() => {
     try {
@@ -237,7 +248,7 @@ const CalculadoraLaboral: React.FC = () => {
            if (mode !== 'valorHoras' || !isOpen) return;
 
            const { key } = event;
-           if (displayValue === "Error" && key !== 'Backspace' && key !== 'Delete' && key !== 'c' && key !== 'C') {
+           if (displayValue === "Error" && key !== 'Backspace' && key !== 'Delete' && key !== 'c' && key !== 'C' && key !== 'Escape') {
                return;
            }
 
@@ -258,16 +269,20 @@ const CalculadoraLaboral: React.FC = () => {
                event.preventDefault();
                handleEquals();
            } else if (key === 'Backspace' || key === 'Delete') {
-               if (displayValue !== '0' && displayValue !== "Error") {
+                if (displayValue === "Error") {
+                   clearCalculator();
+                } else if (displayValue !== '0') {
                    if (displayValue.length > 1) {
                        setDisplayValue(displayValue.slice(0, -1));
                    } else {
                        setDisplayValue('0');
                    }
-                   setWaitingForOperand2(false);
-               } else if (displayValue === "Error") {
-                   clearCalculator();
-               }
+                   // If user backspaces after pressing an operator, allow new input
+                   if (waitingForOperand2 && operator) {
+                        // Maybe don't change waiting state? Or handle differently?
+                        // Let's keep it simple: allow backspace always
+                   }
+                }
            } else if (key === 'Escape' || key === 'c' || key === 'C') {
                clearCalculator();
            } else if (key === '%') {
@@ -279,15 +294,16 @@ const CalculadoraLaboral: React.FC = () => {
        return () => {
            window.removeEventListener('keydown', handleKeyDown);
        };
-   }, [mode, isOpen, displayValue, operator, operand1, waitingForOperand2, clearCalculator]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [mode, isOpen, displayValue, operator, operand1, waitingForOperand2, clearCalculator]); // Dependencies include state used in handlers
 
   const handleCopy = () => {
     let textToCopy = '';
     if (mode === 'valorHoras') {
-        // Try to format as currency before copying, if it's a valid number
+        // Try to get the raw number before copying, avoid formatted currency
         const numericValue = parseFloat(displayValue);
         if (!isNaN(numericValue)) {
-            textToCopy = formatCurrency(numericValue, false); // Format without symbol for copying
+            textToCopy = String(numericValue); // Copy the raw number
         } else {
             textToCopy = displayValue; // Copy as is if not a number (e.g., "Error")
         }
@@ -307,7 +323,8 @@ const CalculadoraLaboral: React.FC = () => {
     }
   };
 
-  if (!isOpen) {
+  // Render minimized button if not open or during SSR/initial mount
+  if (!isOpen || !hasMounted) {
     return (
       <Button
         className="fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 p-0 shadow-lg"
@@ -320,16 +337,17 @@ const CalculadoraLaboral: React.FC = () => {
     );
   }
 
-  // Format display value as currency only for display, not internal state
+  // Format display value - show raw number for valorHoras, duration string otherwise
   const formattedDisplayValue = mode === 'valorHoras'
-    ? (isNaN(parseFloat(displayValue)) ? displayValue : formatCurrency(parseFloat(displayValue), false)) // Format without symbol
-    : durationResult || '0h 0m';
+    ? (isNaN(parseFloat(displayValue)) ? displayValue : displayValue) // Show raw number or "Error"
+    : durationResult || '0 horas, 0 minutos'; // Show duration result
 
+
+  // Render the full calculator only on the client side after mount
   return (
     <Card ref={calculatorRef} className="fixed bottom-4 right-4 z-50 w-80 shadow-lg bg-card text-card-foreground rounded-lg">
-      {/* Updated CardHeader for white title */}
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary text-primary-foreground rounded-t-lg">
-        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white"> {/* Changed text color to white */}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary rounded-t-lg"> {/* Removed text-primary-foreground */}
+        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white"> {/* Explicitly white */}
            {mode === 'valorHoras' ? <Calculator className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
            Calculadora Laboral
         </CardTitle>
@@ -357,7 +375,6 @@ const CalculadoraLaboral: React.FC = () => {
             "bg-background border rounded-md p-3 text-right text-2xl font-mono h-14 overflow-hidden text-ellipsis whitespace-nowrap",
             displayValue === "Error" && "text-destructive"
          )}>
-           {/* Display the formatted value */}
            {formattedDisplayValue}
         </div>
 
@@ -371,7 +388,7 @@ const CalculadoraLaboral: React.FC = () => {
                     size="sm"
                     className="text-xs p-1 h-auto"
                     onClick={() => handleHourTypeClick(key as HourType)}
-                    title={`${key} (${formatCurrency(valoresHoraLaboral[key as HourType])}/hr)`}
+                    title={`${key} (${formatCurrency(valoresHoraLaboral[key as HourType], false)}/hr)`} // Exclude symbol in title
                  >
                     {key}
                  </Button>
@@ -379,7 +396,7 @@ const CalculadoraLaboral: React.FC = () => {
             </div>
              <div className="h-px bg-border my-2"></div>
             <div className="grid grid-cols-4 gap-2">
-              <Button variant="destructive" className="col-span-1 text-lg" onClick={clearCalculator}>C</Button>
+              <Button variant="secondary" className="col-span-1 text-lg hover:bg-destructive hover:text-destructive-foreground" onClick={clearCalculator}>C</Button> {/* Use secondary, hover destructive */}
               <Button variant="secondary" className="text-lg" onClick={toggleSign}>+/-</Button>
               <Button variant="secondary" className="text-lg" onClick={inputPercent}>%</Button>
               <Button variant="outline" className="text-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border-blue-300 dark:border-blue-700" onClick={() => performOperation('÷')}>÷</Button>
@@ -434,4 +451,3 @@ const CalculadoraLaboral: React.FC = () => {
 };
 
 export default CalculadoraLaboral;
-
