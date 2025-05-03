@@ -46,25 +46,25 @@ export interface ScheduleData {
 }
 
 // Represents assignments for a single day, keyed by department ID
-// Omits the assignment instance ID, keeps the employee object (with its ID)
-type DailyAssignments = {
-    [departmentId: string]: Omit<ShiftAssignment, 'id'>[];
+// Stores only employee ID reference for templates
+export type DailyAssignments = {
+    [departmentId: string]: Omit<ShiftAssignment, 'id' | 'employee'> & { employee: { id: string } }[];
 };
 
 // Represents assignments for a week, keyed by date string ('yyyy-MM-dd')
-type WeeklyAssignments = {
+export type WeeklyAssignments = {
     [dateKey: string]: DailyAssignments; // Date string maps to daily assignments structure
 };
 
 
 // Interface for shift templates
-export interface ShiftTemplate {
-  id: string; // Template's own unique ID (e.g., uuid)
+export interface ScheduleTemplate {
+  id: string; // Template's own unique ID (e.g., tpl-...)
   name: string;
   locationId: string;
   type: 'daily' | 'weekly'; // Differentiates template scope
   assignments: DailyAssignments | WeeklyAssignments; // Union type based on 'type'
-   createdAt: string; // ISO Date string when the template was created
+  createdAt: string; // ISO Date string when the template was created
 }
 
 
@@ -85,6 +85,3 @@ export interface PayrollCalculationInput {
     finDescanso?: string;   // Optional "HH:MM"
   }[];
 }
-
-
-    
