@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { FC } from 'react';
@@ -22,34 +21,28 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus } from 'lucide-react'; // Added Bus icon
-// Removed unused import: CalculationError
+import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus } from 'lucide-react';
 import type { CalculationResults, QuincenalCalculationSummary, AdjustmentItem } from '@/types';
-import { Button } from './ui/button'; // Import Button
-import { Switch } from './ui/switch'; // Import Switch
-import { Label } from './ui/label'; // Import Label
+import { Button } from './ui/button';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
 
 interface ResultsDisplayProps {
-  // Can receive either single day results or summary results
   results: CalculationResults | QuincenalCalculationSummary | null;
   error: string | null;
   isLoading: boolean;
-  isSummary?: boolean; // Flag to indicate if displaying summary
-  // New props for adjustments in summary view
+  isSummary?: boolean;
   otrosIngresos?: AdjustmentItem[];
   otrasDeducciones?: AdjustmentItem[];
-  onAddIngreso?: () => void; // Handler to open income modal
-  onAddDeduccion?: () => void; // Handler to open deduction modal
-  onDeleteIngreso?: (id: string) => void; // Handler to delete income item
-  onDeleteDeduccion?: (id: string) => void; // Handler to delete deduction item
-  // Props for Transportation Allowance
+  onAddIngreso?: () => void;
+  onAddDeduccion?: () => void;
+  onDeleteIngreso?: (id: string) => void;
+  onDeleteDeduccion?: (id: string) => void;
   incluyeAuxTransporte?: boolean;
   onToggleTransporte?: () => void;
   auxTransporteValor?: number;
-  // Consider adding edit handlers if needed
 }
 
-// Mapeo de claves a etiquetas legibles en español
 export const labelMap: Record<string, string> = {
     Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
@@ -61,7 +54,6 @@ export const labelMap: Record<string, string> = {
     HEND_F: 'Horas Extras Nocturnas (Dominical/Festivo)',
 };
 
-// --- Abbreviated Label Map for Compact Display ---
 export const abbreviatedLabelMap: Record<string, string> = {
     Ordinaria_Diurna_Base: 'H.Base Diu.',
     Recargo_Noct_Base: 'Rec.Noct.',
@@ -73,8 +65,6 @@ export const abbreviatedLabelMap: Record<string, string> = {
     HEND_F: 'HEND/F',
 };
 
-
-// Orden deseado para mostrar los resultados
 export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'Ordinaria_Diurna_Base',
     'Recargo_Noct_Base',
@@ -86,19 +76,23 @@ export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'HEND_F',
 ];
 
-// Helper function for formatting currency (can be moved to utils later)
-export const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
+// Updated formatCurrency to optionally omit symbol
+export const formatCurrency = (value: number, includeSymbol: boolean = true): string => {
+    const options: Intl.NumberFormatOptions = {
+        style: includeSymbol ? 'currency' : 'decimal', // Use 'decimal' if symbol is omitted
         currency: 'COP',
-        minimumFractionDigits: 0, // Changed to 0 as per user request (implicitly via example)
-        maximumFractionDigits: 0, // Changed to 0 as per user request (implicitly via example)
-    }).format(value);
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    };
+    // Currency style requires the currency symbol, so we use decimal style when omitting it
+    if (!includeSymbol) {
+        // For decimal style, currency option is invalid
+        delete options.currency;
+    }
+    return new Intl.NumberFormat('es-CO', options).format(value);
 };
 
-// Helper function for formatting hours
 export const formatHours = (hours: number): string => {
-    // Display with 2 decimal places for consistency
     return hours.toLocaleString('es-CO', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -111,15 +105,15 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     error,
     isLoading,
     isSummary = false,
-    otrosIngresos = [], // Default to empty array
-    otrasDeducciones = [], // Default to empty array
+    otrosIngresos = [],
+    otrasDeducciones = [],
     onAddIngreso,
     onAddDeduccion,
     onDeleteIngreso,
     onDeleteDeduccion,
-    incluyeAuxTransporte = false, // Default value
+    incluyeAuxTransporte = false,
     onToggleTransporte,
-    auxTransporteValor = 0, // Default value
+    auxTransporteValor = 0,
 }) => {
 
   const renderSkeletons = () => (
@@ -197,44 +191,30 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
       );
     }
 
-    // Determine which type of results we have
     const data = isSummary ? results as QuincenalCalculationSummary : results as CalculationResults;
     const horas = isSummary ? data.totalHorasDetalladas : data.horasDetalladas;
     const pagos = isSummary ? data.totalPagoDetallado : data.pagoDetallado;
     const totalRecargosExtras = isSummary ? data.totalPagoRecargosExtrasQuincena : data.pagoTotalRecargosExtras;
-    // pagoTotalConSalarioQuincena = Base + Extras (from summary calculation)
-    const baseMasExtras = isSummary ? data.pagoTotalConSalarioQuincena : (data.pagoTotalRecargosExtras /* + implicit base pay not calc here */);
+    const baseMasExtras = isSummary ? data.pagoTotalConSalarioQuincena : (data.pagoTotalRecargosExtras);
     const totalHorasTrabajadas = isSummary ? data.totalDuracionTrabajadaHorasQuincena : data.duracionTotalTrabajadaHoras;
     const diasCalculados = isSummary ? data.diasCalculados : 1;
     const salarioBaseQuincenal = isSummary ? data.salarioBaseQuincenal : 0;
 
-    // Calculate Adjustment Totals (only for summary)
     const totalOtrosIngresos = isSummary ? (otrosIngresos || []).reduce((sum, item) => sum + item.monto, 0) : 0;
     const totalOtrasDeducciones = isSummary ? (otrasDeducciones || []).reduce((sum, item) => sum + item.monto, 0) : 0;
-
-    // Determine applied transport allowance
     const auxTransporteAplicado = isSummary && incluyeAuxTransporte ? (auxTransporteValor || 0) : 0;
-
-    // Calculate Total Devengado Bruto (Base + Extras + Aux Transporte + Otros Ingresos)
     const totalDevengadoBruto = isSummary ? baseMasExtras + auxTransporteAplicado + totalOtrosIngresos : baseMasExtras;
-
-    // Calculate Legal Deductions (Salud 4%, Pension 4%) based on IBC
-    // IBC = Total Devengado Bruto EXCLUDING Aux Transporte
-    const ibcEstimadoQuincenal = isSummary ? baseMasExtras + totalOtrosIngresos : 0; // Use devengado bruto *without* transport aux
+    const ibcEstimadoQuincenal = isSummary ? baseMasExtras + totalOtrosIngresos : 0;
     const deduccionSaludQuincenal = isSummary ? ibcEstimadoQuincenal * 0.04 : 0;
     const deduccionPensionQuincenal = isSummary ? ibcEstimadoQuincenal * 0.04 : 0;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
-
-    // Calculate Subtotal Neto Parcial (Total Devengado Bruto - Deducciones Ley)
     const subtotalNetoParcial = isSummary ? totalDevengadoBruto - totalDeduccionesLegales : 0;
-
-    // Calculate Final Net Pay (Subtotal Neto Parcial - Otras Deducciones)
     const netoAPagar = isSummary ? subtotalNetoParcial - totalOtrasDeducciones : 0;
 
 
     return (
       <>
-        {!isSummary && ( // Show success alert only for single day calculation success
+        {!isSummary && (
           <Alert variant="default" className="mb-6 border-green-500 bg-green-50 dark:bg-green-900/20">
                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                <AlertTitle className="text-green-700 dark:text-green-300">Cálculo de Día Exitoso</AlertTitle>
@@ -244,7 +224,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
            </Alert>
         )}
 
-        {/* --- Table for Hour Breakdown --- */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -258,14 +237,12 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
               const horasCategoria = horas[key];
               const pagoCategoria = pagos[key];
 
-              // Conditionally display rows based on whether they have values
               if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) return null;
               if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) return null;
 
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
-                    {/* Use fullLabelMap for summary, abbreviated for single day */}
                     {isSummary ? (labelMap[key] || key) : (abbreviatedLabelMap[key] || key)}
                   </TableCell>
                   <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
@@ -278,7 +255,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
           </TableBody>
         </Table>
 
-        {/* --- Totals Section --- */}
         <Separator className="my-4" />
         <div className="space-y-2">
              <div className="flex justify-between font-semibold text-base">
@@ -288,15 +264,14 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
              <Separator className="my-2" />
              <div className="flex justify-between font-semibold text-lg">
                <span className="text-foreground">Total Recargos y Horas Extras {isSummary ? 'Quincenales' : 'del Día'}:</span>
-               <span className="text-primary">{formatCurrency(totalRecargosExtras)}</span> {/* Changed from text-accent */}
+               <span className="text-primary">{formatCurrency(totalRecargosExtras)}</span>
              </div>
-             {isSummary && ( // Only show breakdown in summary view
+             {isSummary && (
                 <>
                  <div className="flex justify-between text-muted-foreground">
                     <span>+ Salario Base Quincenal:</span>
                     <span>{formatCurrency(salarioBaseQuincenal)}</span>
                  </div>
-                  {/* Transportation Allowance Toggle */}
                  <div className="flex justify-between items-center text-muted-foreground">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="transport-switch" className="flex items-center gap-1 cursor-pointer">
@@ -309,17 +284,9 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                         id="transport-switch"
                         checked={incluyeAuxTransporte}
                         onCheckedChange={onToggleTransporte}
-                        disabled={!onToggleTransporte} // Disable if handler not provided
+                        disabled={!onToggleTransporte}
                     />
                  </div>
-                 {/* Optional: Show applied transport allowance explicitly */}
-                 {/* {auxTransporteAplicado > 0 && (
-                     <div className="flex justify-between text-muted-foreground">
-                         <span>+ Auxilio de Transporte Aplicado:</span>
-                         <span>{formatCurrency(auxTransporteAplicado)}</span>
-                     </div>
-                 )} */}
-                 {/* Other Income (Placeholder - Actual items listed below) */}
                  {totalOtrosIngresos > 0 && (
                     <div className="flex justify-between text-muted-foreground">
                         <span>+ Total Otros Ingresos:</span>
@@ -328,14 +295,12 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                  )}
 
                  <Separator className="my-2 border-dashed" />
-                 {/* Total Devengado Bruto */}
                  <div className="flex justify-between font-semibold text-lg">
                    <span className="text-foreground">Total Devengado Bruto Estimado:</span>
                    <span className="text-foreground">{formatCurrency(totalDevengadoBruto)}</span>
                  </div>
                  <Separator className="my-2" />
 
-                 {/* Legal Deductions Section */}
                  <div className="flex justify-between text-muted-foreground">
                     <span>- Deducción Salud (4% s/IBC*):</span>
                     <span>{formatCurrency(deduccionSaludQuincenal)}</span>
@@ -345,7 +310,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                     <span>{formatCurrency(deduccionPensionQuincenal)}</span>
                  </div>
                  <Separator className="my-2 border-dashed" />
-                 {/* Subtotal after Legal Deductions */}
                   <div className="flex justify-between font-medium text-base">
                     <span className="text-foreground">Subtotal (Dev. Bruto - Ded. Ley):</span>
                     <span className="text-foreground">{formatCurrency(subtotalNetoParcial)}</span>
@@ -354,10 +318,8 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
              )}
         </div>
 
-        {/* --- Adjustment Sections (Only in Summary View) --- */}
         {isSummary && (
             <>
-                {/* Otros Ingresos Section */}
                 <Separator className="my-4" />
                 <div className="mb-4">
                     <div className="flex justify-between items-center mb-2">
@@ -379,12 +341,10 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                                  </div>
                               </li>
                            ))}
-                           {/* Separator removed from inside list */}
                         </ul>
                     ) : (
                         <p className="text-sm text-muted-foreground italic">No hay otros ingresos registrados.</p>
                     )}
-                     {/* Show Total Otros Ingresos only if list has items */}
                     {(otrosIngresos || []).length > 0 && (
                         <>
                           <Separator className="my-2 border-dashed"/>
@@ -396,7 +356,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                     )}
                 </div>
 
-                {/* Otras Deducciones Section */}
                 <Separator className="my-4" />
                 <div className="mb-4">
                    <div className="flex justify-between items-center mb-2">
@@ -406,7 +365,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                            size="sm"
                            onClick={onAddDeduccion}
                            disabled={!onAddDeduccion}
-                           className="hover:bg-destructive hover:text-destructive-foreground" // Red hover for deduction button
+                           className="hover:bg-destructive hover:text-destructive-foreground"
                        >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
                        </Button>
@@ -424,12 +383,10 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                                  </div>
                               </li>
                            ))}
-                           {/* Separator removed from inside list */}
                         </ul>
                     ) : (
                          <p className="text-sm text-muted-foreground italic">No hay otras deducciones registradas.</p>
                     )}
-                    {/* Show Total Otras Deducciones only if list has items */}
                      {(otrasDeducciones || []).length > 0 && (
                          <>
                             <Separator className="my-2 border-dashed"/>
@@ -441,16 +398,14 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                      )}
                 </div>
 
-                {/* Final Net Pay Section */}
                 <Separator className="my-4" />
                 <div className="flex justify-between font-bold text-xl mt-4">
                   <span className="text-foreground">Neto a Pagar Estimado Quincenal:</span>
-                  <span className="text-primary">{formatCurrency(netoAPagar)}</span> {/* Use theme's primary color */}
+                  <span className="text-primary">{formatCurrency(netoAPagar)}</span>
                 </div>
              </>
         )}
 
-         {/* Footer Notes */}
          <CardDescription className="mt-4 text-xs text-muted-foreground">
               {isSummary
                  ? `*IBC (Ingreso Base de Cotización) estimado como Devengado Bruto sin Auxilio de Transporte. Las deducciones legales son aproximadas.`
@@ -470,9 +425,6 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
      <>
       {renderContent()}
      </>
-
   );
 }
 
-
-    
