@@ -1,4 +1,3 @@
-
 // src/components/schedule/DepartmentColumn.tsx
 'use client'; // Ensure client component
 
@@ -90,25 +89,15 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
               />
             ))
           ) : (
-             // Show '+' button prominently if empty in week/mobile view
-             isMobile && (
-                  <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1"
-                      onClick={() => onAddShiftRequest(department.id, date)}
-                      title="Añadir Colaborador"
-                  >
-                      <Plus className="h-4 w-4" />
-                  </Button>
-             )
+            // Minimal placeholder for empty week view cells on desktop
+             !isMobile && <div className="h-4"></div> // Small spacer
           )}
-          {/* Show '+' button on mobile/tablet at the bottom of the card content even if not empty */}
-          {(isMobile) && (
+          {/* Single '+' button at the bottom for week view on mobile */}
+          {isMobile && (
                <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1"
+                  className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1" // Centered, small
                   onClick={() => onAddShiftRequest(department.id, date)}
                   title="Añadir Colaborador"
               >
@@ -132,7 +121,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
             ))
           ) : (
             <p className="text-xs text-muted-foreground text-center pt-4 italic">
-              Arrastra o usa '+'
+              {!isMobile ? 'Arrastra o usa +' : 'Usa + para añadir'} {/* Adjusted text based on mobile */}
             </p>
           )}
         </>
@@ -142,13 +131,14 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
 
   // Main return logic
   if (isWeekView) {
+     // Simplified structure for week view, '+' button logic handled inside renderContent
     return (
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5">
         {isClient ? renderContent() : renderPlaceholder()}
       </div>
     );
   } else {
-    // Day view with Card structure
+    // Day view with Card structure and a single '+' button in the header
     return (
       <Card ref={setNodeRef} style={style} className="flex flex-col h-full shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 border-b">
@@ -156,10 +146,11 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
                {department.icon && <department.icon className="h-3.5 w-3.5 text-muted-foreground" />}
                {department.name} ({isClient ? assignments.length : '...'}) {/* Show count only on client */}
            </CardTitle>
+           {/* Single '+' button in the header for Day View */}
           <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 text-primary hover:bg-primary/10" // Styled button
               onClick={() => onAddShiftRequest(department.id, date)}
               title="Añadir Colaborador"
           >
