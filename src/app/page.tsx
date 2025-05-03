@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, Copy } from 'lucide-react'; // Removed CSV icon, added Library, FileSearch
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -315,7 +315,7 @@ export default function Home() {
 
                         if (employeeShift) {
                             const shiftValues: WorkdayFormValues = {
-                                startDate: parseDateFnsInternal(dateKey, 'yyyy-MM-dd', new Date()),
+                                startDate: parseDateFns(dateKey, 'yyyy-MM-dd', new Date()),
                                 startTime: employeeShift.startTime,
                                 endTime: employeeShift.endTime,
                                 endsNextDay: parseInt(employeeShift.endTime.split(':')[0]) < parseInt(employeeShift.startTime.split(':')[0]),
@@ -755,7 +755,7 @@ export default function Home() {
 
                 <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4"> {/* Changed to 3 columns */}
                    {/* Import Schedule Button */}
-                   <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isImporting}>
+                   <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
                         Importar Horario Planificado
                    </Button>
@@ -775,7 +775,7 @@ export default function Home() {
                     <Button
                          onClick={handleBulkExportPDF}
                          variant="outline"
-                         className="w-full"
+                         className="w-full hover:bg-red-600 hover:text-white" // Red hover for PDF
                          disabled={savedPayrolls.length === 0}
                     >
                          <FileDown className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
@@ -817,7 +817,7 @@ export default function Home() {
                   <CardContent>
                     <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                       {calculatedDays.map((day, index) => (
-                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-blue-50 dark:bg-blue-900/20 border-primary' : 'bg-card'}`}>
+                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : 'bg-card'}`}>
                            <div className="flex items-start justify-between mb-3">
                              <div>
                                <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
@@ -869,7 +869,7 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
-                     <Button variant="outline" onClick={handleDuplicateToNextDay} className="mt-6 w-full md:w-auto" disabled={isFormDisabled || isLoadingDay || calculatedDays.length === 0}>
+                     <Button variant="outline" onClick={handleDuplicateToNextDay} className="mt-6 w-full md:w-auto hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isLoadingDay || calculatedDays.length === 0}>
                         {isLoadingDay ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />} Duplicar Turno Sig. Día
                       </Button>
                   </CardContent>
