@@ -202,7 +202,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
     }
     try {
         const savedData = localStorage.getItem(key);
-        // console.log(`[loadFromLocalStorage] Raw data for key ${key}:`, savedData); // Add logging
+        console.log(`[DEBUG loadFromLocalStorage] Raw data for key ${key}:`, savedData); // DEBUG Log
 
         // Handle notes specifically as a string
         if (key === SCHEDULE_NOTES_KEY) {
@@ -212,9 +212,28 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
 
         if (savedData) {
              const parsed = JSON.parse(savedData);
-             // console.log(`[loadFromLocalStorage] Parsed data for key ${key}:`, parsed); // Add logging
-             // Basic check to see if parsed data looks like the expected type (array for lists)
-             if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY || key === SCHEDULE_TEMPLATES_KEY) {
+             console.log(`[DEBUG loadFromLocalStorage] Parsed data for key ${key}:`, parsed); // DEBUG Log
+
+             // Specific parsing for templates to ensure dates are handled if necessary
+             if (key === SCHEDULE_TEMPLATES_KEY) {
+                  console.log(`[DEBUG Load Templates] Parsed template data:`, parsed); // DEBUG Log
+                 if (Array.isArray(parsed)) {
+                      const validatedTemplates = parsed.map((template: any) => ({
+                          ...template,
+                          // Parse createdAt if it exists, otherwise set null or default
+                          createdAt: template.createdAt ? template.createdAt : new Date().toISOString(),
+                          // Ensure assignments are correctly structured
+                      }));
+                       console.log(`[DEBUG Load Templates] Validated templates:`, validatedTemplates); // DEBUG Log
+                      return validatedTemplates as T;
+                 } else {
+                      console.warn(`[DEBUG Load Templates] Expected array for templates, found:`, typeof parsed, ". Returning default.");
+                      return defaultValue;
+                 }
+             }
+
+             // Basic check for other array types
+             if (key === LOCATIONS_KEY || key === EMPLOYEES_KEY || key === DEPARTMENTS_KEY) {
                  if (Array.isArray(parsed)) {
                       // Ensure employees have locationIds array
                        if (key === EMPLOYEES_KEY) {
@@ -225,18 +244,6 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
                                    : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
                            })) as T;
                        }
-                        // Specific parsing for templates to ensure dates are handled if necessary
-                        if (key === SCHEDULE_TEMPLATES_KEY) {
-                            console.log(`[Load ${key}] Parsed data from localStorage:`, parsed); // Log parsed data
-                             const validatedTemplates = parsed.map((template: any) => ({
-                                 ...template,
-                                 // Parse createdAt if it exists, otherwise set null or default
-                                 createdAt: template.createdAt ? template.createdAt : new Date().toISOString(),
-                                 // Ensure assignments are correctly structured (might need deeper checks if dates are inside)
-                             }));
-                              console.log(`[Load ${key}] Validated templates:`, validatedTemplates); // Log validated data
-                             return validatedTemplates as T;
-                         }
                       return parsed as T;
                  } else {
                      console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
@@ -265,7 +272,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
              console.error(`Error loading ${key} from localStorage:`, error);
          }
     }
-    // console.log(`[loadFromLocalStorage] Returning default value for key ${key}.`); // Add logging
+    console.log(`[DEBUG loadFromLocalStorage] Returning default value for key ${key}.`); // DEBUG Log
     return defaultValue; // Return default if nothing saved or error occurred
 };
 
@@ -430,12 +437,13 @@ export default function SchedulePage() {
     // --- Load Data from localStorage on Mount (Client-side only) ---
     useEffect(() => {
         setIsClient(true); // Mark as client-side after mount
+        console.log("[DEBUG Load Effect] Starting to load data from localStorage..."); // DEBUG Log
         const loadedLocations = loadFromLocalStorage(LOCATIONS_KEY, initialLocations);
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
         const loadedTemps = loadFromLocalStorage<ShiftTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
-        console.log("[Load Effect] Loaded templates from localStorage:", loadedTemps); // Log loaded templates
+        console.log("[DEBUG Load Effect] Loaded templates from localStorage:", loadedTemps); // DEBUG Log
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText);
 
         setLocations(loadedLocations);
@@ -451,6 +459,7 @@ export default function SchedulePage() {
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLoc }));
         setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [] }));
 
+        console.log("[DEBUG Load Effect] Finished loading data.", { locations: loadedLocations.length, departments: loadedDepts.length, employees: loadedEmps.length, templates: (loadedTemps || []).length }); // DEBUG Log
 
     }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -543,24 +552,24 @@ export default function SchedulePage() {
         }
     }, [notes, isClient]);
 
-    useEffect(() => {
-        if (isClient) {
-            try {
-                // Ensure savedTemplates is always an array
-                const templatesToSave = Array.isArray(savedTemplates) ? savedTemplates : [];
-                console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
-                localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
-            } catch (error) {
-                 console.error("Error saving templates to localStorage:", error);
-                 toast({
-                     title: 'Error al Guardar Templates',
-                     description: 'No se pudieron guardar los templates localmente.',
-                     variant: 'destructive',
-                 });
-            }
-        }
-    }, [savedTemplates, isClient, toast]);
+     useEffect(() => {
+         if (isClient) {
+             try {
+                 // Ensure savedTemplates is always an array
+                 const templatesToSave = Array.isArray(savedTemplates) ? savedTemplates : [];
+                 console.log("[DEBUG Save Effect] Saving templates to localStorage:", templatesToSave); // DEBUG Log before saving
+                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
+                 console.log("[DEBUG Save Effect] Templates saved successfully."); // DEBUG Log if saving succeeds
+             } catch (error) {
+                  console.error("Error saving templates to localStorage:", error);
+                  toast({
+                      title: 'Error al Guardar Templates',
+                      description: 'No se pudieron guardar los templates localmente.',
+                      variant: 'destructive',
+                  });
+             }
+         }
+     }, [savedTemplates, isClient, toast]);
 
 
     // ---- End LocalStorage Effects ---
@@ -600,16 +609,17 @@ export default function SchedulePage() {
 
     // Filter templates based on current location and view mode
     const filteredTemplates = useMemo(() => {
-        console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates before filtering
+        console.log("[DEBUG Filter Memo] Filtering templates. State value:", savedTemplates); // DEBUG Log
         // Ensure savedTemplates is always an array
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
+        console.log("[DEBUG Filter Memo] Templates array:", templatesArray); // DEBUG Log
         const filtered = templatesArray.filter(temp => {
             const locationMatch = temp.locationId === selectedLocationId;
             const typeMatch = temp.type === viewMode;
-            console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // Log individual check
+            console.log(`[DEBUG Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`); // DEBUG Log individual check
             return locationMatch && typeMatch;
         });
-        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log the result
+        console.log(`[DEBUG Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // DEBUG Log the result
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -1440,7 +1450,7 @@ export default function SchedulePage() {
               // Ensure 'prev' is an array, defaulting to empty if not
               const validPrev = Array.isArray(prev) ? prev : [];
               const updatedTemplates = [...validPrev, newTemplate];
-               console.log("[Save Template] Updating state with new templates:", updatedTemplates);
+               console.log("[DEBUG Save Template] Updating state with new templates:", updatedTemplates); // DEBUG Log
               return updatedTemplates; // Return the updated array
           });
 
@@ -1454,15 +1464,15 @@ export default function SchedulePage() {
         if (typeof window === 'undefined') return; // Client-side only
 
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-        console.log(`[Load Template] Attempting load. ID: ${templateId}. All templates in state:`, templatesArray);
+        console.log(`[DEBUG Load Template] Attempting load. ID: ${templateId}. All templates in state:`, templatesArray); // DEBUG Log
         const templateToLoad = templatesArray.find(t => t.id === templateId);
 
         if (!templateToLoad) {
-            console.error(`[Load Template] Template with ID ${templateId} not found.`);
+            console.error(`[DEBUG Load Template] Template with ID ${templateId} not found.`); // DEBUG Log
             toast({ title: 'Template no encontrado', variant: 'destructive' });
             return;
         }
-        console.log(`[Load Template] Found template:`, templateToLoad);
+        console.log(`[DEBUG Load Template] Found template:`, templateToLoad); // DEBUG Log
 
         // --- Validations ---
         if (templateToLoad.locationId !== selectedLocationId) {
@@ -1516,17 +1526,17 @@ export default function SchedulePage() {
                                         employee: employee, // Use the full employee object
                                     };
                                 }
-                                console.warn(`[LOAD Daily] Employee ID ${assignTemplate.employee.id} not found while loading template. Skipping assignment.`);
+                                console.warn(`[DEBUG LOAD Daily] Employee ID ${assignTemplate.employee.id} not found while loading template. Skipping assignment.`); // DEBUG Log
                                 return null; // Skip if employee doesn't exist
                             })
                             .filter((a): a is ShiftAssignment => a !== null); // Filter out nulls
                     } else {
-                        console.warn(`[LOAD Daily] Assignments for dept ${deptId} in template ${templateId} is not an array.`);
+                        console.warn(`[DEBUG LOAD Daily] Assignments for dept ${deptId} in template ${templateId} is not an array.`); // DEBUG Log
                     }
                 });
 
                  if (assignmentsLoadedCount === 0) {
-                     console.warn(`[LOAD Daily] No valid assignments found or matched in template ${templateId}.`);
+                     console.warn(`[DEBUG LOAD Daily] No valid assignments found or matched in template ${templateId}.`); // DEBUG Log
                      toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se encontraron turnos válidos para cargar del template "${templateToLoad.name}".`, variant: 'default' });
                      // setIsTemplateLoadModalOpen(false); // Close template loading modal if open
                      return;
@@ -1549,7 +1559,7 @@ export default function SchedulePage() {
                 Object.keys(templateToLoad.assignments).forEach(sourceDateKey => {
                     const templateDate = parseDateFnsInternal(sourceDateKey, 'yyyy-MM-dd', new Date()); // Get Date object from template key
                     if (!isValid(templateDate)) {
-                         console.warn(`[LOAD Weekly] Invalid date key ${sourceDateKey} in template. Skipping.`);
+                         console.warn(`[DEBUG LOAD Weekly] Invalid date key ${sourceDateKey} in template. Skipping.`); // DEBUG Log
                          return;
                     }
 
@@ -1580,12 +1590,12 @@ export default function SchedulePage() {
                                                 employee: employee,
                                             };
                                         }
-                                        console.warn(`[LOAD Weekly] Employee ID ${assignTemplate.employee.id} not found for ${sourceDateKey}. Skipping.`);
+                                        console.warn(`[DEBUG LOAD Weekly] Employee ID ${assignTemplate.employee.id} not found for ${sourceDateKey}. Skipping.`); // DEBUG Log
                                         return null;
                                     })
                                     .filter((a): a is ShiftAssignment => a !== null);
                             } else {
-                                 console.warn(`[LOAD Weekly] Assignments for dept ${deptId} on ${sourceDateKey} is not array.`);
+                                 console.warn(`[DEBUG LOAD Weekly] Assignments for dept ${deptId} on ${sourceDateKey} is not array.`); // DEBUG Log
                              }
                         });
 
@@ -1599,12 +1609,12 @@ export default function SchedulePage() {
                          }
 
                     } else {
-                        console.warn(`[LOAD Weekly] Could not map template date ${sourceDateKey} to current week. Index: ${targetDateIndex}`);
+                        console.warn(`[DEBUG LOAD Weekly] Could not map template date ${sourceDateKey} to current week. Index: ${targetDateIndex}`); // DEBUG Log
                     }
                 });
 
                  if (assignmentsLoadedCount === 0) {
-                     console.warn(`[LOAD Weekly] No valid assignments found or matched in template ${templateId}.`);
+                     console.warn(`[DEBUG LOAD Weekly] No valid assignments found or matched in template ${templateId}.`); // DEBUG Log
                      toast({ title: 'Template Vacío o Sin Coincidencias', description: `No se encontraron turnos válidos para cargar del template "${templateToLoad.name}".`, variant: 'default' });
                      // setIsTemplateLoadModalOpen(false); // Close template loading modal if open
                      return;
@@ -1618,7 +1628,7 @@ export default function SchedulePage() {
              toast({ title: 'Template Cargado', description: successMessage });
              // setIsTemplateLoadModalOpen(false); // Close the template loading modal
          } catch (error) {
-             console.error("[Load Template] Error loading template:", error);
+             console.error("[DEBUG Load Template] Error loading template:", error); // DEBUG Log
              toast({ title: 'Error al Cargar Template', description: 'No se pudo cargar el template seleccionado.', variant: 'destructive' });
          }
      };
@@ -1990,11 +2000,13 @@ export default function SchedulePage() {
                  updatedTemplates[existingIndex] = parsedTemplate;
                  toastTitle = 'Template Actualizado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido actualizado desde el archivo JSON.`;
+                 console.log("[DEBUG JSON Import] Overwriting existing template:", parsedTemplate.id); // DEBUG Log
              } else {
                  // Template is new, add it
                  updatedTemplates = [...savedTemplates, parsedTemplate];
                  toastTitle = 'Template Importado';
                  toastDescription = `El template "${parsedTemplate.name}" ha sido importado y guardado.`;
+                 console.log("[DEBUG JSON Import] Adding new template:", parsedTemplate.id); // DEBUG Log
              }
 
              setSavedTemplates(updatedTemplates);
@@ -2354,6 +2366,7 @@ export default function SchedulePage() {
 
              {/* Controls Section - Removed Card for invisibility */}
              <div className="mb-6 md:mb-8">
+                  {/* Invisible Card Content for layout */}
                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
 
                       {/* Sede Selector */}
@@ -2365,8 +2378,7 @@ export default function SchedulePage() {
                               onLocationChange={handleLocationChange}
                           />
                       </div>
-
-                       {/* Configuration Button */}
+                      {/* Configuration Button */}
                       <div className="flex items-center gap-2">
                          <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                              <DialogTrigger asChild>
@@ -2679,12 +2691,14 @@ export default function SchedulePage() {
               {/* Section to Display Saved Templates */}
               <Card className="mt-8 shadow-lg bg-card">
                     <CardHeader>
-                        <CardTitle className="text-lg text-foreground">Templates Guardados ({filteredTemplates.length})</CardTitle>
-                        <CardDescription>
-                            Carga o elimina templates para la vista actual ({viewMode === 'day' ? 'Diario' : 'Semanal'}) y sede seleccionada.
-                        </CardDescription>
+                         <CardTitle className="text-lg text-foreground">Templates Guardados ({filteredTemplates.length})</CardTitle>
+                         <CardDescription>
+                             Carga o elimina templates para la vista actual ({viewMode === 'day' ? 'Diario' : 'Semanal'}) y sede seleccionada.
+                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* DEBUG: Log filteredTemplates just before rendering the list */}
+                        {console.log("[DEBUG Render] Filtered Templates to display:", filteredTemplates)}
                         {filteredTemplates.length > 0 ? (
                             <ScrollArea className="h-[200px] pr-4">
                                 <ul className="space-y-2">
@@ -2726,6 +2740,7 @@ export default function SchedulePage() {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                            {/* Ensure confirmDeleteItem is called correctly */}
                                                             <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => confirmDeleteItem('template', template.id, template.name)}>Eliminar</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
@@ -3000,3 +3015,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+
