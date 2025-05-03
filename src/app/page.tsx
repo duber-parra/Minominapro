@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, FileSpreadsheet } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp, FileSpreadsheet
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, FileSpreadsheet, Copy } from 'lucide-react'; // Added Bus icon, CopyPlus, Loader2, FileUp, FileSpreadsheet, Copy
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -198,11 +199,22 @@ const parseCSV = (content: string): Record<string, string>[] => {
     // Expected headers (case-insensitive check later)
     const expectedHeaders = ['ID_Empleado', 'Fecha', 'Hora_Inicio', 'Hora_Fin', 'Incluye_Descanso', 'Inicio_Descanso', 'Fin_Descanso'];
     // Basic validation: check if essential headers are present
-    const requiredHeaders = ['ID_Empleado', 'Fecha', 'Hora_Inicio', 'Hora_Fin'];
-    const missingHeaders = requiredHeaders.filter(expHeader => !headers.some(h => h.toLowerCase() === expHeader.toLowerCase()));
+    // Required headers for CSV processing, even if Fecha is ignored for template mode
+    const requiredHeadersForParsing = ['ID_Empleado', 'Fecha', 'Hora_Inicio', 'Hora_Fin'];
+    // Use a consistent variable name like extractedHeaders
+    const missingHeaders = requiredHeadersForParsing.filter(expHeader =>
+        !headers.some(h => h.toLowerCase() === expHeader.toLowerCase())
+    );
+    console.log('DEBUG: Raw Header Line Read:', rows[0]); // Added Log
+    console.log('DEBUG: Delimiter Used:', ','); // Added Log (Assuming comma)
+    console.log('DEBUG: Extracted Headers Array:', headers); // Added Log
+    console.log('DEBUG: Required Headers List (Code):', requiredHeadersForParsing); // Added Log
+    console.log('DEBUG: Missing Headers Found:', missingHeaders); // Added Log
+
+
     if (missingHeaders.length > 0) {
-        console.error(`[parseCSV] Missing required headers: ${missingHeaders.join(', ')}`);
-        return []; // Abort if required headers are missing
+         console.error(`[parseCSV] Missing required headers: ${missingHeaders.join(', ')}`); // Log error
+         throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}. Asegúrate de que el archivo incluya estas columnas.`); // Throw error
     }
 
 
@@ -398,7 +410,11 @@ export default function Home() {
     // --- Function to check if a date is already calculated ---
     // Moved BEFORE handleImportSchedule
     const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
-        return calculatedDays.some(day => isSameDay(day.inputData.startDate, dateToCheck));
+        if (!dateToCheck || !isValidDate(dateToCheck)) return false; // Add check for valid date
+        return calculatedDays.some(day =>
+             day.inputData.startDate instanceof Date && isValidDate(day.inputData.startDate) && // Ensure saved date is valid
+             isSameDay(day.inputData.startDate, dateToCheck)
+        );
     }, [calculatedDays]);
 
 
@@ -554,7 +570,7 @@ export default function Home() {
                  return;
             }
 
-            const parsedData = parseCSV(fileContent);
+            const parsedData = parseCSV(fileContent); // This might throw an error if headers are missing
              console.log(`[processCSVFile] Parsed ${parsedData.length} rows from CSV.`);
 
             if (parsedData.length === 0) {
@@ -587,6 +603,7 @@ export default function Home() {
                 }
 
                 if (row.ID_Empleado !== employeeId) {
+                    // console.log(`[processCSVFile] Skipping row ${index + 1}: Employee ID mismatch (${row.ID_Empleado} !== ${employeeId}).`);
                     skippedCount++;
                     continue;
                 }
@@ -614,7 +631,7 @@ export default function Home() {
                      console.log(`[processCSVFile] Skipping row ${index + 1}: Date ${format(shiftDate, 'yyyy-MM-dd')} is outside the selected period.`);
                     skippedCount++;
                     continue;
-                }
+                 }
                  if (isDateCalculated(shiftDate)) {
                     console.log(`[processCSVFile] Skipping row ${index + 1}: Date ${format(shiftDate, 'yyyy-MM-dd')} is already calculated.`);
                     skippedCount++;
@@ -711,7 +728,7 @@ export default function Home() {
                  console.log('[processCSVFile] File input reset.');
              }
         }
-    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays, formSchema]);
+    }, [employeeId, payPeriodStart, payPeriodEnd, toast, isDateCalculated, setCalculatedDays]);
 
 
      // --- Function to Import from CSV (using hidden input) ---
@@ -1098,6 +1115,19 @@ export default function Home() {
         return;
     }
 
+     // Check if the next day is already calculated
+     if (isDateCalculated(nextDayDate)) {
+        setIsLoadingDay(false); // Stop loading
+        toast({
+            title: 'Fecha Ya Calculada',
+            description: `Ya existe un cálculo para el día ${format(nextDayDate, 'PPP', { locale: es })}. No se puede duplicar.`,
+            variant: 'destructive',
+            duration: 5000,
+        });
+        return;
+     }
+
+
     // Create the input data for the next day
     const nextDayValues: WorkdayFormValues = {
         ...lastDay.inputData,
@@ -1128,7 +1158,7 @@ export default function Home() {
         // Ensure loading state is turned off even if handled in handleDayCalculationComplete
         setIsLoadingDay(false);
     }
-}, [calculatedDays, payPeriodStart, payPeriodEnd, toast, handleDayCalculationStart, handleDayCalculationComplete]);
+}, [calculatedDays, payPeriodStart, payPeriodEnd, toast, handleDayCalculationStart, handleDayCalculationComplete, isDateCalculated]); // Added isDateCalculated
 
 
   // Determine if form or summary should be disabled
@@ -1273,8 +1303,9 @@ export default function Home() {
 
             // Generate CSV content
             const csvContent = "data:text/csv;charset=utf-8,"
-                + csvRows.map(row =>
-                     row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(",") // Quote fields
+                 + csvRows.map(row =>
+                       // Cambia esta línea para NO añadir comillas alrededor:
+                       row.map(field => String(field ?? '')).join(",") // <-- Modificada: Sin comillas añadidas
                  ).join("\n");
 
             // Trigger download
@@ -1367,9 +1398,10 @@ export default function Home() {
 
             // Generate CSV content
             const csvContent = "data:text/csv;charset=utf-8,"
-               + csvRows.map(row =>
-                    row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(",")
-                ).join("\n");
+                 + csvRows.map(row =>
+                     // Cambia esta línea para NO añadir comillas alrededor:
+                     row.map(field => String(field ?? '')).join(",") // <-- Modificada: Sin comillas añadidas
+                 ).join("\n");
 
             // Trigger download
             const encodedUri = encodeURI(csvContent);
@@ -1577,7 +1609,7 @@ export default function Home() {
                         ) : (
                              <FileUp className="mr-2 h-4 w-4" />
                         )}
-                        Importar CSV
+                         Importar CSV
                    </Button>
 
                    {/* Import Schedule Button */}
@@ -1944,3 +1976,4 @@ export default function Home() {
     </main>
   );
 }
+
