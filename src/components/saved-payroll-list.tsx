@@ -5,7 +5,7 @@
 import type { FC } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSearch, FileDown, Trash2, Users, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet
+import { FileSearch, FileDown, Trash2, Users } from 'lucide-react'; // Removed FileSpreadsheet
 import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -17,8 +17,9 @@ interface SavedPayrollListProps {
   onLoad: (key: string) => void;
   onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog
   onBulkExport: () => void; // For PDF
-  onBulkExportCSV: () => void; // Add prop for CSV export
-  onExportSingleCSV: (key: string) => void; // Prop for exporting a single CSV
+  // Removed CSV export props
+  // onBulkExportCSV: () => void;
+  // onExportSingleCSV: (key: string) => void;
 }
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({
@@ -26,8 +27,9 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     onLoad,
     onDelete, // Receives the function to initiate deletion (open dialog)
     onBulkExport,
-    onBulkExportCSV,
-    onExportSingleCSV // Receive single CSV export handler
+    // Removed CSV export props
+    // onBulkExportCSV,
+    // onExportSingleCSV
 }) => {
 
     // Helper function to calculate final net pay for display
@@ -58,7 +60,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
   return (
     <Card className="shadow-lg bg-card">
       <CardHeader className="relative flex flex-row items-start justify-between pb-4"> {/* Use relative for positioning button */}
-        <div className="flex-1 pr-24"> {/* Increased padding-right to accommodate two buttons */}
+        <div className="flex-1 pr-12"> {/* Adjusted padding-right for single button */}
             <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {/* Reduced size */}
               <Users className="h-4 w-4" /> Nóminas Guardadas ({payrolls.length}) {/* Reduced icon size */}
             </CardTitle>
@@ -71,10 +73,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
         </div>
          {/* Export Buttons: Positioned absolute top-right */}
         <div className="absolute top-4 right-4 flex items-center gap-1">
-             {/* CSV Export Button */}
-             <Button onClick={onBulkExportCSV} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
-                <FileSpreadsheet className="mr-1 h-3 w-3" /> CSV {/* Changed text */}
-             </Button>
+             {/* Removed CSV Export Button */}
             {/* PDF Export Button */}
             <Button onClick={onBulkExport} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
               <FileDown className="mr-1 h-3 w-3" /> PDF {/* Changed text */}
@@ -103,10 +102,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                         </p>
                       </div>
                       <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0"> {/* Changed to flex-row */}
-                        {/* Export Single CSV Button */}
-                        <Button variant="ghost" size="icon" onClick={() => onExportSingleCSV(payroll.key)} title="Exportar CSV Individual" className="h-8 w-8">
-                          <FileSpreadsheet className="h-4 w-4" />
-                        </Button>
+                        {/* Removed Export Single CSV Button */}
                         {/* Load Button */}
                         <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
                           <FileSearch className="h-4 w-4" />
@@ -135,4 +131,3 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     </Card>
   );
 };
-    
