@@ -57,10 +57,27 @@ export type WeeklyAssignments = {
 };
 
 
-// Removed ScheduleTemplate interface
+// Interface for Schedule Templates (kept for clarity, though functionality removed temporarily)
+export interface ScheduleTemplate {
+  id: string;
+  name: string;
+  type: 'day' | 'week'; // Type of template
+  locationId: string; // Associated location
+  assignments: DailyAssignments | WeeklyAssignments; // Assignments data
+  createdAt?: Date | string; // Optional creation timestamp
+}
+
+// --- New Interface for Schedule Notes/Events ---
+export interface ScheduleNote {
+  id: string; // Unique ID (e.g., `note-${Date.now()}`)
+  date: string; // Date in 'yyyy-MM-dd' format
+  note: string; // The description of the event/note
+  employeeId?: string; // Optional associated employee ID
+}
+// --- End of New Interface ---
 
 
-// Interface for data sent to Payroll Calculator
+// Interface for data sent to Payroll Calculator (kept for reference)
 export interface PayrollCalculationInput {
   employeeId: string; // This should be the user-defined Employee ID
   periodoInicio: string; // Format "YYYY-MM-DD"

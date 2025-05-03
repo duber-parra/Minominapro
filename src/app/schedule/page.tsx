@@ -14,7 +14,7 @@ import {
   CardFooter, // Import CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud } from 'lucide-react'; // Added icons, List, UploadCloud
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen } from 'lucide-react'; // Added icons, List, UploadCloud, FileText, NotebookPen
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,7 +42,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -55,11 +54,13 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
+// Removed template list import - no longer needed
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
+import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import the new modal
 
-import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate } from '@/types/schedule'; // Added ScheduleTemplate
+import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule'; // Added ScheduleTemplate and ScheduleNote
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -77,11 +78,12 @@ const getWeekDates = (currentDate: Date): Date[] => {
 
 // LocalStorage Keys
 const SCHEDULE_DATA_KEY = 'schedulePlannerData';
-const SCHEDULE_NOTES_KEY = 'schedulePlannerNotes';
+const SCHEDULE_NOTES_KEY = 'schedulePlannerNotes'; // Key for general notes
+const SCHEDULE_EVENTS_KEY = 'scheduleCalendarEvents'; // Key for specific date notes/events
 const LOCATIONS_KEY = 'schedulePlannerLocations';
 const DEPARTMENTS_KEY = 'schedulePlannerDepartments';
 const EMPLOYEES_KEY = 'schedulePlannerEmployees';
-const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Corrected key
+const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Kept key, but functionality removed
 
 // Cache for holidays
 let holidaysCache: { [year: number]: Set<string> } = {};
@@ -213,7 +215,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         const parsed = JSON.parse(savedData);
 
         // Basic check for array types
-        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_TEMPLATES_KEY].includes(key)) {
+        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_TEMPLATES_KEY, SCHEDULE_EVENTS_KEY].includes(key)) { // Added SCHEDULE_EVENTS_KEY
             if (Array.isArray(parsed)) {
                   // Ensure employees have locationIds array
                   if (key === EMPLOYEES_KEY) {
@@ -224,20 +226,25 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                               : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
                       })) as T;
                   }
-                  // Revive template createdAt date if it's a string
-                  if (key === SCHEDULE_TEMPLATES_KEY) {
+                   // Revive template createdAt date if it's a string
+                   if (key === SCHEDULE_TEMPLATES_KEY) {
                        return parsed.map((tpl: any) => ({
                            ...tpl,
-                           // Revive date if it's a string (e.g., from old storage)
                            createdAt: tpl.createdAt && typeof tpl.createdAt === 'string'
                                       ? parseISO(tpl.createdAt)
-                                      : tpl.createdAt // Keep Date object or undefined
+                                      : tpl.createdAt
                        })) as T;
+                   }
+                  // For ScheduleNotes, dates are already strings 'yyyy-MM-dd'
+                  if (key === SCHEDULE_EVENTS_KEY) {
+                      return parsed.filter(note => // Basic validation
+                          note && typeof note === 'object' && note.id && note.date && note.note
+                      ) as T;
                   }
                  return parsed as T;
             } else {
                 console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
-                // If data exists but is not an array (maybe from old version), remove it
+                // If data exists but is not an array, remove it (except for notes)
                 if(key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_DATA_KEY) { // Avoid removing complex or string data
                     try {
                         localStorage.removeItem(key);
@@ -334,7 +341,7 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
      }
 };
 
-// Removed template loading function
+// --- Removed Template Loading Logic ---
 
 
 export default function SchedulePage() {
@@ -345,8 +352,10 @@ export default function SchedulePage() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
+    const [scheduleNotes, setScheduleNotes] = useState<ScheduleNote[]>([]); // State for calendar notes/events
+    const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
     // Removed template state
-    const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default
+    const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default general notes
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -365,20 +374,16 @@ export default function SchedulePage() {
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-    // Initialize locationId in department form data based on initial selectedLocationId
     const [departmentFormData, setDepartmentFormData] = useState<{name: string, locationId: string, iconName?: string}>({ name: '', locationId: '', iconName: undefined });
 
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-     // Initialize locationIds in employee form data based on initial selectedLocationId
     const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[] }>({ id: '', name: '', locationIds: [] });
 
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null); // Removed 'template'
 
-
-    // Removed template modal states
-
+    // --- Removed Template Modal State ---
 
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
 
@@ -386,8 +391,6 @@ export default function SchedulePage() {
     const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
     const [isClient, setIsClient] = useState(false);
-    // Removed template file ref
-
 
     const isMobile = useIsMobile();
     const { toast } = useToast();
@@ -399,15 +402,15 @@ export default function SchedulePage() {
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
-        // Removed template loading
-        const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText, false); // Load notes as string
+        const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText, false); // Load general notes as string
+        const loadedEvents = loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, [], true); // Load calendar notes/events
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
         setEmployees(loadedEmps);
         setScheduleData(loadedSched);
-        // Removed template state setting
         setNotes(loadedNotesStr);
+        setScheduleNotes(loadedEvents); // Set loaded calendar notes
 
         // Set initial selected location and update form defaults accordingly
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
@@ -507,9 +510,49 @@ export default function SchedulePage() {
         }
     }, [notes, isClient]);
 
-     // Removed template saving effect
+     // --- Effect to save ScheduleNotes to localStorage ---
+     useEffect(() => {
+        if (isClient) {
+            try {
+                console.log("[Save Effect] Saving schedule notes:", scheduleNotes);
+                localStorage.setItem(SCHEDULE_EVENTS_KEY, JSON.stringify(scheduleNotes));
+                console.log("[Save Effect] Schedule notes saved successfully.");
+            } catch (error) {
+                console.error("Error saving schedule notes to localStorage:", error);
+                toast({
+                    title: 'Error al Guardar Notas de Calendario',
+                    description: 'No se pudieron guardar las notas específicas.',
+                    variant: 'destructive',
+                });
+            }
+        }
+    }, [scheduleNotes, isClient, toast]);
+
+     // --- Removed Template Saving Effect ---
 
     // ---- End LocalStorage Effects ---
+
+    // --- Functions to Manage Schedule Notes ---
+    const addScheduleNote = useCallback((newNoteData: Omit<ScheduleNote, 'id'>) => {
+        const newNote: ScheduleNote = {
+            ...newNoteData,
+            id: `note-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        };
+        setScheduleNotes(prevNotes => [...prevNotes, newNote].sort((a, b) => a.date.localeCompare(b.date)));
+        toast({ title: "Anotación Guardada", description: `Nota para ${format(parseDateFns(newNoteData.date, 'yyyy-MM-dd', new Date()), 'PPP', { locale: es })} agregada.` });
+    }, [toast]);
+
+    const deleteScheduleNote = useCallback((noteId: string) => {
+        setScheduleNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+        toast({ title: "Anotación Eliminada", variant: 'destructive' });
+    }, [toast]);
+
+    // Function to get notes for a specific date
+     const getNotesForDate = useCallback((date: Date): ScheduleNote[] => {
+         if (!date || !isValid(date)) return [];
+         const dateKey = format(date, 'yyyy-MM-dd');
+         return scheduleNotes.filter(note => note.date === dateKey);
+     }, [scheduleNotes]);
 
     const weekDates = getWeekDates(currentDate);
 
@@ -542,8 +585,7 @@ export default function SchedulePage() {
         Array.isArray(emp.locationIds) && emp.locationIds.includes(selectedLocationId)
     ), [employees, selectedLocationId]);
 
-     // Removed template filtering
-
+     // Removed Template Filtering Logic
 
      const assignedEmployeeIdsForTargetDate = useMemo(() => {
         const ids = new Set<string>();
@@ -563,17 +605,12 @@ export default function SchedulePage() {
 
     const availableEmployees = useMemo(() => {
         if (viewMode === 'week' && !isEmployeeSelectionModalOpen) {
-            // In week view, when not selecting specifically for a day (modal closed),
-            // show all employees for the location, as they might be assignable on other days.
             return filteredEmployees;
         }
 
-        // In day view, OR when the selection modal is open (implies selecting for a specific day),
-        // filter out employees already assigned on THAT SPECIFIC day.
         const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
 
         if (!dateForFiltering) {
-            // Fallback if date context is missing (shouldn't ideally happen in these modes)
             return filteredEmployees;
         }
 
@@ -592,22 +629,19 @@ export default function SchedulePage() {
 
 
     useEffect(() => {
-        // If the department form data's locationId is not set or doesn't match the current selected location, update it.
         if (!departmentFormData.locationId || departmentFormData.locationId !== selectedLocationId) {
            setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
         }
     }, [selectedLocationId, departmentFormData.locationId]);
 
-     // Ensure employee form locationIds is updated when selectedLocationId changes,
-     // but only if the form is for a *new* employee. Keep existing selections when editing.
      useEffect(() => {
-        if (!editingEmployee && selectedLocationId) { // Only update for new employees
+        if (!editingEmployee && selectedLocationId) {
             setEmployeeFormData(prev => ({
                 ...prev,
-                locationIds: [selectedLocationId] // Default to only the current location for new employees
+                locationIds: [selectedLocationId]
             }));
         }
-     }, [selectedLocationId, editingEmployee]); // Depend on editingEmployee state
+     }, [selectedLocationId, editingEmployee]);
 
 
     // Filter departments based on selected location
@@ -619,11 +653,10 @@ export default function SchedulePage() {
     const handleLocationChange = (locationId: string) => {
         setSelectedLocationId(locationId);
          setDepartmentFormData(prev => ({ ...prev, locationId: locationId }));
-         // Reset employee form location ONLY if adding new employee
           if (!editingEmployee) {
              setEmployeeFormData(prev => ({
                 ...prev,
-                locationIds: [locationId] // Default new employee to current location
+                locationIds: [locationId]
             }));
           }
     };
@@ -981,7 +1014,7 @@ export default function SchedulePage() {
                         locationIds: emp.locationIds.filter(locId => locId !== itemToDelete.id)
                     })).filter(emp => emp.locationIds.length > 0)); // Remove employees with no locations left
 
-                    // Removed template cleanup
+                    // --- Removed Template Cleanup ---
 
                     // Clean up schedule data: remove assignments in departments of the deleted location
                      setScheduleData(prevSchedule => {
@@ -1025,7 +1058,7 @@ export default function SchedulePage() {
                      });
                      setScheduleData(updatedScheduleDept);
 
-                      // Removed template cleanup
+                      // --- Removed Template Cleanup ---
                      message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
                 case 'employee':
@@ -1052,11 +1085,10 @@ export default function SchedulePage() {
                      });
                      setScheduleData(updatedScheduleEmp);
 
-                      // Removed template cleanup
+                      // --- Removed Template Cleanup ---
 
                      message = `Colaborador "${itemToDelete.name}" eliminado.`;
                      break;
-                // Removed template case
              }
              toast({ title: 'Elemento Eliminado', description: message, variant: 'destructive' });
          } catch (error) {
@@ -1193,9 +1225,6 @@ export default function SchedulePage() {
              const updatedData = { ...prevData };
              // Remove the assignments for the specific day, or remove the day entry entirely
              if (updatedData[dateKey]) {
-                 // Option 1: Keep the day entry but clear assignments
-                 // updatedData[dateKey].assignments = {};
-                 // Option 2: Remove the day entry completely
                   delete updatedData[dateKey];
              }
              return updatedData;
@@ -1205,16 +1234,10 @@ export default function SchedulePage() {
      };
 
 
-      // Removed Template Saving
+     // --- Removed Template Saving/Loading/Deleting Logic ---
 
 
-     // Removed Template Loading
-
-
-     // Removed Template Deletion
-
-
-     // Removed JSON Export/Import
+     // --- Removed JSON Export/Import Logic ---
 
 
     const isHoliday = useCallback((date: Date | null | undefined): boolean => {
@@ -1395,18 +1418,18 @@ export default function SchedulePage() {
              </div>
 
 
-             {/* Controls Section - Top Bar */}
+             {/* Controls Section - Top Bar (Removed Card Wrapper) */}
               <div className="bg-transparent border-none shadow-none p-0 mb-6 md:mb-8">
                   <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
-                     {/* Location Selector and Settings */}
-                     <div className="flex items-center gap-2">
+                     {/* Location Selector */}
+                     <div className="flex items-center gap-2 flex-shrink-0">
                          <Building className="h-5 w-5 text-primary flex-shrink-0" />
                          <LocationSelector
                              locations={locations}
                              selectedLocationId={selectedLocationId}
                              onLocationChange={handleLocationChange}
                          />
-                          {/* Settings Button Trigger */}
+                         {/* Settings Button Trigger */}
                           <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                               <DialogTrigger asChild>
                                    <Button variant="ghost" size="icon" title="Configuración" className="flex-shrink-0">
@@ -1501,7 +1524,7 @@ export default function SchedulePage() {
                                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
                                                                   </AlertDialogTrigger>
                                                                    {/* Delete Confirmation Content defined later */}
-                                                              </AlertDialog>
+                                                               </AlertDialog>
                                                           </div>
                                                       </li>
                                                   ))}
@@ -1611,6 +1634,8 @@ export default function SchedulePage() {
                               onClearDay={handleConfirmClearDay}
                               isHoliday={isHoliday}
                               isMobile={isMobile}
+                              getNotesForDate={getNotesForDate}
+                              employees={employees} // Pass employees to ScheduleView
                           />
                        </div>
                    </div>
@@ -1618,7 +1643,12 @@ export default function SchedulePage() {
 
                  {/* --- Bottom Actions Row --- */}
                  <div className="flex flex-wrap justify-end gap-2 mt-6">
-                    {/* Removed Template Buttons */}
+                    {/* --- Removed Template Buttons --- */}
+
+                     {/* Future Notes Button */}
+                     <Button onClick={() => setIsNotesModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                         <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
+                     </Button>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -1644,8 +1674,8 @@ export default function SchedulePage() {
 
 
             {/* Editable Notes Section */}
-             <div className="mt-8"> {/* Changed Card to div and removed card styling */}
-                 <h3 className="text-lg font-semibold text-foreground mb-2">Notas Adicionales</h3>
+            <div className="mt-8 bg-transparent border-none shadow-none p-0"> {/* Removed card styling */}
+                 <h3 className="text-lg font-semibold text-foreground mb-2">Notas Generales</h3>
                  <p className="text-sm text-muted-foreground mb-4">
                     Agrega notas importantes sobre horarios, eventos especiales o cualquier información relevante para la semana.
                  </p>
@@ -1656,12 +1686,22 @@ export default function SchedulePage() {
                     rows={4}
                     className="w-full bg-card border border-border rounded-md shadow-sm" // Added card-like styling to textarea
                 />
-                <div className="flex justify-end mt-4"> {/* Moved button outside the card structure */}
+                <div className="flex justify-end mt-4">
                     <Button onClick={handleSaveNotes}>Guardar Notas</Button>
                 </div>
             </div>
 
              {/* --- Modals --- */}
+
+             {/* Schedule Notes Modal */}
+             <ScheduleNotesModal
+                 isOpen={isNotesModalOpen}
+                 onClose={() => setIsNotesModalOpen(false)}
+                 notes={scheduleNotes}
+                 employees={employees} // Pass employees for the dropdown
+                 onAddNote={addScheduleNote}
+                 onDeleteNote={deleteScheduleNote}
+             />
 
              {/* Location Modal */}
              <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
@@ -1835,9 +1875,9 @@ export default function SchedulePage() {
                       <AlertDialogHeader>
                           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes), sus templates y se borrarán turnos relacionados. Esta acción no se puede deshacer.`}
-                              {itemToDelete?.type === 'department' && `Eliminar Departamento "${itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
-                              {itemToDelete?.type === 'employee' && `Eliminar Colaborador "${itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios y templates. Esta acción no se puede deshacer.`}
+                              {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes) y se borrarán turnos relacionados. Esta acción no se puede deshacer.`}
+                              {itemToDelete?.type === 'department' && `Eliminar Departamento "${itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios. Esta acción no se puede deshacer.`}
+                              {itemToDelete?.type === 'employee' && `Eliminar Colaborador "${itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.`}
                               {/* Removed template delete description */}
                           </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -1866,7 +1906,7 @@ export default function SchedulePage() {
                  </AlertDialogContent>
             </AlertDialog>
 
-            {/* Removed Template Modals */}
+            {/* --- Removed Template Modals --- */}
 
         </main>
     );

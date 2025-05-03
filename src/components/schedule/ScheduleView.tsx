@@ -1,14 +1,20 @@
-
+// src/components/schedule/ScheduleView.tsx
 import React, { useState, useEffect } from 'react'; // Added useState, useEffect
-import type { Department, ScheduleData, ShiftAssignment } from '@/types/schedule'; // Assuming types exist, Added ShiftAssignment
+import type { Department, ScheduleData, ShiftAssignment, ScheduleNote } from '@/types/schedule'; // Added ScheduleNote
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added CardFooter
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns'; // Added parseISO
 import { es } from 'date-fns/locale';
 import { Button } from '../ui/button';
-import { Plus, Copy, Eraser } from 'lucide-react'; // Added Copy icon, Eraser
+import { Plus, Copy, Eraser, NotebookPen } from 'lucide-react'; // Added NotebookPen icon
 import type { Employee } from '@/types/schedule';
 import { cn } from '@/lib/utils'; // Import cn
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip" // Import Tooltip components
 
 interface ScheduleViewProps {
   departments: Department[];
@@ -24,6 +30,8 @@ interface ScheduleViewProps {
   onClearDay: (dateToClear: Date) => void; // Add prop for clearing a day's schedule
   isHoliday: (date: Date | null | undefined) => boolean; // Function to check if a date is a holiday
   isMobile: boolean; // Flag to detect mobile view
+  getNotesForDate: (date: Date) => ScheduleNote[]; // Function to get notes for a date
+  employees: Employee[]; // Pass employees to render tooltip content correctly
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
@@ -40,6 +48,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     onClearDay, // Receive clear handler
     isHoliday, // Receive holiday check function
     isMobile, // Receive mobile flag
+    getNotesForDate, // Receive notes function
+    employees, // Receive employees
 }) => {
   const [isClient, setIsClient] = useState(false); // State for client-side rendering check
 
@@ -47,11 +57,30 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     setIsClient(true); // Set to true after initial mount
   }, []);
 
+  // Helper function to render notes tooltip content
+  const renderNotesTooltip = (notes: ScheduleNote[]) => { // Removed employees prop as it's available in scope
+    if (!notes || notes.length === 0) return null;
+    return (
+        <div className="text-xs space-y-1 max-w-xs p-2"> {/* Add padding */}
+            <p className="font-medium mb-1">Anotaciones:</p>
+            {notes.map(note => {
+                const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
+                return (
+                    <p key={note.id}>
+                       • {note.note} {employeeName ? <span className="italic text-muted-foreground">({employeeName})</span> : ''}
+                    </p>
+                );
+            })}
+        </div>
+    );
+  };
+
     if (viewMode === 'day') {
          // --- Day View ---
         const daySchedule = getScheduleForDate(currentDate);
         const dynamicGridClass = `grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(departments.length, 4)} xl:grid-cols-${Math.min(departments.length, 5)}`; // Adjust as needed
         const isCurrentHoliday = isHoliday(currentDate);
+        const notesForDay = getNotesForDate(currentDate); // Get notes for the current day
 
         return (
             <Card className={cn(
@@ -60,11 +89,28 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             )}>
                 <CardHeader className="border-b">
                     <CardTitle className={cn(
-                        "text-lg font-medium",
+                        "text-lg font-medium flex items-center gap-2", // Added flex and gap
                         isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight text if holiday
                     )}>
-                        Horario para el {format(currentDate, 'PPPP', { locale: es })}
-                        {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
+                        <span> {/* Wrap text */}
+                            Horario para el {format(currentDate, 'PPPP', { locale: es })}
+                            {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
+                        </span>
+                        {/* Notes Indicator and Tooltip */}
+                        {notesForDay.length > 0 && (
+                             <TooltipProvider delayDuration={100}>
+                                 <Tooltip>
+                                     <TooltipTrigger asChild>
+                                         <span className="cursor-help text-muted-foreground hover:text-foreground">
+                                             <NotebookPen className="h-4 w-4" />
+                                         </span>
+                                     </TooltipTrigger>
+                                     <TooltipContent side="bottom"> {/* Changed side to bottom */}
+                                         {renderNotesTooltip(notesForDay)}
+                                     </TooltipContent>
+                                 </Tooltip>
+                            </TooltipProvider>
+                        )}
                     </CardTitle>
                     {/* Add description or other info if needed */}
                 </CardHeader>
@@ -107,7 +153,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          size="sm"
                          onClick={() => onClearDay(currentDate)} // Trigger clear confirmation
                          title="Limpiar turnos del día"
-                         disabled={Object.values(daySchedule.assignments).flat().length === 0} // Disable if no assignments
+                         disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
                      >
                          <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
                      </Button>
@@ -121,6 +167,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               {weekDates.map((date, index) => {
                   const daySchedule = getScheduleForDate(date);
                   const dateKey = format(date, 'yyyy-MM-dd');
+                  const notesForDay = getNotesForDate(date); // Get notes for this day
                    // Calculate count only on client to avoid hydration mismatch
                    const totalAssignmentsForDay = isClient
                        ? Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0)
@@ -140,10 +187,25 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                   isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
                               )}>
                                   <CardTitle className={cn(
-                                      "text-xs font-semibold text-center whitespace-nowrap", // Adjusted size to xs, kept font-semibold
+                                      "text-xs font-semibold text-center whitespace-nowrap flex items-center justify-center gap-1", // Added flex, items-center, justify-center, gap
                                       isCurrentHoliday ? "text-primary" : "text-foreground" // Highlight title text with primary color
                                   )}>
-                                      {format(date, 'EEE d', { locale: es })} {/* Short day name, date */}
+                                      <span>{format(date, 'EEE d', { locale: es })}</span> {/* Wrap date text */}
+                                      {/* Notes Indicator and Tooltip */}
+                                      {notesForDay.length > 0 && (
+                                           <TooltipProvider delayDuration={100}>
+                                               <Tooltip>
+                                                   <TooltipTrigger asChild>
+                                                        <span className="cursor-help text-muted-foreground hover:text-foreground">
+                                                           <NotebookPen className="h-3 w-3" />
+                                                        </span>
+                                                   </TooltipTrigger>
+                                                   <TooltipContent side="top">
+                                                        {renderNotesTooltip(notesForDay)}
+                                                   </TooltipContent>
+                                               </Tooltip>
+                                          </TooltipProvider>
+                                      )}
                                   </CardTitle>
                                   <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Extra small text */}
                                       {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay})
@@ -168,7 +230,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                           className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
                                           onClick={() => onClearDay(date)}
                                           title="Limpiar turnos del día"
-                                          disabled={totalAssignmentsForDay === 0}
+                                          disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
                                       >
                                           <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
                                       </Button>
