@@ -9,15 +9,24 @@ import { FileSearch, FileDown, Trash2, Users, FileSpreadsheet } from 'lucide-rea
 import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from './results-display'; // Assuming formatCurrency is exported
+import { formatCurrency } from './results-display'; // Assuming formatCurrency is exported and correct
 import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; // Import for delete confirmation
-import { generateSinglePayrollCSV, generateBulkPayrollCSV, downloadCSV } from '@/lib/csv-utils'; // Import CSV utils
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
 
 interface SavedPayrollListProps {
   payrolls: SavedPayrollData[];
   onLoad: (key: string) => void;
   onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog in parent
   onBulkExport: () => void; // For PDF
+  onBulkExportCSV: () => void; // For bulk CSV export
+  onExportSingleCSV: (key: string) => void; // Pass callback with key
 }
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({
@@ -25,6 +34,8 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     onLoad,
     onDelete, // Receives the function to initiate deletion (open dialog)
     onBulkExport,
+    onBulkExportCSV, // Receive bulk CSV handler
+    onExportSingleCSV // Receive single CSV handler
 }) => {
 
     // Helper function to calculate final net pay for display
@@ -43,22 +54,6 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
         return subtotalNetoParcial - totalOtrasDeduccionesManuales;
     };
 
-    // --- CSV Export Handlers ---
-    const handleExportSingleCSV = (key: string) => {
-        const payrollToExport = payrolls.find(p => p.key === key);
-        if (!payrollToExport) return;
-        const csvContent = generateSinglePayrollCSV(payrollToExport);
-        const filename = `Nomina_${payrollToExport.employeeId}_${format(payrollToExport.periodStart, 'yyyyMMdd')}.csv`;
-        downloadCSV(csvContent, filename);
-    };
-
-    const handleBulkExportCSV = () => {
-        if (payrolls.length === 0) return;
-        const csvContent = generateBulkPayrollCSV(payrolls);
-        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
-        const filename = `Nominas_Guardadas_${timestamp}.csv`;
-        downloadCSV(csvContent, filename);
-    };
 
   return (
     <Card className="shadow-lg bg-card">
@@ -70,14 +65,22 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
             <CardDescription> Carga, elimina o exporta nóminas guardadas. </CardDescription>
         </div>
          <div className="absolute top-4 right-4 flex items-center gap-1">
-             {/* Bulk CSV Export Button */}
-             <Button onClick={handleBulkExportCSV} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
-                 <FileSpreadsheet className="mr-1 h-3 w-3" /> CSV
-             </Button>
-            {/* Bulk PDF Export Button */}
-            <Button onClick={onBulkExport} variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
-              <FileDown className="mr-1 h-3 w-3" /> PDF
-            </Button>
+             {/* Bulk Export Dropdown */}
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={payrolls.length === 0} className="px-2 py-1 h-auto">
+                        <FileDown className="mr-1 h-3 w-3" /> Exportar Todo
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onBulkExport} disabled={payrolls.length === 0}>
+                        <FileDown className="mr-2 h-4 w-4" /> PDF (Lista)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onBulkExportCSV} disabled={payrolls.length === 0}>
+                        <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
+                    </DropdownMenuItem>
+                 </DropdownMenuContent>
+             </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent>
@@ -98,7 +101,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                       </div>
                       <div className="absolute top-2 right-2 flex flex-row gap-1 flex-shrink-0">
                          {/* Export Single CSV Button */}
-                         <Button variant="ghost" size="icon" onClick={() => handleExportSingleCSV(payroll.key)} title="Exportar a CSV" className="h-8 w-8">
+                         <Button variant="ghost" size="icon" onClick={() => onExportSingleCSV(payroll.key)} title="Exportar a CSV" className="h-8 w-8">
                              <FileSpreadsheet className="h-4 w-4" />
                          </Button>
                         {/* Load Button */}
@@ -128,3 +131,5 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     </Card>
   );
 };
+
+    

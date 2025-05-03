@@ -14,8 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, Copy } from 'lucide-react'; // Removed FileSpreadsheet icon
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, Bus, CopyPlus, Loader2, FileUp, Copy, FileSpreadsheet } from 'lucide-react'; // Added FileSpreadsheet icon
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,15 @@ import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import th
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 import { z } from 'zod'; // Import Zod
+import { generateSinglePayrollCSV, generateBulkPayrollCSV, downloadCSV } from '@/lib/csv-utils'; // Import CSV utils
+// Import DropdownMenu components
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
@@ -180,14 +189,27 @@ const parseScheduleCSV = (csvContent: string): { data: CsvRow[], errors: z.ZodEr
     }
 
     const headerLine = lines[0].trim();
+    console.log('DEBUG: Raw Header Line Read:', headerLine); // Log raw header
+
     // Basic check for essential headers (adjust as needed)
     const requiredHeaders = ["ID_Empleado", "Fecha", "Hora_Inicio", "Hora_Fin"]; // Simplified check
-    const headers = headerLine.split(',').map(h => h.trim());
+    console.log('DEBUG: Required Headers List (Code):', requiredHeaders); // Log required headers
+
+    // Attempt to detect delimiter (comma or semicolon)
+    let delimiter = ',';
+    if (headerLine.includes(';') && !headerLine.includes(',')) {
+        delimiter = ';';
+    }
+    console.log('DEBUG: Delimiter Used:', delimiter); // Log detected delimiter
+
+    const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, '')); // Trim spaces and remove surrounding quotes
+    console.log('DEBUG: Extracted Headers Array:', headers); // Log extracted headers
 
     const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
     if (missingHeaders.length > 0) {
-        console.error("[CSV Parse] Extracted Headers:", headers);
-        console.error("[CSV Parse] Required Headers:", requiredHeaders);
+        console.error("[CSV Parse] Missing required headers:", missingHeaders.join(', '));
+        // console.error("[CSV Parse] Extracted Headers:", headers); // Already logged above
+        // console.error("[CSV Parse] Required Headers:", requiredHeaders); // Already logged above
         throw new Error(`Faltan encabezados CSV requeridos: ${missingHeaders.join(', ')}. Asegúrate de que el archivo incluya estas columnas.`);
     }
 
@@ -198,10 +220,13 @@ const parseScheduleCSV = (csvContent: string): { data: CsvRow[], errors: z.ZodEr
         const line = lines[i].trim();
         if (!line) continue; // Skip empty lines
 
-        const values = line.split(',');
+        // Split line based on detected delimiter, handle quoted fields if necessary
+        // Basic split for now, consider a more robust CSV parser library for complex cases
+        const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+
         const rowObject: { [key: string]: string } = {};
         headers.forEach((header, index) => {
-            rowObject[header] = values[index]?.trim() || '';
+            rowObject[header] = values[index] || ''; // Use detected headers
         });
 
         // Validate row using Zod
@@ -234,8 +259,11 @@ const parseScheduleCSV = (csvContent: string): { data: CsvRow[], errors: z.ZodEr
                 }))
              );
             errors.push(zodErrorWithLine);
+             console.warn(`[CSV Parse] Validation error on line ${i + 1}:`, result.error.issues); // Log validation errors
         }
     }
+    console.log('DEBUG: Final Parsed Data Count:', data.length);
+    console.log('DEBUG: Final Parse Errors Count:', errors.length);
 
     return { data, errors };
 };
@@ -348,12 +376,12 @@ export default function Home() {
     }, [calculatedDays, otrosIngresos, otrasDeducciones, incluyeAuxTransporte, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]);
 
 
-  // Function to check if a date is already calculated
+    // Function to check if a date is already calculated
     const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
         if (!dateToCheck || !isValidDate(dateToCheck)) return false;
         return calculatedDays.some(day =>
              day.inputData.startDate instanceof Date && isValidDate(day.inputData.startDate) &&
-             isSameDay(day.inputData.startDate, dateToCheck)
+             isSameDayFns(day.inputData.startDate, dateToCheck) // Use aliased import
         );
     }, [calculatedDays]);
 
@@ -604,7 +632,7 @@ export default function Home() {
          const files = event.dataTransfer.files;
          if (files && files.length > 0) {
              const file = files[0];
-             if (file.type === "text/csv") {
+             if (file.type === "text/csv" || file.name.toLowerCase().endsWith('.csv')) { // More robust check
                 await handleCSVImport(file);
              } else {
                  toast({
@@ -963,6 +991,41 @@ export default function Home() {
       }
     };
 
+    // --- CSV Export Handlers ---
+    const handleExportSingleToCSV = () => {
+        if (!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd) {
+            toast({ title: 'Datos Incompletos', description: 'No hay una nómina calculada para exportar.', variant: 'destructive' });
+            return;
+        }
+        const payrollData: SavedPayrollData = {
+            key: getStorageKey(employeeId, payPeriodStart, payPeriodEnd) || `temp_${Date.now()}`,
+            employeeId,
+            periodStart,
+            periodEnd,
+            summary: quincenalSummary,
+            otrosIngresosLista: otrosIngresos,
+            otrasDeduccionesLista: otrasDeducciones,
+            incluyeAuxTransporte
+        };
+        const csvContent = generateSinglePayrollCSV(payrollData);
+        const filename = `Nomina_${employeeId}_${format(payPeriodStart, 'yyyyMMdd')}.csv`;
+        downloadCSV(csvContent, filename);
+        toast({ title: 'CSV Exportado', description: `Nómina individual para ${employeeId} generada.` });
+    };
+
+    const handleBulkExportToCSV = () => {
+         const allPayrollData = loadAllSavedPayrolls();
+         if (allPayrollData.length === 0) {
+             toast({ title: 'No hay datos', description: 'No se encontraron nóminas guardadas para exportar.', variant: 'default' });
+             return;
+         }
+        const csvContent = generateBulkPayrollCSV(allPayrollData);
+        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+        const filename = `Nominas_Guardadas_${timestamp}.csv`;
+        downloadCSV(csvContent, filename);
+        toast({ title: 'Exportación Masiva CSV Completa', description: `Se generó un CSV con ${allPayrollData.length} nóminas.` });
+    };
+
   return (
     <main
         className="container mx-auto p-4 md:p-8 max-w-7xl relative" // Added relative for overlay positioning
@@ -1028,7 +1091,7 @@ export default function Home() {
                          ) : (
                              <FileUp className="mr-2 h-4 w-4" />
                          )}
-                        Importar CSV
+                        en este boton puedo importar varios colaboradores con horaio semanal?
                     </Button>
                    {/* Import Schedule Button */}
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-accent hover:text-accent-foreground" disabled={isFormDisabled || isImporting}>
@@ -1047,10 +1110,22 @@ export default function Home() {
                          <AlertDialogFooter> <AlertDialogCancel>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleClearPeriodData} className="bg-destructive hover:bg-destructive/90"> Limpiar Datos </AlertDialogAction> </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
-                    {/* Bulk PDF Export Button */}
-                    <Button onClick={handleBulkExportPDF} variant="outline" className="w-full lg:col-span-1" disabled={savedPayrolls.length === 0}>
-                       <FileDown className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
-                    </Button>
+                   {/* Bulk Export Buttons */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full">
+                                <FileDown className="mr-2 h-4 w-4" /> Exportar Todo
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleBulkExportPDF} disabled={savedPayrolls.length === 0}>
+                                <FileDown className="mr-2 h-4 w-4" /> PDF (Lista)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleBulkExportToCSV} disabled={savedPayrolls.length === 0}>
+                                <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                </div>
           </CardContent>
       </Card>
@@ -1102,7 +1177,9 @@ export default function Home() {
                                    <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingResultsId === day.id}> <Edit className="h-4 w-4" /> </Button>
                                    <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingDayId === day.id}> <PencilLine className="h-4 w-4" /> </Button>
                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild> <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button> </AlertDialogTrigger>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDayToDeleteId(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button>
+                                      </AlertDialogTrigger>
                                      <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar cálculo para turno iniciado el {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'}? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                                    </AlertDialog>
                                  </div>
@@ -1157,7 +1234,9 @@ export default function Home() {
                    payrolls={savedPayrolls}
                    onLoad={handleLoadSavedPayroll}
                    onDelete={(key) => setPayrollToDeleteKey(key)}
-                   onBulkExport={handleBulkExportPDF}
+                   onBulkExport={handleBulkExportPDF} // Passed for PDF export
+                   onBulkExportCSV={handleBulkExportToCSV} // Passed for CSV export
+                   onExportSingleCSV={() => handleExportSingleToCSV()} // Pass handler for single CSV
                />
                 <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
                    <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
@@ -1173,7 +1252,22 @@ export default function Home() {
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados para {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
-                <Button onClick={handleExportPDF} variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}> <FileDown className="mr-2 h-4 w-4" /> Exportar PDF </Button>
+                {/* Single Export Buttons */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
+                            <FileDown className="mr-2 h-4 w-4" /> Exportar Actual
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExportPDF}>
+                            <FileDown className="mr-2 h-4 w-4" /> PDF (Detallado)
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={handleExportSingleToCSV}>
+                             <FileSpreadsheet className="mr-2 h-4 w-4" /> CSV (Resumen)
+                         </DropdownMenuItem>
+                    </DropdownMenuContent>
+                 </DropdownMenu>
             </CardHeader>
             <CardContent>
                <ResultsDisplay
@@ -1202,3 +1296,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
