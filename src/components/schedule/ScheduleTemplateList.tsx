@@ -3,9 +3,8 @@
 
 import React from 'react';
 import type { ScheduleTemplate } from '@/types/schedule'; // Adjust path if needed
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { format, parseISO } from 'date-fns'; // Import date-fns functions
 import { es } from 'date-fns/locale'; // Import Spanish locale
 import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; // Import AlertDialogTrigger for delete confirmation
