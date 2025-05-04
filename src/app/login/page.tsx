@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -28,12 +29,12 @@ import { useRouter } from 'next/navigation';
 // NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
 // Make sure to prefix them with NEXT_PUBLIC_ so they are available on the client-side.
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk", // Added fallback for testing, but ENV VAR is preferred
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "calculadora-de-horas-wshe0.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "calculadora-de-horas-wshe0",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "calculadora-de-horas-wshe0.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "128893274714",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:128893274714:web:b8a084377a9293b534e663"
 };
 
 // Initialize Firebase only once
@@ -106,6 +107,9 @@ export default function LoginPage() {
             setError(error.message); // Show the specific missing key error
         } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
              setError('La clave API de Firebase no es válida. Verifica tu archivo .env.local y la configuración en Firebase Console.');
+        } else if (error.code === 'auth/unauthorized-domain') {
+             // Specific error message for unauthorized domain
+             setError('Error: Dominio no autorizado. Por favor, añade este dominio a la lista de dominios autorizados en la configuración de autenticación de Firebase.');
         } else {
             setError('Error al iniciar sesión con Google. Intenta de nuevo.');
         }
