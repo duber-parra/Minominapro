@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library } from 'lucide-react'; // Added Library
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, FolderSync as ImportIcon } from 'lucide-react'; // Added Library, X, Notebook, User, ImportIcon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -378,10 +378,10 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return []; // Solo en cliente
 
     const loadedTemplates: ScheduleTemplate[] = [];
-    const templateKey = SCHEDULE_TEMPLATES_KEY; // Clave única para todos los templates
+    const templateKeyPrefix = SCHEDULE_TEMPLATES_KEY; // Use the constant for the key
 
     try {
-        const storedData = localStorage.getItem(templateKey);
+        const storedData = localStorage.getItem(templateKeyPrefix);
         if (storedData) {
              try {
                 const parsedTemplates = JSON.parse(storedData) as ScheduleTemplate[];
@@ -400,16 +400,16 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
                              }
                             loadedTemplates.push(template);
                         } else {
-                            console.warn(`Invalid template data found in ${templateKey}:`, template);
+                            console.warn(`Invalid template data found in ${templateKeyPrefix}:`, template);
                         }
                     });
                 } else {
-                     console.warn(`Invalid data structure found for templates in ${templateKey}. Expected array.`);
-                     localStorage.removeItem(templateKey); // Clean up invalid data
+                     console.warn(`Invalid data structure found for templates in ${templateKeyPrefix}. Expected array.`);
+                     localStorage.removeItem(templateKeyPrefix); // Clean up invalid data
                 }
              } catch (parseError) {
-                 console.error(`Error parsing JSON for templates from ${templateKey}:`, parseError);
-                 localStorage.removeItem(templateKey); // Clean up invalid JSON
+                 console.error(`Error parsing JSON for templates from ${templateKeyPrefix}:`, parseError);
+                 localStorage.removeItem(templateKeyPrefix); // Clean up invalid JSON
              }
         }
     } catch (error) {
@@ -417,7 +417,7 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
     }
 
     console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates.`);
-    return loadedTemplates;
+    return loadedTemplates.sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Sort newest first
 };
 
 
@@ -439,9 +439,7 @@ export default function SchedulePage() {
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
     const [scheduleNotes, setScheduleNotes] = useState<ScheduleNote[]>([]); // State for calendar notes/events
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
-    // Remove state for template list modal as it's now integrated below
-    // const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false);
-    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // State for templates
+    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Use the correct state variable
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // Loading state for saving template
     const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for template delete confirmation
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
@@ -451,13 +449,14 @@ export default function SchedulePage() {
         targetDepartment: Department;
         date: Date;
     } | null>(null); // State for department mismatch warning
+    const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false); // State for template list modal
 
     // New state for the Summary Sheet
     const [isSummarySheetOpen, setIsSummarySheetOpen] = useState(false);
     const [employeeHoursSummary, setEmployeeHoursSummary] = useState<EmployeeHoursSummary[]>([]);
 
 
-    const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default general notes
+    const [notes, setNotes] = useState<string>(''); // Initialize notes string state
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -492,7 +491,7 @@ export default function SchedulePage() {
 
     const isMobile = useIsMobile();
     const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+
 
     // --- Load Data from localStorage on Mount (Client-side only) ---
     useEffect(() => {
@@ -720,16 +719,17 @@ export default function SchedulePage() {
 
     // Filter templates based on selected location and current view mode
      const filteredTemplates = useMemo(() => {
-         console.log("[Filter Memo] All templates in state:", savedTemplates);
-         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-         const filtered = templatesArray.filter(temp => {
-             const locationMatch = temp.locationId === selectedLocationId;
-             const typeMatch = temp.type === viewMode;
-              console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
-             return locationMatch && typeMatch;
-         });
-         console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
-         return filtered;
+        console.log("[Filter Memo] All templates in state:", savedTemplates);
+        // Ensure savedTemplates is always an array before filtering
+        const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
+        const filtered = templatesArray.filter(temp => {
+            const locationMatch = temp.locationId === selectedLocationId;
+            const typeMatch = temp.type === viewMode; // Match current viewMode ('day' or 'week')
+            console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
+            return locationMatch && typeMatch;
+        });
+        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
+        return filtered;
      }, [savedTemplates, selectedLocationId, viewMode]);
 
 
@@ -831,6 +831,19 @@ export default function SchedulePage() {
             setIsEmployeeSelectionModalOpen(false); // Close the selection modal
             return; // Stop the process
         }
+
+         // Check for department mismatch
+         const employeeDepartments = employee.departmentIds || [];
+         if (employeeDepartments.length > 0 && !employeeDepartments.includes(shiftRequestContext.departmentId)) {
+             setDepartmentMismatchWarning({
+                 employee,
+                 targetDepartment: departments.find(d => d.id === shiftRequestContext.departmentId)!,
+                 date: shiftRequestContext.date
+             });
+             setIsEmployeeSelectionModalOpen(false); // Close the selection modal for now
+             return; // Stop and show warning
+         }
+
 
         setSelectedEmployee(employee);
         setIsEmployeeSelectionModalOpen(false);
@@ -1012,8 +1025,7 @@ export default function SchedulePage() {
     const handleOpenLocationModal = (location: Location | null) => {
         setEditingLocation(location);
         setLocationFormData({ name: location?.name || '' });
-        setIsConfigModalOpen(true); // Open the main config modal
-        // Optionally, you could add state to highlight the "Locations" section within the modal
+        // No need to open the main config modal if form is inline
     };
 
     const handleSaveLocation = () => {
@@ -1034,8 +1046,8 @@ export default function SchedulePage() {
                  setSelectedLocationId(newLocation.id);
             }
         }
-        setIsConfigModalOpen(false); // Close modal after save
         setEditingLocation(null);
+        setLocationFormData({ name: '' }); // Clear form
     };
 
     const handleOpenDepartmentModal = (department: Department | null) => {
@@ -1046,8 +1058,6 @@ export default function SchedulePage() {
             locationId: department?.locationId || selectedLocationId,
             iconName: iconName
         });
-        setIsConfigModalOpen(true); // Open the main config modal
-        // Optionally, add state to highlight the "Departments" section
     };
 
     const handleSaveDepartment = () => {
@@ -1068,8 +1078,8 @@ export default function SchedulePage() {
             setDepartments([...departments, newDepartment]);
             toast({ title: 'Departamento Agregado', description: `Departamento "${name}" agregado.` });
         }
-        setIsConfigModalOpen(false); // Close modal after save
         setEditingDepartment(null);
+         setDepartmentFormData({ name: '', locationId: selectedLocationId, iconName: undefined }); // Clear form
     };
 
     const handleOpenEmployeeModal = (employee: Employee | null) => {
@@ -1084,8 +1094,6 @@ export default function SchedulePage() {
             locationIds: initialLocationIds,
             departmentIds: initialDepartmentIds // Initialize departmentIds
         });
-        setIsConfigModalOpen(true); // Open the main config modal
-         // Optionally, add state to highlight the "Employees" section
     };
 
     const handleToggleEmployeeLocation = (locationId: string) => {
@@ -1182,8 +1190,8 @@ export default function SchedulePage() {
             setEmployees(prev => [...prev, newEmployee]);
              toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" (ID: ${id}) agregado.` });
         }
-        setIsConfigModalOpen(false); // Close modal after save
         setEditingEmployee(null); // Reset editing state
+        setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] }); // Clear form
     };
 
      // Filter departments available for employee assignment based on selected locations
@@ -1584,8 +1592,9 @@ export default function SchedulePage() {
 
              // Add the new template to the state
              setSavedTemplates(prevTemplates => {
-                const updatedTemplates = [...prevTemplates, newTemplate];
-                 console.log("[Save Effect] Updating saved templates state with:", updatedTemplates); // Log before setting state
+                 const updatedTemplates = [...prevTemplates, newTemplate]
+                     .sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Sort newest first
+                console.log("[Save Effect] Updating saved templates state with:", updatedTemplates); // Log before setting state
                 return updatedTemplates;
              });
             toast({ title: 'Template Guardado', description: `Template "${templateName}" guardado.` });
@@ -1711,7 +1720,8 @@ export default function SchedulePage() {
         });
 
         toast({ title: "Template Aplicado", description: `Se aplicaron las asignaciones del template "${templateToLoad.name}".` });
-        // setIsTemplateListModalOpen(false); // Close modal if using one
+        setIsTemplateListModalOpen(false); // Close modal after loading
+
     }, [savedTemplates, viewMode, targetDate, weekDates, setScheduleData, toast, employees, departments, filteredDepartments, selectedLocationId]); // Added dependencies
 
 
@@ -1962,11 +1972,6 @@ export default function SchedulePage() {
 
              {/* Controls Section - Top Bar - Transparent */}
               <div className="bg-transparent border-none shadow-none p-0 mb-6 md:mb-8">
-                 {/* <CardHeader className="px-0 pt-0 pb-2">
-                    <CardTitle className="text-lg font-semibold text-foreground mb-2">Controles</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground">Seleccione una fecha o una semana a programar, duplica, guarda templates y descarga tu horario.</CardDescription>
-                 </CardHeader> */}
-                 {/* <CardContent className="p-0"> */}
                       <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                          {/* Location Selector */}
                          <div className="flex items-center gap-2 flex-shrink-0">
@@ -2119,7 +2124,7 @@ export default function SchedulePage() {
                                                    <Label htmlFor="location-name">Nombre</Label>
                                                    <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" className="mb-2" />
                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" onClick={() => {setIsConfigModalOpen(false); setEditingLocation(null)}}>Cancelar</Button>
+                                                        <Button variant="ghost" onClick={() => {setEditingLocation(null)}}>Cancelar</Button>
                                                         <Button onClick={handleSaveLocation}>Guardar Sede</Button>
                                                    </div>
                                                </div>
@@ -2144,7 +2149,7 @@ export default function SchedulePage() {
                                                          </SelectContent>
                                                     </Select>
                                                    <div className="flex justify-end gap-2 mt-4">
-                                                        <Button variant="ghost" onClick={() => {setIsConfigModalOpen(false); setEditingDepartment(null)}}>Cancelar</Button>
+                                                        <Button variant="ghost" onClick={() => {setEditingDepartment(null)}}>Cancelar</Button>
                                                         <Button onClick={handleSaveDepartment}>Guardar Departamento</Button>
                                                    </div>
                                                </div>
@@ -2218,7 +2223,7 @@ export default function SchedulePage() {
                                                     </DropdownMenu>
 
                                                    <div className="flex justify-end gap-2 mt-4">
-                                                       <Button variant="ghost" onClick={() => {setIsConfigModalOpen(false); setEditingEmployee(null)}}>Cancelar</Button>
+                                                       <Button variant="ghost" onClick={() => {setEditingEmployee(null)}}>Cancelar</Button>
                                                        <Button onClick={handleSaveEmployee}>Guardar Colaborador</Button>
                                                    </div>
                                                </div>
@@ -2332,8 +2337,7 @@ export default function SchedulePage() {
                          </div>
 
                      </div>
-                 {/* </CardContent> */}
-             </div>
+              </div>
 
 
                {/* Main content grid */}
@@ -2383,30 +2387,30 @@ export default function SchedulePage() {
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
                       {/* Template List Button */}
-                      <Dialog>
-                        <DialogTrigger asChild>
-                             <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                                 <Library className="mr-2 h-4 w-4" /> Templates
-                             </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                             <DialogHeader>
-                                 <DialogTitle className="flex items-center gap-2"><Library className="h-5 w-5" /> Templates Guardados</DialogTitle>
-                                 <DialogDescription>Carga o elimina templates para la vista actual ({viewMode}).</DialogDescription>
-                             </DialogHeader>
-                             {/* Pass filtered templates to the list component */}
-                             <ScheduleTemplateList
-                                 templates={filteredTemplates}
-                                 onLoadTemplate={handleLoadTemplate}
-                                 onDeleteTemplate={confirmDeleteTemplate}
-                             />
-                             <DialogFooter>
-                                 <DialogClose asChild>
-                                     <Button variant="secondary">Cerrar</Button>
-                                 </DialogClose>
-                             </DialogFooter>
-                        </DialogContent>
-                     </Dialog>
+                      <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                         <DialogTrigger asChild>
+                              <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                                  <Library className="mr-2 h-4 w-4" /> Templates
+                              </Button>
+                         </DialogTrigger>
+                         <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2"><Library className="h-5 w-5" /> Templates Guardados</DialogTitle>
+                                  <DialogDescription>Carga o elimina templates para la vista actual ({viewMode}).</DialogDescription>
+                              </DialogHeader>
+                              {/* Pass filtered templates to the list component */}
+                              <ScheduleTemplateList
+                                  templates={filteredTemplates}
+                                  onLoadTemplate={handleLoadTemplate}
+                                  onDeleteTemplate={confirmDeleteTemplate}
+                              />
+                              <DialogFooter>
+                                  <DialogClose asChild>
+                                      <Button variant="secondary">Cerrar</Button>
+                                  </DialogClose>
+                              </DialogFooter>
+                         </DialogContent>
+                      </Dialog>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
