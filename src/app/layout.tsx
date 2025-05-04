@@ -61,8 +61,8 @@ export default function RootLayout({
          {isLoading && <LoadingIndicator />} {/* Show loading indicator */}
          {/* Navigation */}
          {!hideLayoutForAuth && ( // Only show nav if not on auth pages
-             <nav className="bg-card border-b p-4 sticky top-0 z-40"> {/* Make nav sticky */}
-                <div className="container mx-auto flex justify-between items-center"> {/* Changed to justify-between */}
+             <nav className="bg-card border-b p-4 sticky top-0 z-40 w-full"> {/* Make nav sticky and full width */}
+                <div className="max-w-7xl mx-auto flex justify-between items-center px-4 sm:px-6 lg:px-8"> {/* Use max-width and padding instead of container */}
                     {/* Main Navigation Links */}
                     <div className="flex justify-center gap-6">
                         <Link
@@ -92,7 +92,7 @@ export default function RootLayout({
              </nav>
          )}
         {/* Adjust padding top only if nav is visible */}
-        <main className={`flex-grow ${!hideLayoutForAuth ? 'pt-[calc(2rem+1rem)]' : ''} pb-16`}>
+        <main className={`flex-grow w-full ${!hideLayoutForAuth ? 'pt-6' : ''} pb-16`}> {/* Adjusted padding-top */}
             {children}
         </main>
         <Toaster />
@@ -115,3 +115,4 @@ export default function RootLayout({
     </html>
   );
 }
+
