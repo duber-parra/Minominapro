@@ -1,3 +1,4 @@
+// src/app/schedule/page.tsx
 
 'use client'; // Ensure this directive is present
 
@@ -14,7 +15,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react'; // Added Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -77,7 +78,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList';
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -390,40 +391,39 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return []; // Solo en cliente
 
     const loadedTemplates: ScheduleTemplate[] = [];
-    const templateKeyPrefix = "scheduleTemplate_"; // Prefijo real de las claves de template
+    const templateKeyPrefix = SCHEDULE_TEMPLATES_KEY; // Use the base key as prefix for scanning
 
     try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-
-            if (key && key.startsWith(templateKeyPrefix)) {
-                const storedData = localStorage.getItem(key);
-                if (storedData) {
-                    try {
-                        const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
-                        if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
-                             if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
-                                try {
-                                    const parsedDate = parseISO(parsedTemplate.createdAt);
-                                    parsedTemplate.createdAt = isValid(parsedDate) ? parsedDate : new Date(); // Check if valid
-                                } catch (dateError) {
-                                    console.warn(`Error parsing createdAt date for template ${parsedTemplate.id}:`, dateError);
-                                    parsedTemplate.createdAt = new Date(); // Fallback
-                                }
-                             }
-                             loadedTemplates.push(parsedTemplate);
-                        } else {
-                             console.warn(`Dato inválido encontrado para la clave de template: ${key}`);
+        // It's safer to load the single item directly if we save all templates under one key
+        const storedTemplatesString = localStorage.getItem(SCHEDULE_TEMPLATES_KEY);
+        if (storedTemplatesString) {
+            const parsedArray = JSON.parse(storedTemplatesString) as ScheduleTemplate[];
+            if (Array.isArray(parsedArray)) {
+                parsedArray.forEach(parsedTemplate => {
+                    if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
+                        if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
+                            try {
+                                const parsedDate = parseISO(parsedTemplate.createdAt);
+                                parsedTemplate.createdAt = isValid(parsedDate) ? parsedDate : new Date();
+                            } catch (dateError) {
+                                console.warn(`Error parsing createdAt date for template ${parsedTemplate.id}:`, dateError);
+                                parsedTemplate.createdAt = new Date();
+                            }
                         }
-                    } catch (parseError) {
-                        console.error(`Error parseando JSON para la clave de template ${key}:`, parseError);
-                        // localStorage.removeItem(key); // Option to remove corrupted key
+                        loadedTemplates.push(parsedTemplate);
+                    } else {
+                        console.warn(`Invalid template data found in array`);
                     }
-                }
+                });
+            } else {
+                 console.warn(`Invalid data type found for key ${SCHEDULE_TEMPLATES_KEY}. Expected array.`);
             }
+        } else {
+            console.log(`[loadScheduleTemplates] No templates found under key ${SCHEDULE_TEMPLATES_KEY}`);
         }
+
     } catch (error) {
-        console.error("Error cargando templates de localStorage:", error);
+        console.error(`Error loading templates from localStorage key ${SCHEDULE_TEMPLATES_KEY}:`, error);
     }
 
     // Sort templates, newest first
@@ -800,8 +800,9 @@ export default function SchedulePage() {
                  });
             }
             potentiallyAvailable = potentiallyAvailable.filter(emp => !assignedOnTargetDay.has(emp.id));
+        } else { // Week view drag-drop list should show all employees for the location
+             potentiallyAvailable = filteredEmployees; // Reset filter for week view main list
         }
-        // No date-based filtering needed for the general list in Week view drag-and-drop
 
 
         // Filter by department if the EmployeeSelectionModal is open and a department context exists
@@ -1066,15 +1067,12 @@ export default function SchedulePage() {
             case 'department':
                  const dept = item as Department | null;
                  const iconName = dept ? Object.keys(iconMap).find(key => iconMap[key] === dept.icon) : undefined;
+                 const deptLocationId = dept?.locationId || selectedLocationId || (locations.length > 0 ? locations[0].id : '');
                 setDepartmentFormData({
                     name: dept?.name || '',
-                    locationId: dept?.locationId || selectedLocationId || (locations.length > 0 ? locations[0].id : ''), // Default to current or first location
+                    locationId: deptLocationId,
                     iconName: iconName
                 });
-                 // Clear form if adding new
-                 if (!item) {
-                    setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
-                 }
                 break;
             case 'employee':
                 const emp = item as Employee | null;
@@ -1086,10 +1084,6 @@ export default function SchedulePage() {
                     locationIds: initialLocationIds.length > 0 ? initialLocationIds : (locations.length > 0 ? [locations[0].id] : []), // Ensure at least one location if possible
                     departmentIds: initialDepartmentIds
                 });
-                 // Clear form if adding new
-                if (!item) {
-                    setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] });
-                 }
                 break;
             case 'template':
                  console.log("Template selected:", item);
@@ -1736,6 +1730,7 @@ export default function SchedulePage() {
 
                     const dateKey = format(date, 'yyyy-MM-dd');
                     // Clear existing data for the target day first
+                    // Decide if you want to merge or overwrite. Overwriting is simpler.
                     delete updatedSchedule[dateKey];
 
 
@@ -2007,7 +2002,7 @@ export default function SchedulePage() {
 
     // --- New Config Modal Rendering Logic ---
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
-        <ScrollArea className="h-[calc(100%-4rem)] border rounded-md p-2"> {/* Adjust height dynamically */}
+        <ScrollArea className="h-full border rounded-md p-2"> {/* Adjust height dynamically */}
             {items.map(item => (
                 <div
                     key={item.id}
@@ -2082,7 +2077,7 @@ export default function SchedulePage() {
                         <CardHeader>
                             <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Sede</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-grow space-y-3">
+                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
                             <Label htmlFor="location-name">Nombre</Label>
                             <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
                         </CardContent>
@@ -2239,14 +2234,14 @@ export default function SchedulePage() {
                 />
             </div>
             {/* Right image */}
-            <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+             <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted positioning */}
                  <Image
-                    src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Right image source
-                    alt="Ilustración de elementos de oficina"
-                    width={150}
-                    height={150}
-                    className="object-contain transform rotate-12"
-                    data-ai-hint="office elements illustration"
+                    src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
+                    alt="Ilustración de elementos de oficina" // Updated alt text
+                    width={150} // Adjust size as needed
+                    height={150} // Adjust size as needed
+                    className="object-contain transform rotate-12" // Removed relative positioning
+                    data-ai-hint="office elements illustration" // Updated hint
                  />
              </div>
 
@@ -2313,16 +2308,27 @@ export default function SchedulePage() {
                                                                      else if (activeConfigTab === 'templates') setTemplateSearch(value);
                                                                  }}
                                                              />
-                                                            {activeConfigTab !== 'templates' && ( // No Add button for templates here
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    onClick={() => openConfigForm(activeConfigTab as 'location' | 'department' | 'employee', null)} // Correctly cast type and ensure null is passed for new items
-                                                                    title={`Agregar ${activeConfigTab}`}
-                                                                >
-                                                                    <PlusCircle className="h-4 w-4" />
-                                                                </Button>
-                                                             )}
+                                                             {/* Fix: Map tab value to type correctly, ensure item is null for add */}
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                onClick={() => {
+                                                                    const typeMap = {
+                                                                        sedes: 'location',
+                                                                        departamentos: 'department',
+                                                                        colaboradores: 'employee',
+                                                                        templates: 'template' // Though adding templates here is disabled visually
+                                                                    };
+                                                                    const formType = typeMap[activeConfigTab as keyof typeof typeMap];
+                                                                    if (formType && formType !== 'template') {
+                                                                        openConfigForm(formType as 'location' | 'department' | 'employee', null); // Pass null for adding
+                                                                    }
+                                                                }}
+                                                                title={`Agregar ${activeConfigTab}`}
+                                                                disabled={activeConfigTab === 'templates'} // Disable for templates tab
+                                                            >
+                                                                <PlusCircle className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
 
                                                          {/* Contenido de la Lista según la Pestaña Activa */}
@@ -2341,7 +2347,7 @@ export default function SchedulePage() {
                                                 </div>
                                             </Tabs>
                                        </div>
-                                       {/* Removed DialogFooter to provide more space */}
+                                       {/* Removed DialogFooter */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2496,9 +2502,29 @@ export default function SchedulePage() {
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
                     {/* Template List Button */}
-                    <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                        <List className="mr-2 h-4 w-4" /> Templates
-                    </Button>
+                     <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                         <DialogTrigger asChild>
+                             <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                                <List className="mr-2 h-4 w-4" /> Templates
+                            </Button>
+                         </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                             <DialogHeader>
+                                 <DialogTitle>Templates Guardados</DialogTitle>
+                                 <DialogDescription>
+                                     Selecciona un template para cargarlo o eliminarlo. Se muestran los templates correspondientes a la sede y vista actual ({viewMode}).
+                                 </DialogDescription>
+                             </DialogHeader>
+                             <ScheduleTemplateList
+                                 templates={filteredTemplates}
+                                 onLoadTemplate={handleLoadTemplate}
+                                 onDeleteTemplate={(id) => setTemplateToDeleteId(id)}
+                             />
+                             <DialogFooter>
+                                 <Button variant="secondary" onClick={() => setIsTemplateListModalOpen(false)}>Cerrar</Button>
+                             </DialogFooter>
+                        </DialogContent>
+                     </Dialog>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2615,24 +2641,7 @@ export default function SchedulePage() {
               </AlertDialog>
 
              {/* Template List Modal */}
-             <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                <DialogContent className="max-w-lg">
-                     <DialogHeader>
-                         <DialogTitle>Templates Guardados</DialogTitle>
-                         <DialogDescription>
-                             Selecciona un template para cargarlo o eliminarlo. Se muestran los templates correspondientes a la sede y vista actual ({viewMode}).
-                         </DialogDescription>
-                     </DialogHeader>
-                     <ScheduleTemplateList
-                         templates={filteredTemplates} // Use the memoized filtered list
-                         onLoadTemplate={handleLoadTemplate}
-                         onDeleteTemplate={(id) => setTemplateToDeleteId(id)} // Trigger delete confirmation
-                     />
-                     <DialogFooter>
-                         <Button variant="secondary" onClick={() => setIsTemplateListModalOpen(false)}>Cerrar</Button>
-                     </DialogFooter>
-                </DialogContent>
-             </Dialog>
+             {/* Replaced with Button trigger */}
               {/* Template Delete Confirmation Dialog */}
               <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
                   <AlertDialogContent>
