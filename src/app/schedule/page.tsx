@@ -15,10 +15,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react'; // Added Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator'; // Import Separator
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog"; // Import Dialog components
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
@@ -75,12 +75,14 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
+import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
+
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
-import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate } from '@/types/schedule'; // Added ScheduleTemplate
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns';
+import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule'; // Added ScheduleTemplate and ScheduleNote
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns'; // Added endOfWeek
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
@@ -258,7 +260,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                           // Revive template createdAt date if needed
                           if (tpl.createdAt && typeof tpl.createdAt === 'string') {
                                try {
-                                   return { ...tpl, createdAt: parseISO(tpl.createdAt) };
+                                   const parsedDate = parseISO(tpl.createdAt);
+                                   return isValid(parsedDate) ? { ...tpl, createdAt: parsedDate } : { ...tpl, createdAt: new Date() }; // Check if valid
                                } catch (dateError) {
                                    console.warn(`Error parsing createdAt date for template ${tpl.id}:`, dateError);
                                    return { ...tpl, createdAt: new Date() }; // Use current date as fallback
@@ -385,9 +388,52 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return []; // Solo en cliente
 
-    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
-    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates from localStorage.`);
-    return loadedTemplates.sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Newest first
+    const loadedTemplates: ScheduleTemplate[] = [];
+    const templateKeyPrefix = "scheduleTemplate_"; // Prefijo real de las claves de template
+
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+
+            if (key && key.startsWith(templateKeyPrefix)) {
+                const storedData = localStorage.getItem(key);
+                if (storedData) {
+                    try {
+                        const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
+                        if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
+                             if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
+                                try {
+                                    const parsedDate = parseISO(parsedTemplate.createdAt);
+                                    parsedTemplate.createdAt = isValid(parsedDate) ? parsedDate : new Date(); // Check if valid
+                                } catch (dateError) {
+                                    console.warn(`Error parsing createdAt date for template ${parsedTemplate.id}:`, dateError);
+                                    parsedTemplate.createdAt = new Date(); // Fallback
+                                }
+                             }
+                             loadedTemplates.push(parsedTemplate);
+                        } else {
+                             console.warn(`Dato inválido encontrado para la clave de template: ${key}`);
+                        }
+                    } catch (parseError) {
+                        console.error(`Error parseando JSON para la clave de template ${key}:`, parseError);
+                        // localStorage.removeItem(key); // Option to remove corrupted key
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error cargando templates de localStorage:", error);
+    }
+
+    // Sort templates, newest first
+    loadedTemplates.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+        return dateB - dateA;
+    });
+
+    console.log(`[loadScheduleTemplates] Cargados ${loadedTemplates.length} templates.`);
+    return loadedTemplates;
 };
 
 
@@ -466,6 +512,10 @@ export default function SchedulePage() {
     const [employeeSearch, setEmployeeSearch] = useState('');
     const [templateSearch, setTemplateSearch] = useState('');
 
+    // Loading state for page transitions
+    const [isLoadingPage, setIsLoadingPage] = useState(false); // Added state
+
+
     const isMobile = useIsMobile();
     const { toast } = useToast();
 
@@ -473,6 +523,7 @@ export default function SchedulePage() {
     // --- Load Data from localStorage on Mount (Client-side only) ---
     useEffect(() => {
         setIsClient(true); // Mark as client-side after mount
+        setIsLoadingPage(true); // Start loading indicator
         const loadedLocations = loadFromLocalStorage(LOCATIONS_KEY, initialLocations);
         const loadedDepts = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmps = loadFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
@@ -495,6 +546,7 @@ export default function SchedulePage() {
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLoc }));
         setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [], departmentIds: [] })); // Initialize departmentIds
 
+        setIsLoadingPage(false); // Stop loading indicator
     }, []); // Empty dependency array ensures this runs only once on mount
 
     useEffect(() => {
@@ -699,9 +751,12 @@ export default function SchedulePage() {
         console.log("[Filter Memo] All templates in state:", savedTemplates);
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-        const filtered = templatesArray.filter(temp =>
-             temp.locationId === selectedLocationId && temp.type === viewMode // Match current viewMode ('day' or 'week')
-        );
+        const filtered = templatesArray.filter(temp => {
+             const locationMatch = temp.locationId === selectedLocationId;
+             const typeMatch = temp.type === viewMode;
+             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
+             return locationMatch && typeMatch;
+        });
         console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
@@ -715,7 +770,7 @@ export default function SchedulePage() {
         // Get IDs of employees already assigned on the target date(s)
         const assignedIdsOnDates = new Set<string>();
         datesForFiltering.forEach(date => {
-            if (!date) return;
+            if (!date || !isValid(date)) return;
             const dateKey = format(date, 'yyyy-MM-dd');
             const daySchedule = scheduleData[dateKey];
             if (daySchedule && daySchedule.assignments) {
@@ -1012,26 +1067,23 @@ export default function SchedulePage() {
                  const iconName = dept ? Object.keys(iconMap).find(key => iconMap[key] === dept.icon) : undefined;
                 setDepartmentFormData({
                     name: dept?.name || '',
-                    locationId: dept?.locationId || selectedLocationId,
+                    locationId: dept?.locationId || selectedLocationId || (locations.length > 0 ? locations[0].id : ''), // Default to current or first location
                     iconName: iconName
                 });
                 break;
             case 'employee':
                 const emp = item as Employee | null;
-                const initialLocationIds = Array.isArray(emp?.locationIds) ? emp.locationIds : (selectedLocationId ? [selectedLocationId] : []);
-                const initialDepartmentIds = Array.isArray(emp?.departmentIds) ? emp.departmentIds : [];
+                 const initialLocationIds = Array.isArray(emp?.locationIds) ? emp.locationIds : (selectedLocationId ? [selectedLocationId] : []);
+                 const initialDepartmentIds = Array.isArray(emp?.departmentIds) ? emp.departmentIds : [];
                 setEmployeeFormData({
                     id: emp?.id || '',
                     name: emp?.name || '',
-                    locationIds: initialLocationIds,
+                    locationIds: initialLocationIds.length > 0 ? initialLocationIds : (locations.length > 0 ? [locations[0].id] : []), // Ensure at least one location if possible
                     departmentIds: initialDepartmentIds
                 });
                 break;
             case 'template':
-                // Templates are usually listed and deleted, not edited via form in this structure
                  console.log("Template selected:", item);
-                 // Maybe show template details read-only, or just handle load/delete from list
-                 // setConfigFormType(null); // Reset form type if no form is shown
                 break;
         }
     };
@@ -1053,6 +1105,9 @@ export default function SchedulePage() {
             toast({ title: 'Sede Agregada', description: `Sede "${name}" agregada.` });
             if (locations.length === 0 || !selectedLocationId) {
                  setSelectedLocationId(newLocation.id);
+                 // Update default location for NEW departments/employees when the first location is added
+                 setDepartmentFormData(prev => ({ ...prev, locationId: newLocation.id }));
+                 setEmployeeFormData(prev => ({ ...prev, locationIds: [newLocation.id] }));
             }
         }
         setConfigFormType(null); // Close form view after save
@@ -1064,10 +1119,14 @@ export default function SchedulePage() {
          const name = departmentFormData.name.trim();
          const locationId = departmentFormData.locationId;
          const iconName = departmentFormData.iconName;
-        if (!name || !locationId) {
-            toast({ title: 'Datos Incompletos', description: 'El nombre y la sede del departamento son requeridos.', variant: 'destructive' });
-            return;
-        }
+         if (!name) {
+             toast({ title: 'Nombre Inválido', description: 'El nombre del departamento no puede estar vacío.', variant: 'destructive' });
+             return;
+         }
+         if (!locationId) {
+             toast({ title: 'Sede Requerida', description: 'Debes seleccionar una sede para el departamento.', variant: 'destructive' });
+             return;
+         }
          const icon = iconName ? iconMap[iconName] : Building;
 
          const currentEditingDepartment = selectedConfigItem as Department | null;
@@ -1092,8 +1151,12 @@ export default function SchedulePage() {
                              : (selectedLocationId ? [selectedLocationId] : []);
          const departmentIds = Array.isArray(employeeFormData.departmentIds) ? employeeFormData.departmentIds : [];
 
-          if (!id || !name) {
-             toast({ title: 'Datos Incompletos', description: 'El ID y el nombre del colaborador son requeridos.', variant: 'destructive' });
+          if (!id) {
+             toast({ title: 'ID Requerido', description: 'El ID del colaborador es requerido (Ej: Cédula).', variant: 'destructive' });
+             return;
+          }
+          if (!name) {
+             toast({ title: 'Nombre Requerido', description: 'El nombre del colaborador es requerido.', variant: 'destructive' });
              return;
           }
            if (locationIds.length === 0) {
@@ -1133,7 +1196,7 @@ export default function SchedulePage() {
              });
         } else {
             const newEmployee = updatedEmployeeData;
-            setEmployees(prev => [...prev, newEmployee]);
+            setEmployees(prev => [...prev, newEmployee].sort((a, b) => a.name.localeCompare(b.name))); // Keep sorted
              toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" (ID: ${id}) agregado.` });
         }
         setConfigFormType(null); // Close form view
@@ -1146,10 +1209,10 @@ export default function SchedulePage() {
             const currentIds = Array.isArray(prev.locationIds) ? prev.locationIds : [];
             let newLocationIds;
             if (currentIds.includes(locationId)) {
-                newLocationIds = currentIds.length > 1 ? currentIds.filter(id => id !== locationId) : currentIds;
-                 if (newLocationIds.length === 0 && currentIds.length > 0) {
+                newLocationIds = currentIds.filter(id => id !== locationId);
+                 if (newLocationIds.length === 0) {
                     toast({ title: "Validación", description: "El colaborador debe estar asignado al menos a una sede.", variant: "destructive" });
-                    return prev;
+                    return prev; // Prevent removal if it's the last one
                 }
             } else {
                 newLocationIds = [...currentIds, locationId];
@@ -1692,6 +1755,7 @@ export default function SchedulePage() {
         toast({ title: "Template Aplicado", description: `Se aplicaron las asignaciones del template "${templateToLoad.name}".` });
         // Optionally close the config modal after loading
         // setIsConfigModalOpen(false);
+        setIsTemplateListModalOpen(false); // Close the template list modal
 
     }, [savedTemplates, viewMode, targetDate, weekDates, setScheduleData, toast, employees, departments, filteredDepartments, selectedLocationId]); // Added dependencies
 
@@ -1942,15 +2006,15 @@ export default function SchedulePage() {
                         selectedConfigItem?.id === item.id ? 'bg-accent font-semibold' : ''
                     )}
                 >
-                    <span className="truncate flex items-center gap-1">
+                    <span className="truncate flex items-center gap-1 flex-grow min-w-0 mr-2"> {/* Allow shrinking */}
                         {type === 'department' && item.icon && React.createElement(item.icon, { className: 'h-3 w-3 mr-1 flex-shrink-0' })}
                         {item.name}
                         {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
                         {type === 'employee' && <span className="text-xs italic ml-1">(ID: {item.id})</span>}
                         {type === 'template' && <span className="text-xs italic ml-1">({item.type}, {item.createdAt ? format(new Date(item.createdAt), 'dd/MM/yy') : '?'})</span>}
                     </span>
-                     {/* Action buttons (Edit, Delete) */}
-                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
+                     {/* Action buttons (Edit, Delete) - Ensure they don't wrap */}
+                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5 flex-shrink-0"> {/* Prevent shrinking */}
                         {type !== 'template' && ( // Templates might not have an edit form
                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); openConfigForm(type, item); }} title={`Editar ${type}`}>
                                  <Edit className="h-4 w-4" />
@@ -2031,7 +2095,7 @@ export default function SchedulePage() {
                             <div>
                                 <Label htmlFor="department-location">Sede</Label>
                                 <Select value={departmentFormData.locationId} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, locationId: value }))}>
-                                    <SelectTrigger id="department-location"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id="department-location"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
                                     <SelectContent> {locations.map(loc => <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>)} </SelectContent>
                                 </Select>
                             </div>
@@ -2144,6 +2208,36 @@ export default function SchedulePage() {
 
     return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
+            {/* Loading Indicator Overlay */}
+            {isLoadingPage && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                </div>
+            )}
+
+             {/* Decorative Images */}
+              {/* Left image */}
+              <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+                <Image
+                    src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Left image source
+                    alt="Ilustración decorativa izquierda"
+                    width={240} // Increased width
+                    height={240} // Increased height proportionally
+                    className="object-contain relative -top-12 left-8 transform -rotate-12" // Adjusted vertical position
+                    data-ai-hint="decorative illustration left"
+                />
+            </div>
+            {/* Right image */}
+            <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+                 <Image
+                    src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Right image source
+                    alt="Ilustración decorativa derecha"
+                    width={150}
+                    height={150}
+                    className="object-contain transform rotate-12"
+                    data-ai-hint="decorative illustration right"
+                 />
+             </div>
 
 
              {/* Title */}
@@ -2155,7 +2249,7 @@ export default function SchedulePage() {
              </div>
 
 
-             {/* Controls Section - Top Bar - Transparent */}
+             {/* Controls Section - Top Bar */}
               <div className="bg-transparent border-none shadow-none p-0 mb-6 md:mb-8">
                       <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                          {/* Location Selector & Config Button */}
@@ -2212,7 +2306,7 @@ export default function SchedulePage() {
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    onClick={() => openConfigForm(activeConfigTab as 'location' | 'department' | 'employee', null)} // Correctly cast type
+                                                                    onClick={() => openConfigForm(activeConfigTab as 'location' | 'department' | 'employee', null)} // Correctly cast type and ensure null is passed for new items
                                                                     title={`Agregar ${activeConfigTab}`}
                                                                 >
                                                                     <PlusCircle className="h-4 w-4" />
@@ -2236,10 +2330,7 @@ export default function SchedulePage() {
                                                 </div>
                                             </Tabs>
                                        </div>
-                                       <DialogFooter className="p-4 border-t"> {/* Added padding */}
-                                           <Button variant="secondary" onClick={() => setIsConfigModalOpen(false)}>Cerrar</Button>
-                                           {/* Remove save button here, save happens within each form */}
-                                       </DialogFooter>
+                                       {/* Removed DialogFooter to provide more space */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2255,7 +2346,7 @@ export default function SchedulePage() {
                                             className={cn(
                                                 'w-[200px] sm:w-[280px] justify-start text-left font-normal',
                                                 !targetDate && 'text-muted-foreground',
-                                                isHoliday(targetDate) && 'border-primary font-semibold text-primary border-2' // Highlight border if holiday
+                                                 isHoliday(targetDate) && 'border-primary font-semibold border-2' // Keep primary border for holiday
                                             )}
                                             disabled={isCheckingHoliday}
                                         >
@@ -2393,6 +2484,10 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
+                    {/* Template List Button */}
+                    <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                        <List className="mr-2 h-4 w-4" /> Templates
+                    </Button>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2422,7 +2517,7 @@ export default function SchedulePage() {
                              <AlertDialogHeader>
                                <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
                                <AlertDialogDescription>
-                                 Esta acción eliminará todos los turnos de la semana del{' '}
+                                 Esta acción eliminará todos los turnos y notas de la semana del{' '}
                                  {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
                                  {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
                                </AlertDialogDescription>
@@ -2503,6 +2598,47 @@ export default function SchedulePage() {
                               onClick={() => noteToDeleteId && deleteScheduleNote(noteToDeleteId)} // Call direct delete function
                               className="bg-destructive hover:bg-destructive/90">
                               Eliminar Anotación
+                          </AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+
+             {/* Template List Modal */}
+             <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                <DialogContent className="max-w-lg">
+                     <DialogHeader>
+                         <DialogTitle>Templates Guardados</DialogTitle>
+                         <DialogDescription>
+                             Selecciona un template para cargarlo o eliminarlo. Se muestran los templates correspondientes a la sede y vista actual ({viewMode}).
+                         </DialogDescription>
+                     </DialogHeader>
+                     <ScheduleTemplateList
+                         templates={filteredTemplates} // Use the memoized filtered list
+                         onLoadTemplate={handleLoadTemplate}
+                         onDeleteTemplate={(id) => setTemplateToDeleteId(id)} // Trigger delete confirmation
+                     />
+                     <DialogFooter>
+                         <Button variant="secondary" onClick={() => setIsTemplateListModalOpen(false)}>Cerrar</Button>
+                     </DialogFooter>
+                </DialogContent>
+             </Dialog>
+              {/* Template Delete Confirmation Dialog */}
+              <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar este Template?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              "{savedTemplates.find(t => t.id === templateToDeleteId)?.name || ''}"
+                              <br />
+                              Esta acción no se puede deshacer.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                              onClick={() => templateToDeleteId && handleDeleteTemplate(templateToDeleteId)}
+                              className="bg-destructive hover:bg-destructive/90">
+                              Eliminar Template
                           </AlertDialogAction>
                       </AlertDialogFooter>
                   </AlertDialogContent>
