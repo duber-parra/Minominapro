@@ -68,6 +68,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
+// Removed template list import as functionality was removed
+// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList';
 
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule';
@@ -93,7 +95,8 @@ const SCHEDULE_EVENTS_KEY = 'scheduleCalendarEvents'; // Key for specific date n
 const LOCATIONS_KEY = 'schedulePlannerLocations';
 const DEPARTMENTS_KEY = 'schedulePlannerDepartments';
 const EMPLOYEES_KEY = 'schedulePlannerEmployees';
-const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Key for schedule templates
+// Removed templates key as functionality was removed
+// const SCHEDULE_TEMPLATES_KEY = 'schedulePlannerTemplates'; // Key for schedule templates
 
 // Cache for holidays
 let holidaysCache: { [year: number]: Set<string> } = {};
@@ -225,7 +228,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         const parsed = JSON.parse(savedData);
 
         // Basic check for array types
-        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_EVENTS_KEY, SCHEDULE_TEMPLATES_KEY].includes(key)) {
+        // Removed Schedule Templates Key check as functionality was removed
+        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_EVENTS_KEY].includes(key)) {
             if (Array.isArray(parsed)) {
                   // Ensure employees have locationIds array and optional departmentIds
                   if (key === EMPLOYEES_KEY) {
@@ -242,20 +246,6 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                       return parsed.filter(note => // Basic validation
                           note && typeof note === 'object' && note.id && note.date && note.note
                       ) as T;
-                  }
-                  // For Templates, revive createdAt date
-                  if (key === SCHEDULE_TEMPLATES_KEY) {
-                     return parsed.map(tpl => {
-                         if (tpl.createdAt && typeof tpl.createdAt === 'string') {
-                             try {
-                                 return { ...tpl, createdAt: parseISO(tpl.createdAt) };
-                             } catch (e) {
-                                 console.error("Error parsing template createdAt date:", e);
-                                 return { ...tpl, createdAt: undefined };
-                             }
-                         }
-                         return tpl;
-                     }) as T;
                   }
                  return parsed as T;
             } else {
@@ -283,7 +273,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         }
     } catch (error) {
         // Handle JSON parsing errors or other potential issues
-         if (error instanceof SyntaxError) {
+         if (error instanceof SyntaxError && key !== SCHEDULE_NOTES_KEY) { // Ignore parse error for plain text notes
              console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
              // Don't remove notes on parse error, but remove others
              if (key !== SCHEDULE_NOTES_KEY) {
@@ -294,7 +284,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                      console.error(`Error removing invalid item from localStorage for key ${key}:`, removeError);
                  }
              }
-         } else {
+         } else if (!(error instanceof SyntaxError)) { // Log other errors normally
              console.error(`Error loading ${key} from localStorage:`, error);
          }
     }
@@ -360,16 +350,7 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
      }
 };
 
-// --- Function to Load Schedule Templates ---
-const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
-    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates from key ${SCHEDULE_TEMPLATES_KEY}.`);
-    return loadedTemplates.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt).getTime() : 0);
-            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt).getTime() : 0);
-            return dateB - dateA; // Sort newest first
-        });
-};
+// Removed template loading function as functionality was removed
 
 
 // New interface for the summary data
@@ -390,10 +371,7 @@ export default function SchedulePage() {
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>({});
     const [scheduleNotes, setScheduleNotes] = useState<ScheduleNote[]>([]); // State for calendar notes/events
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
-    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // State for saved templates
-    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false); // State for template modal
-    const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for confirming template deletion
-    const [templateToSaveName, setTemplateToSaveName] = useState<string>(''); // State for template name input
+    // Removed template state as functionality was removed
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // Loading state for saving template
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
     const [notesModalForDate, setNotesModalForDate] = useState<Date | null>(null); // State to open notes modal for a specific date
@@ -419,9 +397,6 @@ export default function SchedulePage() {
     const [targetDate, setTargetDate] = useState<Date>(new Date());
 
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-    const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
-    const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
 
     const [editingLocation, setEditingLocation] = useState<Location | null>(null);
     const [locationFormData, setLocationFormData] = useState({ name: '' });
@@ -456,7 +431,7 @@ export default function SchedulePage() {
         const loadedSched = loadScheduleDataFromLocalStorage(loadedEmps, {});
         const loadedNotesStr = loadFromLocalStorage(SCHEDULE_NOTES_KEY, defaultNotesText, false); // Load general notes as string
         const loadedEvents = loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, []); // Load calendar notes/events
-        const loadedTpls = loadScheduleTemplates(); // Load schedule templates using the new function
+        // Removed template loading as functionality was removed
 
         setLocations(loadedLocations);
         setDepartments(loadedDepts);
@@ -464,7 +439,7 @@ export default function SchedulePage() {
         setScheduleData(loadedSched);
         setNotes(loadedNotesStr);
         setScheduleNotes(loadedEvents); // Set loaded calendar notes
-        setSavedTemplates(loadedTpls); // Set loaded schedule templates
+        // Removed setting template state
 
         // Set initial selected location and update form defaults accordingly
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
@@ -582,30 +557,8 @@ export default function SchedulePage() {
         }
     }, [scheduleNotes, isClient, toast]);
 
-      // --- Effect to save Templates to localStorage ---
-     useEffect(() => {
-         if (isClient) {
-             try {
-                  console.log("[Save Effect] Saving templates to localStorage:", savedTemplates); // Log before saving
-                  // Ensure each template has a unique ID and createdAt timestamp if missing
-                  const templatesToSave = savedTemplates.map(tpl => ({
-                      ...tpl,
-                      id: tpl.id || `${SCHEDULE_TEMPLATES_KEY}_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Generate ID if missing
-                      createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : (tpl.createdAt || new Date().toISOString()) // Ensure ISO string date
-                  }));
-                  // Save the entire array under the single SCHEDULE_TEMPLATES_KEY
-                  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                  console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
-             } catch (error) {
-                  console.error("Error saving templates to localStorage:", error);
-                  toast({
-                      title: 'Error al Guardar Templates',
-                      description: 'No se pudieron guardar los templates localmente.',
-                      variant: 'destructive',
-                  });
-             }
-         }
-     }, [savedTemplates, isClient, toast]);
+    // Removed effect for saving templates as functionality was removed
+
 
     // ---- End LocalStorage Effects ---
 
@@ -669,19 +622,7 @@ export default function SchedulePage() {
         Array.isArray(emp.locationIds) && emp.locationIds.includes(selectedLocationId)
     ), [employees, selectedLocationId]);
 
-     // Filter templates based on selected location and current view mode
-     const filteredTemplates = useMemo(() => {
-          console.log("[Filter Memo] All templates in state:", savedTemplates);
-          const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-          const filtered = templatesArray.filter(temp => {
-              const locationMatch = temp.locationId === selectedLocationId;
-              const typeMatch = temp.type === viewMode; // Only show templates matching current view (day/week)
-              console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
-              return locationMatch && typeMatch;
-          });
-          console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
-          return filtered;
-     }, [savedTemplates, selectedLocationId, viewMode]); // Dependencies
+    // Removed template filtering as functionality was removed
 
 
      const assignedEmployeeIdsForTargetDate = useMemo(() => {
@@ -748,17 +689,18 @@ export default function SchedulePage() {
 
 
     useEffect(() => {
-        if (!departmentFormData.locationId || departmentFormData.locationId !== selectedLocationId) {
+        // Only update if the locationId in formData is different from selectedLocationId
+        if (departmentFormData.locationId !== selectedLocationId) {
            setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
         }
-    }, [selectedLocationId, departmentFormData.locationId]);
+    }, [selectedLocationId, departmentFormData.locationId]); // Only run when selectedLocationId changes
 
      useEffect(() => {
         if (!editingEmployee && selectedLocationId) {
             setEmployeeFormData(prev => ({
                 ...prev,
                 locationIds: [selectedLocationId],
-                departmentIds: [] // Reset departments when location changes or adding new
+                 departmentIds: [] // Reset departments when location changes or adding new
             }));
         }
      }, [selectedLocationId, editingEmployee]);
@@ -970,7 +912,8 @@ export default function SchedulePage() {
     const handleOpenLocationModal = (location: Location | null) => {
         setEditingLocation(location);
         setLocationFormData({ name: location?.name || '' });
-        setIsLocationModalOpen(true);
+        setIsConfigModalOpen(true); // Open the main config modal
+        // Optionally, you could add state to highlight the "Locations" section within the modal
     };
 
     const handleSaveLocation = () => {
@@ -991,7 +934,7 @@ export default function SchedulePage() {
                  setSelectedLocationId(newLocation.id);
             }
         }
-        setIsLocationModalOpen(false);
+        setIsConfigModalOpen(false); // Close modal after save
         setEditingLocation(null);
     };
 
@@ -1003,7 +946,8 @@ export default function SchedulePage() {
             locationId: department?.locationId || selectedLocationId,
             iconName: iconName
         });
-        setIsDepartmentModalOpen(true);
+        setIsConfigModalOpen(true); // Open the main config modal
+        // Optionally, add state to highlight the "Departments" section
     };
 
     const handleSaveDepartment = () => {
@@ -1024,7 +968,7 @@ export default function SchedulePage() {
             setDepartments([...departments, newDepartment]);
             toast({ title: 'Departamento Agregado', description: `Departamento "${name}" agregado.` });
         }
-        setIsDepartmentModalOpen(false);
+        setIsConfigModalOpen(false); // Close modal after save
         setEditingDepartment(null);
     };
 
@@ -1040,7 +984,8 @@ export default function SchedulePage() {
             locationIds: initialLocationIds,
             departmentIds: initialDepartmentIds // Initialize departmentIds
         });
-        setIsEmployeeModalOpen(true);
+        setIsConfigModalOpen(true); // Open the main config modal
+         // Optionally, add state to highlight the "Employees" section
     };
 
     const handleToggleEmployeeLocation = (locationId: string) => {
@@ -1137,7 +1082,7 @@ export default function SchedulePage() {
             setEmployees(prev => [...prev, newEmployee]);
              toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" (ID: ${id}) agregado.` });
         }
-        setIsEmployeeModalOpen(false);
+        setIsConfigModalOpen(false); // Close modal after save
         setEditingEmployee(null); // Reset editing state
     };
 
@@ -1171,7 +1116,7 @@ export default function SchedulePage() {
                         return remaining;
                     });
                     // Find departments associated with the deleted location
-                    const depsToDelete = departments.filter(dep => dep.locationId === itemToDelete.id).map(d => d.id);
+                    const depsToDeleteLoc = departments.filter(dep => dep.locationId === itemToDelete.id).map(d => d.id);
                     // Remove associated departments
                     setDepartments(prevDeps => prevDeps.filter(dep => dep.locationId !== itemToDelete.id));
                     // Remove location association from employees, filter out employees with no locations left
@@ -1179,11 +1124,10 @@ export default function SchedulePage() {
                         ...emp,
                         locationIds: emp.locationIds.filter(locId => locId !== itemToDelete.id),
                         // Also remove departments associated with the deleted location from the employee
-                        departmentIds: (emp.departmentIds || []).filter(deptId => !depsToDelete.includes(deptId))
+                        departmentIds: (emp.departmentIds || []).filter(deptId => !depsToDeleteLoc.includes(deptId))
                     })).filter(emp => emp.locationIds.length > 0)); // Remove employees with no locations left
 
-                    // Remove associated templates
-                    setSavedTemplates(prevTemplates => prevTemplates.filter(tpl => tpl.locationId !== itemToDelete.id));
+                    // Removed template cleanup
 
 
                     // Clean up schedule data: remove assignments in departments of the deleted location
@@ -1194,7 +1138,7 @@ export default function SchedulePage() {
                              const currentAssignments = updatedSchedule[dateKey].assignments;
                              const newAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                              Object.keys(currentAssignments).forEach(deptId => {
-                                 if (!depsToDelete.includes(deptId)) { // Keep assignments from other departments
+                                 if (!depsToDeleteLoc.includes(deptId)) { // Keep assignments from other departments
                                      newAssignments[deptId] = currentAssignments[deptId];
                                      if (currentAssignments[deptId].length > 0) {
                                          dayHasOtherAssignments = true;
@@ -1228,15 +1172,8 @@ export default function SchedulePage() {
                      });
                      setScheduleData(updatedScheduleDept);
 
-                     // Remove department from templates
-                     setSavedTemplates(prevTemplates => prevTemplates.map(tpl => {
-                         if (tpl.assignments && tpl.assignments[itemToDelete.id]) {
-                             const newAssignments = { ...tpl.assignments };
-                             delete newAssignments[itemToDelete.id];
-                             return { ...tpl, assignments: newAssignments };
-                         }
-                         return tpl;
-                     }));
+                     // Removed template cleanup
+
                      // Remove department from employees' departmentIds
                      setEmployees(prevEmps => prevEmps.map(emp => ({
                         ...emp,
@@ -1269,32 +1206,7 @@ export default function SchedulePage() {
                      });
                      setScheduleData(updatedScheduleEmp);
 
-                     // Remove employee assignments from templates
-                     setSavedTemplates(prevTemplates => prevTemplates.map(tpl => {
-                         const newAssignments = { ...tpl.assignments };
-                         let templateChanged = false;
-                         Object.keys(newAssignments).forEach(key => { // key can be dateKey or deptId
-                             if (tpl.type === 'week') {
-                                 // Handle weekly template structure
-                                 const dailyAssignments = newAssignments[key] as DailyAssignments;
-                                 Object.keys(dailyAssignments).forEach(deptId => {
-                                     const originalLength = dailyAssignments[deptId].length;
-                                     dailyAssignments[deptId] = dailyAssignments[deptId].filter(a => a.employee.id !== itemToDelete.id);
-                                     if (dailyAssignments[deptId].length < originalLength) templateChanged = true;
-                                     if (dailyAssignments[deptId].length === 0) delete dailyAssignments[deptId];
-                                 });
-                                 if (Object.keys(dailyAssignments).length === 0) delete newAssignments[key]; // Clean empty day
-
-                             } else { // Day template structure
-                                const deptAssignments = newAssignments[key] as ShiftAssignment[];
-                                const originalLength = deptAssignments.length;
-                                newAssignments[key] = deptAssignments.filter(a => a.employee.id !== itemToDelete.id);
-                                if (newAssignments[key].length < originalLength) templateChanged = true;
-                                if (newAssignments[key].length === 0) delete newAssignments[key]; // Clean empty department
-                             }
-                         });
-                         return templateChanged ? { ...tpl, assignments: newAssignments } : tpl;
-                     }));
+                    // Removed template cleanup
 
                      message = `Colaborador "${itemToDelete.name}" eliminado.`;
                      break;
@@ -1468,218 +1380,11 @@ export default function SchedulePage() {
      };
 
 
-      // --- Template Handling Functions ---
+      // Removed template handling functions
 
-      const handleSaveTemplate = (name: string) => {
-        if (!name.trim() || !selectedLocationId) {
-            toast({ title: 'Error', description: 'Se requiere un nombre para el template y una sede seleccionada.', variant: 'destructive' });
-            return;
-        }
-         setIsSavingTemplate(true);
-
-        const templateType = viewMode; // 'day' or 'week'
-        let assignmentsToSave: DailyAssignments | WeeklyAssignments = {};
-
-        try {
-            if (templateType === 'day') {
-                 const dayKey = format(targetDate, 'yyyy-MM-dd');
-                 const daySchedule = scheduleData[dayKey];
-                 if (daySchedule && daySchedule.assignments) {
-                     // Deep copy and format for DailyAssignments
-                     assignmentsToSave = JSON.parse(JSON.stringify(daySchedule.assignments));
-                      Object.keys(assignmentsToSave).forEach(deptId => {
-                          (assignmentsToSave as DailyAssignments)[deptId] = ((assignmentsToSave as DailyAssignments)[deptId] || []).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
-                      });
-                 } else {
-                     toast({ title: 'Template Vacío', description: 'No hay turnos asignados para guardar en este día.', variant: 'default' });
-                     setIsSavingTemplate(false);
-                     return;
-                 }
-            } else { // week
-                const weeklyAssignments: WeeklyAssignments = {};
-                 weekDates.forEach(date => {
-                     const dayKey = format(date, 'yyyy-MM-dd');
-                     const daySchedule = scheduleData[dayKey];
-                     if (daySchedule && daySchedule.assignments && Object.keys(daySchedule.assignments).length > 0) {
-                          // Deep copy and format for DailyAssignments structure inside WeeklyAssignments
-                          const dailyAssignmentsFormatted: DailyAssignments = {};
-                          const assignmentsRaw = JSON.parse(JSON.stringify(daySchedule.assignments));
-                           Object.keys(assignmentsRaw).forEach(deptId => {
-                               dailyAssignmentsFormatted[deptId] = (assignmentsRaw[deptId] || []).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
-                           });
-                          weeklyAssignments[dayKey] = dailyAssignmentsFormatted;
-                     }
-                 });
-                 if (Object.keys(weeklyAssignments).length === 0) {
-                    toast({ title: 'Template Vacío', description: 'No hay turnos asignados para guardar en esta semana.', variant: 'default' });
-                    setIsSavingTemplate(false);
-                    return;
-                 }
-                 assignmentsToSave = weeklyAssignments;
-            }
-
-            const newTemplate: ScheduleTemplate = {
-                id: `${SCHEDULE_TEMPLATES_KEY}_${Date.now()}`, // Use constant in key, ensure uniqueness
-                name: name.trim(),
-                locationId: selectedLocationId,
-                type: templateType,
-                assignments: assignmentsToSave,
-                createdAt: new Date(),
-            };
-
-            // Update the state by adding the new template
-             setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => {
-                  const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt).getTime() : 0);
-                  const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt).getTime() : 0);
-                  return dateB - dateA; // Sort newest first
-             }));
-
-
-            toast({ title: 'Template Guardado', description: `Template "${newTemplate.name}" guardado.` });
-            setTemplateToSaveName(''); // Clear input field
-         } catch (error) {
-             console.error("Error saving template:", error);
-             toast({ title: 'Error al Guardar', description: 'No se pudo guardar el template.', variant: 'destructive' });
-         } finally {
-             setIsSavingTemplate(false);
-         }
-     };
-
-     const handleLoadTemplate = useCallback((templateId: string) => {
-        console.log("Intentando cargar template con ID:", templateId);
-        const templateToLoad = savedTemplates.find(t => t.id === templateId);
-
-        if (!templateToLoad) {
-            console.error("Template no encontrado en el estado:", templateId);
-            toast({ title: "Error", description: "No se encontró el template seleccionado.", variant: "destructive" });
-            return;
-        }
-
-        if (templateToLoad.type !== viewMode) {
-            const requiredView = templateToLoad.type === 'week' ? 'semanal' : 'diaria';
-            toast({
-                title: 'Vista Incorrecta',
-                description: `El template "${templateToLoad.name}" es ${requiredView}. Cambia a la vista ${requiredView} para cargarlo.`,
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return;
-        }
-
-        console.log("Template encontrado:", templateToLoad);
-        console.log("Assignments a cargar:", templateToLoad.assignments);
-
-        try {
-            setScheduleData(currentScheduleData => {
-                const updatedSchedule = { ...currentScheduleData };
-                let assignmentsLoadedCount = 0;
-
-                 const applyAssignments = (targetDateKey: string, dailyAssignments: DailyAssignments) => {
-                     const targetDate = parseDateFns(targetDateKey, 'yyyy-MM-dd', new Date());
-                     const existingDayData = updatedSchedule[targetDateKey] || { date: targetDate, assignments: {} };
-                     const newDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
-                     let dayLoadedCount = 0;
-
-                     Object.keys(dailyAssignments).forEach(deptId => {
-                         const departmentExists = departments.some(d => d.id === deptId && d.locationId === selectedLocationId); // Check department exists in selected location
-                         if (!departmentExists) {
-                              console.warn(`Departamento ${deptId} del template no existe en la sede actual, omitiendo asignaciones.`);
-                              return;
-                         }
-
-                         newDayAssignments[deptId] = (dailyAssignments[deptId] || []).map((templateAssign) => {
-                             const fullEmployee = employees.find(emp => emp.id === templateAssign.employee.id && emp.locationIds.includes(selectedLocationId)); // Check employee exists and belongs to location
-                             if (!fullEmployee) {
-                                 console.warn(`Empleado ${templateAssign.employee.id} del template no encontrado o no pertenece a la sede actual, omitiendo asignación.`);
-                                 return null;
-                             }
-                             dayLoadedCount++;
-                              return {
-                                  ...templateAssign,
-                                  id: `shift_${fullEmployee.id}_${targetDateKey}_${templateAssign.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`,
-                                  employee: fullEmployee,
-                              };
-                         }).filter((a): a is ShiftAssignment => a !== null);
-
-                          if (newDayAssignments[deptId]?.length === 0) {
-                              delete newDayAssignments[deptId];
-                          }
-                     });
-
-                     if (Object.keys(newDayAssignments).length > 0) {
-                          updatedSchedule[targetDateKey] = { ...existingDayData, date: targetDate, assignments: newDayAssignments };
-                          assignmentsLoadedCount += dayLoadedCount;
-                     } else {
-                          console.log(`No valid assignments loaded for ${targetDateKey}, keeping existing data.`);
-                     }
-                 };
-
-
-                if (templateToLoad.type === 'day' && viewMode === 'day') {
-                    const targetDayKey = format(targetDate, 'yyyy-MM-dd');
-                    applyAssignments(targetDayKey, templateToLoad.assignments as DailyAssignments);
-                } else if (templateToLoad.type === 'week' && viewMode === 'week') {
-                     const templateWeekAssignments = templateToLoad.assignments as WeeklyAssignments;
-                     const weekStartsOnMonday = startOfWeek(currentDate, { weekStartsOn: 1 });
-                    Object.keys(templateWeekAssignments).forEach(templateDateKey => {
-                        const templateDate = parseDateFns(templateDateKey, 'yyyy-MM-dd', new Date()); // Changed parseISO to parseDateFns
-                        if (isValid(templateDate)) { // Use isValid from date-fns
-                             const dayOfWeek = getDay(templateDate); // 0=Sun, 1=Mon,...
-                             const targetDateIndex = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // Adjust index for Monday start (0=Mon, 6=Sun)
-                             if (targetDateIndex < 0 || targetDateIndex >= 7) {
-                                 console.error("Invalid target date index calculated:", targetDateIndex, "for date:", templateDate);
-                                 return; // Skip this day if index calculation fails
-                             }
-                             const targetApplyDate = addDays(weekStartsOnMonday, targetDateIndex);
-                             const targetApplyDateKey = format(targetApplyDate, 'yyyy-MM-dd');
-                             applyAssignments(targetApplyDateKey, templateWeekAssignments[templateDateKey]);
-                        } else {
-                             console.warn(`Invalid date key found in weekly template: ${templateDateKey}`);
-                        }
-                    });
-                } else {
-                    console.error("Mismatch between template type and view mode during load application.");
-                    toast({ title: "Error Interno", description: "No se pudo aplicar el template debido a un error de tipo.", variant: "destructive" });
-                    return currentScheduleData;
-                }
-
-                console.log("Nuevo estado del planificador:", updatedSchedule);
-                 toast({
-                    title: "Template Aplicado",
-                    description: `Se aplicaron ${assignmentsLoadedCount} asignaciones de '${templateToLoad.name}'.`
-                 });
-                return updatedSchedule;
-            });
-        } catch (error) {
-            console.error("Error applying template:", error);
-            toast({ title: 'Error al Aplicar', description: 'Ocurrió un error al aplicar las asignaciones del template.', variant: 'destructive' });
-        }
-         setIsTemplateModalOpen(false); // Close modal after loading
-
-    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, departments, selectedLocationId, currentDate]);
-
-
-      const handleDeleteTemplate = (templateId: string) => {
-         try {
-             const templateIndex = savedTemplates.findIndex(t => t.id === templateId);
-             if (templateIndex === -1) {
-                 toast({ title: 'Error', description: 'Template no encontrado para eliminar.', variant: 'destructive' });
-                 return;
-             }
-             const updatedTemplates = [...savedTemplates];
-             updatedTemplates.splice(templateIndex, 1);
-             setSavedTemplates(updatedTemplates);
-             toast({ title: 'Template Eliminado', variant: 'destructive' });
-             setTemplateToDeleteId(null);
-         } catch (error) {
-             console.error("Error deleting template:", error);
-             toast({ title: 'Error al Eliminar', description: 'No se pudo eliminar el template.', variant: 'destructive' });
-             setTemplateToDeleteId(null);
-         }
-     };
 
       const handleConfirmDeleteTemplate = (templateId: string) => {
-          setTemplateToDeleteId(templateId); // Open confirmation dialog
+          // Removed template deletion confirmation
       };
 
     // --- End Template Handling ---
@@ -1893,18 +1598,7 @@ export default function SchedulePage() {
     // Ensure this return statement is inside the component function
     return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
-             {/* Illustration in top-left corner */}
-              <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
-                 <Image
-                      src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Using the image URL directly
-                      alt="Ilustración de teclado y elementos de oficina"
-                      width={400} // Increased width
-                      height={200} // Increased height proportionally
-                      className="object-contain"
-                      priority // Load this image early
-                      data-ai-hint="keyboard glasses pens" // AI hint
-                 />
-             </div>
+             {/* Removed Illustration */}
 
 
              {/* Title */}
@@ -1960,7 +1654,18 @@ export default function SchedulePage() {
                                                                  <AlertDialogTrigger asChild>
                                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                                  </AlertDialogTrigger>
-                                                                 {/* Delete Confirmation Content defined later */}
+                                                                 <AlertDialogContent>
+                                                                      <AlertDialogHeader>
+                                                                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                          <AlertDialogDescription>
+                                                                              Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes) y se borrarán turnos relacionados. Esta acción no se puede deshacer.
+                                                                          </AlertDialogDescription>
+                                                                      </AlertDialogHeader>
+                                                                      <AlertDialogFooter>
+                                                                          <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                      </AlertDialogFooter>
+                                                                  </AlertDialogContent>
                                                              </AlertDialog>
                                                          </div>
                                                      </li>
@@ -1990,7 +1695,18 @@ export default function SchedulePage() {
                                                                  <AlertDialogTrigger asChild>
                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
                                                                  </AlertDialogTrigger>
-                                                                 {/* Delete Confirmation Content defined later */}
+                                                                 <AlertDialogContent>
+                                                                     <AlertDialogHeader>
+                                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                         <AlertDialogDescription>
+                                                                             Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios. Esta acción no se puede deshacer.
+                                                                         </AlertDialogDescription>
+                                                                     </AlertDialogHeader>
+                                                                     <AlertDialogFooter>
+                                                                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                     </AlertDialogFooter>
+                                                                 </AlertDialogContent>
                                                              </AlertDialog>
                                                          </div>
                                                      </li>
@@ -2021,7 +1737,18 @@ export default function SchedulePage() {
                                                                  <AlertDialogTrigger asChild>
                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
                                                                  </AlertDialogTrigger>
-                                                                 {/* Delete Confirmation Content defined later */}
+                                                                 <AlertDialogContent>
+                                                                      <AlertDialogHeader>
+                                                                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                                          <AlertDialogDescription>
+                                                                             Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.
+                                                                          </AlertDialogDescription>
+                                                                      </AlertDialogHeader>
+                                                                      <AlertDialogFooter>
+                                                                          <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                                                                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
+                                                                      </AlertDialogFooter>
+                                                                  </AlertDialogContent>
                                                              </AlertDialog>
                                                          </div>
                                                      </li>
@@ -2175,6 +1902,7 @@ export default function SchedulePage() {
                               getNotesForDate={getNotesForDate}
                               onOpenNotesModal={handleOpenNotesModalForDate} // Pass the new handler
                               employees={employees} // Pass employees to render tooltip content correctly
+                              setNoteToDeleteId={setNoteToDeleteId} // Pass the setter function
                           />
                        </div>
                    </div>
@@ -2183,91 +1911,11 @@ export default function SchedulePage() {
                  {/* --- Bottom Actions Row --- */}
                   <div className="flex flex-wrap justify-end gap-2 mt-6">
                      {/* Notes Button */}
-                     <Button onClick={() => setIsNotesModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                     <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
 
-                     {/* Template Management Button */}
-                      <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-                         <DialogTrigger asChild>
-                             <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                                 <List className="mr-2 h-4 w-4" /> Templates
-                             </Button>
-                         </DialogTrigger>
-                         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-                             <DialogHeader>
-                                 <DialogTitle>Gestionar Templates de Horario</DialogTitle>
-                                 <DialogDescription>
-                                     Guarda la vista actual como template o carga uno existente para la sede '{locations.find(l => l.id === selectedLocationId)?.name}' en vista {viewMode === 'day' ? 'Diaria' : 'Semanal'}.
-                                 </DialogDescription>
-                             </DialogHeader>
-
-                              {/* Save Template Section */}
-                              <div className="pt-4 border-t">
-                                  <Label htmlFor="template-name" className="mb-2 block">Nombre del Nuevo Template:</Label>
-                                 <div className="flex gap-2">
-                                      <Input
-                                          id="template-name"
-                                          value={templateToSaveName}
-                                          onChange={(e) => setTemplateToSaveName(e.target.value)}
-                                          placeholder={`Template ${viewMode === 'day' ? 'Diario' : 'Semanal'} ${format(viewMode === 'day' ? targetDate : currentDate, 'dd-MMM', { locale: es })}`}
-                                          disabled={isSavingTemplate}
-                                      />
-                                      <Button onClick={() => handleSaveTemplate(templateToSaveName)} disabled={!templateToSaveName.trim() || isSavingTemplate} className="flex-shrink-0">
-                                          {isSavingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                           <span className="ml-2">Guardar Actual</span>
-                                      </Button>
-                                 </div>
-                              </div>
-
-                               <Separator className="my-4" />
-
-                              {/* Load/Delete Template Section */}
-                              <div className="flex-grow overflow-hidden">
-                                  <h4 className="mb-3 font-medium">Templates Guardados ({filteredTemplates.length} para esta vista):</h4>
-                                  {filteredTemplates.length > 0 ? (
-                                       <ScrollArea className="h-[250px] pr-4">
-                                          <ul className="space-y-3">
-                                             {filteredTemplates.map((template) => (
-                                                <li key={template.id} className="flex items-center justify-between p-3 border rounded-md bg-background hover:bg-accent">
-                                                   <span className="font-medium truncate mr-2 flex flex-col" title={template.name}>
-                                                      {template.name || `Template (${template.id.substring(0, 8)})`}
-                                                       <span className="text-xs text-muted-foreground">
-                                                           ({template.type === 'week' ? 'Semanal' : 'Diario'})
-                                                           {template.createdAt instanceof Date ? ` - ${format(template.createdAt, 'dd/MM/yy', { locale: es })}` : ''}
-                                                       </span>
-                                                   </span>
-                                                   <div className="flex items-center gap-1 flex-shrink-0">
-                                                      <Button variant="outline" size="sm" onClick={() => handleLoadTemplate(template.id)} title="Cargar Template">
-                                                         <Upload className="h-4 w-4" />
-                                                      </Button>
-                                                      <AlertDialog>
-                                                         <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDeleteTemplate(template.id)} title="Eliminar Template">
-                                                               <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                         </AlertDialogTrigger>
-                                                          <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle> <AlertDialogDescription> Esta acción eliminará permanentemente el template "{savedTemplates.find(t => t.id === templateToDeleteId)?.name}". No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => templateToDeleteId && handleDeleteTemplate(templateToDeleteId)}> Eliminar Template </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
-                                                      </AlertDialog>
-                                                   </div>
-                                                </li>
-                                             ))}
-                                          </ul>
-                                       </ScrollArea>
-                                  ) : (
-                                       <p className="text-sm text-muted-foreground italic text-center py-4">
-                                           No hay templates guardados para esta sede y vista.
-                                       </p>
-                                  )}
-                              </div>
-
-                             <DialogFooter className="mt-4">
-                                 <DialogClose asChild>
-                                     <Button variant="secondary">Cerrar</Button>
-                                 </DialogClose>
-                             </DialogFooter>
-                         </DialogContent>
-                     </Dialog>
+                    {/* Removed template management button */}
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2356,179 +2004,7 @@ export default function SchedulePage() {
                  weekDates={weekDates}
              />
 
-            {/* Location Modal */}
-             <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
-                  <DialogContent>
-                      <DialogHeader>
-                           <DialogTitle>{editingLocation ? 'Editar Sede' : 'Agregar Sede'}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                          <Label htmlFor="location-name">Nombre</Label>
-                          <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
-                      </div>
-                      <DialogFooter>
-                         <DialogClose asChild>
-                           <Button variant="outline">Cancelar</Button>
-                         </DialogClose>
-                          <Button onClick={handleSaveLocation}>Guardar</Button>
-                      </DialogFooter>
-                  </DialogContent>
-             </Dialog>
-
-             {/* Department Modal */}
-            <Dialog open={isDepartmentModalOpen} onOpenChange={setIsDepartmentModalOpen}>
-                 <DialogContent>
-                     <DialogHeader>
-                         <DialogTitle>{editingDepartment ? 'Editar Departamento' : 'Agregar Departamento'}</DialogTitle>
-                     </DialogHeader>
-                     <div className="space-y-4 py-4">
-                          <div>
-                             <Label htmlFor="department-name">Nombre</Label>
-                             <Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento"/>
-                          </div>
-                         <div>
-                              <Label htmlFor="department-location">Sede</Label>
-                              <Select value={departmentFormData.locationId} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, locationId: value }))}>
-                                  <SelectTrigger id="department-location">
-                                      <SelectValue placeholder="Selecciona sede" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      {locations.map(loc => (
-                                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
-                         </div>
-                          {/* Icon Selector */}
-                          <div>
-                              <Label htmlFor="department-icon">Icono (Opcional)</Label>
-                              <Select value={departmentFormData.iconName} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, iconName: value }))}>
-                                  <SelectTrigger id="department-icon">
-                                      <SelectValue placeholder="Selecciona icono" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      {Object.keys(iconMap).map(iconKey => {
-                                          const IconComponent = iconMap[iconKey];
-                                          return (
-                                              <SelectItem key={iconKey} value={iconKey}>
-                                                  <span className="flex items-center gap-2">
-                                                      <IconComponent className="h-4 w-4" /> {iconKey}
-                                                  </span>
-                                              </SelectItem>
-                                          );
-                                      })}
-                                  </SelectContent>
-                              </Select>
-                         </div>
-                     </div>
-                     <DialogFooter>
-                          <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                          </DialogClose>
-                         <Button onClick={handleSaveDepartment}>Guardar</Button>
-                     </DialogFooter>
-                 </DialogContent>
-            </Dialog>
-
-             {/* Employee Modal */}
-            <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{editingEmployee ? 'Editar Colaborador' : 'Agregar Colaborador'}</DialogTitle>
-                    </DialogHeader>
-                     <div className="space-y-4 py-4">
-                           <div>
-                               <Label htmlFor="employee-id">ID Colaborador</Label>
-                               <Input
-                                   id="employee-id"
-                                   value={employeeFormData.id}
-                                   onChange={(e) => setEmployeeFormData(prev => ({ ...prev, id: e.target.value }))}
-                                   placeholder="Ej: 101, CEDULA123"
-                                   disabled={!!editingEmployee} // Disable ID field when editing
-                               />
-                               {!!editingEmployee && <p className="text-xs text-muted-foreground mt-1">El ID no se puede cambiar al editar.</p>}
-                           </div>
-                          <div>
-                             <Label htmlFor="employee-name">Nombre</Label>
-                             <Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre Completo" />
-                          </div>
-                          <div>
-                               <Label htmlFor="employee-locations">Sedes Asignadas</Label>
-                                {/* Use Dropdown Menu for multi-select */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-start">
-                                            {employeeFormData.locationIds.length > 0
-                                                ? employeeFormData.locationIds
-                                                      .map(id => locations.find(l => l.id === id)?.name)
-                                                      .filter(Boolean) // Remove undefined if location not found
-                                                      .join(', ')
-                                                : 'Selecciona sedes'}
-                                            <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-full">
-                                        <DropdownMenuLabel>Selecciona Sedes</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {locations.map(loc => (
-                                            <DropdownMenuCheckboxItem
-                                                key={loc.id}
-                                                checked={employeeFormData.locationIds.includes(loc.id)}
-                                                onCheckedChange={() => handleToggleEmployeeLocation(loc.id)}
-                                                // Prevent closing the menu on item selection
-                                                onSelect={(e) => e.preventDefault()}
-                                            >
-                                                {loc.name}
-                                            </DropdownMenuCheckboxItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                {employeeFormData.locationIds.length === 0 && <p className="text-xs text-destructive mt-1">Debes seleccionar al menos una sede.</p>}
-                           </div>
-                             {/* Department Selection */}
-                             <div>
-                                  <Label htmlFor="employee-departments">Departamentos Asociados (Opcional)</Label>
-                                   <DropdownMenu>
-                                       <DropdownMenuTrigger asChild>
-                                           <Button variant="outline" className="w-full justify-start" disabled={availableDepartmentsForEmployee.length === 0}>
-                                               {employeeFormData.departmentIds.length > 0
-                                                   ? employeeFormData.departmentIds
-                                                         .map(id => departments.find(d => d.id === id)?.name)
-                                                         .filter(Boolean)
-                                                         .join(', ')
-                                                   : (availableDepartmentsForEmployee.length === 0 ? 'Selecciona sede(s) primero' : 'Selecciona departamentos')}
-                                               <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
-                                           </Button>
-                                       </DropdownMenuTrigger>
-                                       <DropdownMenuContent className="w-full">
-                                           <DropdownMenuLabel>Selecciona Departamentos</DropdownMenuLabel>
-                                           <DropdownMenuSeparator />
-                                            {availableDepartmentsForEmployee.length > 0 ? (
-                                                availableDepartmentsForEmployee.map(dept => (
-                                                    <DropdownMenuCheckboxItem
-                                                        key={dept.id}
-                                                        checked={(employeeFormData.departmentIds || []).includes(dept.id)}
-                                                        onCheckedChange={() => handleToggleEmployeeDepartment(dept.id)}
-                                                        onSelect={(e) => e.preventDefault()}
-                                                    >
-                                                        {dept.name} <span className="text-xs text-muted-foreground ml-1">({locations.find(l => l.id === dept.locationId)?.name})</span>
-                                                    </DropdownMenuCheckboxItem>
-                                                ))
-                                            ) : (
-                                                 <DropdownMenuItem disabled>No hay departamentos disponibles para las sedes seleccionadas.</DropdownMenuItem>
-                                            )}
-                                       </DropdownMenuContent>
-                                   </DropdownMenu>
-                              </div>
-                     </div>
-                    <DialogFooter>
-                         <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                          </DialogClose>
-                        <Button onClick={handleSaveEmployee}>Guardar</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Removed Location, Department, Employee Modals - Integrated into Config Modal */}
 
 
              {/* Employee Selection Modal */}
@@ -2611,23 +2087,8 @@ export default function SchedulePage() {
                  </AlertDialogContent>
              </AlertDialog>
 
-            {/* Template Delete Confirmation Dialog */}
-             <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
-                 <AlertDialogContent>
-                     <AlertDialogHeader>
-                         <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle>
-                         <AlertDialogDescription>
-                             Esta acción eliminará permanentemente el template "{savedTemplates.find(t => t.id === templateToDeleteId)?.name}". No se puede deshacer.
-                         </AlertDialogDescription>
-                     </AlertDialogHeader>
-                     <AlertDialogFooter>
-                         <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => templateToDeleteId && handleDeleteTemplate(templateToDeleteId)}>
-                             Eliminar Template
-                         </AlertDialogAction>
-                     </AlertDialogFooter>
-                 </AlertDialogContent>
-             </AlertDialog>
+            {/* Removed Template Delete Confirmation Dialog */}
+
 
              {/* Note Delete Confirmation Dialog */}
              <AlertDialog open={!!noteToDeleteId} onOpenChange={(open) => !open && setNoteToDeleteId(null)}>
