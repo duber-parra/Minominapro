@@ -82,7 +82,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
           return allNotes.filter(note => {
               const noteDate = parseDateFns(note.date, 'yyyy-MM-dd', new Date());
               return isValidDate(noteDate) && isWithinInterval(noteDate, weekInterval);
-          });
+          }).sort((a, b) => a.date.localeCompare(b.date)); // Sort notes by date within the week
       } else {
           // If opened generally in day view, show notes for the selectedDate in the form
           if (selectedDate) {
@@ -146,7 +146,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
 
    const getModalDescription = () => {
        if (initialDate) return 'Haz clic en una nota para eliminarla.';
-       if (viewMode === 'week') return 'Notas guardadas para la semana actual.';
+       if (viewMode === 'week') return 'Notas guardadas para la semana actual. Haz clic en una nota para eliminarla.';
        if (selectedDate) return `Agrega o elimina notas para el día seleccionado (${format(selectedDate, 'PPP', { locale: es })}).`;
        return 'Agrega o elimina notas para fechas específicas.';
    };
@@ -263,20 +263,19 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                             {employeeName ? ` - ${employeeName}` : ''}
                          </span>
                        </div>
-                        {/* Wrap the trigger and dialog inside the map */}
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                               <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
-                                  title="Eliminar anotación"
-                                  onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
-                               >
-                                  <Trash2 className="h-4 w-4" />
-                               </Button>
-                            </AlertDialogTrigger>
-                            {/* Keep the confirmation dialog content here, it needs the context */}
+                        {/* Delete Button Trigger */}
+                         <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                                <Button
+                                   variant="ghost"
+                                   size="icon"
+                                   className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
+                                   title="Eliminar anotación"
+                                   onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
+                                >
+                                   <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
                              <AlertDialogContent>
                                <AlertDialogHeader>
                                  <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
@@ -295,7 +294,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                                  </AlertDialogAction>
                                </AlertDialogFooter>
                             </AlertDialogContent>
-                        </AlertDialog>
+                         </AlertDialog>
                      </li>
                   );
                  })}

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import type { Department, ScheduleData, ShiftAssignment, ScheduleNote, Employee } from '@/types/schedule'; // Added ScheduleNote and Employee
 import { DepartmentColumn } from './DepartmentColumn'; // Assuming DepartmentColumn component exists
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added CardFooter
-import { format, parse, isValid as isValidDate } from 'date-fns'; // Correctly import parse and isValid
+import { format, parse as parseDateFns, isValid as isValidDate } from 'date-fns'; // Correctly import parse and isValid
 import { es } from 'date-fns/locale';
 import { Button } from '../ui/button';
 import { Plus, Copy, Eraser, NotebookPen } from 'lucide-react'; // Added NotebookPen icon
@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip" // Import Tooltip components
-import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; // Import AlertDialogTrigger
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'; // Import AlertDialog components
 
 interface ScheduleViewProps {
   departments: Department[];
@@ -33,6 +33,7 @@ interface ScheduleViewProps {
   getNotesForDate: (date: Date) => ScheduleNote[]; // Function to get notes for a date
   onOpenNotesModal: (date: Date) => void; // Handler to open notes modal for a specific date
   employees: Employee[]; // Pass employees to render tooltip content correctly
+  setNoteToDeleteId?: (id: string | null) => void; // Optional prop to set note to delete directly
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
@@ -52,6 +53,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     getNotesForDate, // Receive notes function
     onOpenNotesModal, // Receive the handler to open the notes modal
     employees, // Receive employees
+    setNoteToDeleteId, // Receive the handler to trigger deletion dialog
 }) => {
   const [isClient, setIsClient] = useState(false); // State for client-side rendering check
 
@@ -68,13 +70,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             {notes.map(note => {
                 const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
                 // Format date for tooltip: Abbreviated day, numeric day, abbreviated month
-                // Use the imported 'parse' function
-                const noteDate = parse(note.date, 'yyyy-MM-dd', new Date());
+                const noteDate = parseDateFns(note.date, 'yyyy-MM-dd', new Date());
                 const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE d MMM', { locale: es }) : note.date;
                 return (
-                    <p key={note.id}>
-                       • {note.note} {employeeName ? <span className="italic text-muted-foreground">({employeeName})</span> : ''}
-                    </p>
+                     <p key={note.id}>
+                         • {note.note} {employeeName ? <span className="italic text-muted-foreground">({employeeName})</span> : ''}
+                     </p>
                 );
             })}
         </div>
@@ -91,9 +92,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return (
             <Card className={cn(
                 "shadow-md bg-card border",
-                isCurrentHoliday ? "border-primary" : "border-border" // Highlight border if holiday
+                isCurrentHoliday ? "border-primary border-2" : "border-border" // Highlight border if holiday
             )}>
-                <CardHeader className="border-b">
+                <CardHeader className={cn(
+                    "border-b",
+                    isCurrentHoliday ? "border-primary" : "border-border" // Match header border to card border
+                )}>
                     <CardTitle className={cn(
                         "text-lg font-medium flex items-center gap-2", // Added flex and gap
                         isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight text if holiday
@@ -102,28 +106,55 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                             Horario para el {format(currentDate, 'PPPP', { locale: es })}
                             {isCurrentHoliday && <span className="text-xs font-normal ml-2">(Festivo)</span>}
                         </span>
-                        {/* Notes Indicator and Tooltip/Click */}
-                        {notesForDay.length > 0 && (
+                         {/* Notes Indicator and Tooltip/Click */}
+                         {notesForDay.length > 0 && (
                              <TooltipProvider delayDuration={100}>
                                  <Tooltip>
                                      <TooltipTrigger asChild>
-                                         {/* Wrap the icon in a button for click handling */}
-                                         <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
-                                            onClick={() => onOpenNotesModal(currentDate)} // Open notes modal on click
-                                            aria-label="Ver/Eliminar anotaciones"
-                                         >
-                                             <NotebookPen className="h-4 w-4" />
-                                         </Button>
-                                     </TooltipTrigger>
+                                          {/* Wrap the icon in a button for click handling */}
+                                          <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                   <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
+                                                      aria-label="Ver/Eliminar anotaciones"
+                                                      onClick={(e) => e.stopPropagation()} // Prevent triggering other actions
+                                                   >
+                                                       <NotebookPen className="h-4 w-4" />
+                                                   </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                                   <AlertDialogHeader>
+                                                      <AlertDialogTitle>Eliminar Anotación?</AlertDialogTitle>
+                                                      <AlertDialogDescription>
+                                                         ¿Estás seguro de que quieres eliminar esta anotación? No se puede deshacer.
+                                                      </AlertDialogDescription>
+                                                   </AlertDialogHeader>
+                                                   <AlertDialogFooter>
+                                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                          className="bg-destructive hover:bg-destructive/90"
+                                                          onClick={() => {
+                                                              // Assuming only one note per day for simplicity here,
+                                                              // or you need to identify which note to delete
+                                                              if (setNoteToDeleteId && notesForDay.length > 0) {
+                                                                  setNoteToDeleteId(notesForDay[0].id); // Modify if multiple notes per day
+                                                              }
+                                                          }}
+                                                        >
+                                                            Eliminar Anotación
+                                                         </AlertDialogAction>
+                                                   </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                           </AlertDialog>
+                                      </TooltipTrigger>
                                      <TooltipContent side="bottom">
                                          {renderNotesTooltip(notesForDay)}
                                      </TooltipContent>
                                  </Tooltip>
-                            </TooltipProvider>
-                        )}
+                             </TooltipProvider>
+                         )}
                     </CardTitle>
                     {/* Add description or other info if needed */}
                 </CardHeader>
@@ -162,153 +193,179 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                      </Button>
                       {/* Clear Day Button */}
                      <AlertDialog>
-                         <AlertDialogTrigger asChild>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                title="Limpiar turnos del día"
-                                onClick={() => onClearDay(currentDate)} // Use onClick here to trigger confirmation in parent
-                                disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
-                            >
-                                <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
-                            </Button>
+                         <AlertDialogTrigger asChild={false}> {/* Removed asChild */}
+                             <Button
+                                 variant="destructive"
+                                 size="sm"
+                                 title="Limpiar turnos del día"
+                                 onClick={() => onClearDay(currentDate)} // Use onClick here to trigger confirmation in parent
+                                 disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                             >
+                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
+                             </Button>
                          </AlertDialogTrigger>
                          {/* AlertDialogContent defined in parent page.tsx for confirmation */}
-                    </AlertDialog>
+                     </AlertDialog>
                  </CardFooter>
             </Card>
         );
     } else {
          // --- Week View ---
-         const weekViewContent = (
-            <div className="grid grid-cols-7 gap-1 min-w-[1000px]"> {/* Reduced gap, ensure min-width */}
-              {weekDates.map((date, index) => {
-                  const daySchedule = getScheduleForDate(date);
-                  const dateKey = format(date, 'yyyy-MM-dd');
-                  const notesForDay = getNotesForDate(date); // Get notes for this day
-                   // Calculate count only on client to avoid hydration mismatch
-                   const totalAssignmentsForDay = isClient
-                       ? Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0)
-                       : 0; // Show 0 during SSR and initial render
-                  const isLastDayOfWeek = index === weekDates.length - 1;
-                  const isCurrentHoliday = isHoliday(date);
+          const weekViewContent = (
+             <div className="grid grid-cols-7 gap-1 min-w-[1000px]"> {/* Use grid for better control, reduced gap */}
+                {weekDates.map((date, index) => {
+                   const daySchedule = getScheduleForDate(date);
+                   const dateKey = format(date, 'yyyy-MM-dd');
+                   const notesForDay = getNotesForDate(date); // Get notes for this day
+                    // Calculate count only on client to avoid hydration mismatch
+                    const totalAssignmentsForDay = isClient
+                        ? Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0)
+                        : 0; // Show 0 during SSR and initial render
+                   const isLastDayOfWeek = index === weekDates.length - 1;
+                   const isCurrentHoliday = isHoliday(date);
 
-                  // Card represents a single day column in the week view
-                  return (
-                      <div key={dateKey} className="flex flex-col h-full"> {/* Ensure day column takes height */}
-                          <Card className={cn(
-                              "shadow-sm bg-card border flex flex-col flex-grow", // Use flex-grow
-                              isCurrentHoliday ? "border-primary border-2" : "border-border/50" // Thicker primary border for holiday
-                          )}>
-                              <CardHeader className={cn(
-                                  "pb-2 pt-3 px-2 border-b relative", // Reduced padding
-                                  isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
-                              )}>
-                                  <CardTitle className={cn(
-                                      "text-xs font-semibold text-center whitespace-nowrap flex items-center justify-center gap-1", // Added flex, items-center, justify-center, gap
-                                      isCurrentHoliday ? "text-primary" : "text-foreground" // Highlight title text with primary color
-                                  )}>
-                                      <span>{format(date, 'EEE d', { locale: es })}</span> {/* Wrap date text */}
-                                      {/* Notes Indicator and Tooltip/Click */}
-                                      {notesForDay.length > 0 && (
-                                           <TooltipProvider delayDuration={100}>
-                                               <Tooltip>
-                                                   <TooltipTrigger asChild>
-                                                       <Button
-                                                           variant="ghost"
-                                                           size="icon"
-                                                           className="h-4 w-4 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
-                                                           onClick={() => onOpenNotesModal(date)} // Open notes modal on click
-                                                           aria-label="Ver/Eliminar anotaciones"
-                                                        >
-                                                           <NotebookPen className="h-3 w-3" />
-                                                       </Button>
-                                                   </TooltipTrigger>
-                                                   <TooltipContent side="top">
+                   // Card represents a single day column in the week view
+                   return (
+                       <div key={dateKey} className="flex flex-col h-full"> {/* Ensure day column takes height */}
+                           <Card className={cn(
+                               "shadow-sm bg-card border flex flex-col flex-grow", // Use flex-grow
+                               isCurrentHoliday ? "border-primary border-2" : "border-border/50" // Thicker primary border for holiday
+                           )}>
+                               <CardHeader className={cn(
+                                   "pb-2 pt-3 px-2 border-b relative", // Reduced padding
+                                   isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
+                               )}>
+                                   <CardTitle className={cn(
+                                       "text-xs font-semibold text-center whitespace-nowrap flex items-center justify-center gap-1", // Added flex, items-center, justify-center, gap
+                                       isCurrentHoliday ? "text-primary" : "text-foreground" // Highlight title text with primary color
+                                   )}>
+                                        <span>{format(date, 'EEE d', { locale: es })}</span> {/* Wrap date text */}
+                                        {/* Notes Indicator and Tooltip/Click */}
+                                        {notesForDay.length > 0 && (
+                                            <TooltipProvider delayDuration={100}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        {/* Wrap the icon in a button for click handling */}
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-4 w-4 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer" // Yellow color, smaller size
+                                                                    aria-label="Ver/Eliminar anotaciones"
+                                                                    onClick={(e) => e.stopPropagation()} // Prevent triggering other actions
+                                                                >
+                                                                    <NotebookPen className="h-3 w-3" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                             <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                                                  <AlertDialogHeader>
+                                                                     <AlertDialogTitle>Eliminar Anotación?</AlertDialogTitle>
+                                                                     <AlertDialogDescription>
+                                                                        ¿Estás seguro de que quieres eliminar esta anotación? No se puede deshacer.
+                                                                     </AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                       <AlertDialogAction
+                                                                         className="bg-destructive hover:bg-destructive/90"
+                                                                         onClick={() => {
+                                                                              if (setNoteToDeleteId && notesForDay.length > 0) {
+                                                                                 setNoteToDeleteId(notesForDay[0].id); // Modify if multiple notes per day
+                                                                             }
+                                                                         }}
+                                                                       >
+                                                                           Eliminar Anotación
+                                                                        </AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                             </AlertDialogContent>
+                                                         </AlertDialog>
+                                                     </TooltipTrigger>
+                                                    <TooltipContent side="top">
                                                         {renderNotesTooltip(notesForDay)}
-                                                   </TooltipContent>
-                                               </Tooltip>
-                                          </TooltipProvider>
-                                      )}
-                                  </CardTitle>
-                                  <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Extra small text */}
-                                      {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay})
-                                      {isCurrentHoliday && <span className="text-primary block font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
-                                  </CardDescription>
-                                  {/* Action Buttons: Duplicate and Clear */}
-                                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0"> {/* Reduced gap, adjusted position */}
-                                      {!isLastDayOfWeek && (
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
-                                              onClick={() => onDuplicateDay(date)}
-                                              title="Duplicar al día siguiente"
-                                          >
-                                              <Copy className="h-2.5 w-2.5" /> {/* Smaller icon */}
-                                          </Button>
-                                      )}
-                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
-                                                title="Limpiar turnos del día"
-                                                onClick={() => onClearDay(date)} // Use onClick here
-                                                disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
-                                            >
-                                                <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                         {/* AlertDialogContent defined in parent page.tsx */}
-                                     </AlertDialog>
-                                  </div>
-                              </CardHeader>
-                              <CardContent className="p-1 space-y-1 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
-                                  {departments.length > 0 ? (
-                                      departments.map((department) => (
-                                          <div key={department.id} className="border rounded-sm p-1 bg-muted/10 relative"> {/* Reduced padding/rounding, lighter bg */}
-                                              <div className="flex justify-between items-center mb-0.5"> {/* Reduced margin */}
-                                                  <h4 className="text-[10px] font-semibold text-foreground flex items-center gap-0.5 whitespace-nowrap overflow-hidden text-ellipsis pr-4"> {/* Extra small, reduced gap/padding */}
-                                                       {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
-                                                       <span className="overflow-hidden text-ellipsis">{department.name}</span>
-                                                  </h4>
-                                                  {/* Add shift button directly here */}
-                                                   <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="absolute top-0 right-0 h-4 w-4 p-0 text-primary hover:bg-primary/10" // Positioned top-right
-                                                        onClick={() => onAddShiftRequest(department.id, date)}
-                                                        title="Añadir Colaborador"
-                                                   >
-                                                       <Plus className="h-3 w-3" />
-                                                   </Button>
-                                              </div>
-                                              <DepartmentColumn
-                                                  department={department}
-                                                  assignments={daySchedule.assignments[department.id] || []}
-                                                  onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
-                                                  isWeekView
-                                                  date={date}
-                                                  onAddShiftRequest={onAddShiftRequest}
-                                                  onShiftClick={onShiftClick}
-                                                  isMobile={isMobile} // Pass mobile flag
-                                              />
-                                          </div>
-                                      ))
-                                   ) : (
-                                        <p className="text-center text-[10px] text-muted-foreground italic pt-1"> {/* Smaller text/padding */}
-                                            No hay deptos.
-                                        </p>
-                                   )}
-                              </CardContent>
-                          </Card>
-                      </div>
-                  );
-              })}
-            </div>
-          );
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                   </CardTitle>
+                                   <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Extra small text */}
+                                       {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay})
+                                       {isCurrentHoliday && <span className="text-primary block font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
+                                   </CardDescription>
+                                   {/* Action Buttons: Duplicate and Clear */}
+                                   <div className="absolute top-0.5 right-0.5 flex flex-col gap-0"> {/* Reduced gap, adjusted position */}
+                                       {!isLastDayOfWeek && (
+                                           <Button
+                                               variant="ghost"
+                                               size="icon"
+                                               className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
+                                               onClick={() => onDuplicateDay(date)}
+                                               title="Duplicar al día siguiente"
+                                           >
+                                               <Copy className="h-2.5 w-2.5" /> {/* Smaller icon */}
+                                           </Button>
+                                       )}
+                                      <AlertDialog>
+                                         <AlertDialogTrigger asChild={false}> {/* Removed asChild */}
+                                             <Button
+                                                 variant="ghost"
+                                                 size="icon"
+                                                 className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
+                                                 title="Limpiar turnos del día"
+                                                 onClick={() => onClearDay(date)} // Use onClick here
+                                                 disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                                             >
+                                                 <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
+                                             </Button>
+                                         </AlertDialogTrigger>
+                                          {/* AlertDialogContent defined in parent page.tsx */}
+                                      </AlertDialog>
+                                   </div>
+                               </CardHeader>
+                               <CardContent className="p-1 space-y-1 flex-grow overflow-y-auto"> {/* Reduced padding, smaller space */}
+                                   {departments.length > 0 ? (
+                                       departments.map((department) => (
+                                           <div key={department.id} className="border rounded-sm p-1 bg-muted/10 relative"> {/* Reduced padding/rounding, lighter bg */}
+                                               <div className="flex justify-between items-center mb-0.5"> {/* Reduced margin */}
+                                                   <h4 className="text-[10px] font-semibold text-foreground flex items-center gap-0.5 whitespace-nowrap overflow-hidden text-ellipsis pr-4"> {/* Extra small, reduced gap/padding */}
+                                                        {department.icon && <department.icon className="h-2.5 w-2.5 text-muted-foreground" />} {/* Smaller icon */}
+                                                        <span className="overflow-hidden text-ellipsis">{department.name}</span>
+                                                   </h4>
+                                                   {/* Add shift button directly here */}
+                                                    <Button
+                                                         variant="ghost"
+                                                         size="icon"
+                                                         className="absolute top-0 right-0 h-4 w-4 p-0 text-primary hover:bg-primary/10" // Positioned top-right
+                                                         onClick={() => onAddShiftRequest(department.id, date)}
+                                                         title="Añadir Colaborador"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                               </div>
+                                               <DepartmentColumn
+                                                   department={department}
+                                                   assignments={daySchedule.assignments[department.id] || []}
+                                                   onRemoveShift={(deptId, assignId) => onRemoveShift(dateKey, deptId, assignId)}
+                                                   isWeekView
+                                                   date={date}
+                                                   onAddShiftRequest={onAddShiftRequest}
+                                                   onShiftClick={onShiftClick}
+                                                   isMobile={isMobile} // Pass mobile flag
+                                               />
+                                           </div>
+                                       ))
+                                    ) : (
+                                         <p className="text-center text-[10px] text-muted-foreground italic pt-1"> {/* Smaller text/padding */}
+                                             No hay deptos.
+                                         </p>
+                                    )}
+                               </CardContent>
+                           </Card>
+                       </div>
+                   );
+               })}
+             </div>
+           );
 
          // Return the scrollable container wrapping the week view content
          return weekViewContent;
