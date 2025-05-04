@@ -88,6 +88,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         const dynamicGridClass = `grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(departments.length, 4)} xl:grid-cols-${Math.min(departments.length, 5)}`; // Adjust as needed
         const isCurrentHoliday = isHoliday(currentDate);
         const notesForDay = getNotesForDate(currentDate); // Get notes for the current day
+         // Calculate count only on client to avoid hydration mismatch
+        const totalAssignmentsForDay = isClient
+            ? Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0)
+            : 0; // Show 0 during SSR and initial render
 
         return (
             <Card className={cn(
@@ -95,11 +99,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 isCurrentHoliday ? "border-primary border-2" : "border-border" // Highlight border if holiday
             )}>
                 <CardHeader className={cn(
-                    "border-b",
+                    "border-b relative", // Added relative
                     isCurrentHoliday ? "border-primary" : "border-border" // Match header border to card border
                 )}>
                     <CardTitle className={cn(
-                        "text-lg font-medium flex items-center gap-2", // Added flex and gap
+                        "text-lg font-medium flex items-center gap-2 pr-8", // Added padding-right for buttons
                         isCurrentHoliday ? "text-primary font-semibold" : "text-foreground" // Highlight text if holiday
                     )}>
                         <span> {/* Wrap text */}
@@ -129,6 +133,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                       <AlertDialogTitle>Eliminar Anotación?</AlertDialogTitle>
                                                       <AlertDialogDescription>
                                                          ¿Estás seguro de que quieres eliminar esta anotación? No se puede deshacer.
+                                                         <br/>
+                                                         <span className='italic'>{notesForDay[0]?.note}</span> {/* Show note to delete */}
                                                       </AlertDialogDescription>
                                                    </AlertDialogHeader>
                                                    <AlertDialogFooter>
@@ -156,7 +162,48 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                              </TooltipProvider>
                          )}
                     </CardTitle>
-                    {/* Add description or other info if needed */}
+                     {/* Action Buttons: Duplicate and Clear (Day View) */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                        {/* Duplicate Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                            onClick={() => onDuplicateDay(currentDate)}
+                            title="Duplicar horario al día siguiente"
+                        >
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                        {/* Clear Day Button */}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-destructive hover:text-destructive/80"
+                                    title="Limpiar turnos del día"
+                                    disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                                >
+                                    <Eraser className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                     <AlertDialogTitle>¿Limpiar Día?</AlertDialogTitle>
+                                     <AlertDialogDescription>
+                                        Esta acción eliminará todos los turnos y anotaciones para el{' '}
+                                        <strong>{format(currentDate, 'PPP', { locale: es })}</strong>. No se puede deshacer.
+                                     </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onClearDay(currentDate)}>
+                                         Limpiar Día
+                                     </AlertDialogAction>
+                                 </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     {departments.length > 0 ? (
@@ -180,39 +227,13 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          </p>
                     )}
                 </CardContent>
-                 <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                     {/* Duplicate Button */}
-                     <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => onDuplicateDay(currentDate)}
-                         title="Duplicar horario al día siguiente"
-                         // Disable if it's the last day of the week maybe? Or handle in the function itself.
-                     >
-                         <Copy className="mr-2 h-4 w-4" /> Duplicar Día Sig.
-                     </Button>
-                      {/* Clear Day Button */}
-                     <AlertDialog>
-                         <AlertDialogTrigger asChild={false}> {/* Removed asChild */}
-                             <Button
-                                 variant="destructive"
-                                 size="sm"
-                                 title="Limpiar turnos del día"
-                                 onClick={() => onClearDay(currentDate)} // Use onClick here to trigger confirmation in parent
-                                 disabled={Object.values(daySchedule.assignments).flat().length === 0 && notesForDay.length === 0} // Disable if no assignments or notes
-                             >
-                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Día
-                             </Button>
-                         </AlertDialogTrigger>
-                         {/* AlertDialogContent defined in parent page.tsx for confirmation */}
-                     </AlertDialog>
-                 </CardFooter>
+                 {/* Removed CardFooter for day view as buttons moved to header */}
             </Card>
         );
     } else {
          // --- Week View ---
           const weekViewContent = (
-             <div className="grid grid-cols-7 gap-1 min-w-[1000px]"> {/* Use grid for better control, reduced gap */}
+             <div className="grid grid-cols-7 gap-1 min-w-[900px]"> {/* Use grid for better control, reduced gap, ensured min-width */}
                 {weekDates.map((date, index) => {
                    const daySchedule = getScheduleForDate(date);
                    const dateKey = format(date, 'yyyy-MM-dd');
@@ -232,7 +253,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                isCurrentHoliday ? "border-primary border-2" : "border-border/50" // Thicker primary border for holiday
                            )}>
                                <CardHeader className={cn(
-                                   "pb-2 pt-3 px-2 border-b relative", // Reduced padding
+                                   "pb-2 pt-3 px-2 border-b relative", // Reduced padding, added relative
                                    isCurrentHoliday ? "border-primary" : "border-border/50" // Match border color
                                )}>
                                    <CardTitle className={cn(
@@ -263,6 +284,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                                      <AlertDialogTitle>Eliminar Anotación?</AlertDialogTitle>
                                                                      <AlertDialogDescription>
                                                                         ¿Estás seguro de que quieres eliminar esta anotación? No se puede deshacer.
+                                                                        <br/>
+                                                                        <span className='italic'>{notesForDay[0]?.note}</span> {/* Show note */}
                                                                      </AlertDialogDescription>
                                                                   </AlertDialogHeader>
                                                                   <AlertDialogFooter>
@@ -271,7 +294,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                                          className="bg-destructive hover:bg-destructive/90"
                                                                          onClick={() => {
                                                                               if (setNoteToDeleteId && notesForDay.length > 0) {
-                                                                                 setNoteToDeleteId(notesForDay[0].id); // Modify if multiple notes per day
+                                                                                 setNoteToDeleteId(notesForDay[0].id); // Modify if needed for multiple notes
                                                                              }
                                                                          }}
                                                                        >
@@ -306,19 +329,34 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                            </Button>
                                        )}
                                       <AlertDialog>
-                                         <AlertDialogTrigger asChild={false}> {/* Removed asChild */}
+                                         {/* Use asChild prop here */}
+                                         <AlertDialogTrigger asChild>
                                              <Button
                                                  variant="ghost"
                                                  size="icon"
                                                  className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
                                                  title="Limpiar turnos del día"
-                                                 onClick={() => onClearDay(date)} // Use onClick here
+                                                 // onClick is implicitly handled by AlertDialogTrigger when not using asChild
                                                  disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
                                              >
                                                  <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
                                              </Button>
                                          </AlertDialogTrigger>
-                                          {/* AlertDialogContent defined in parent page.tsx */}
+                                         <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                  <AlertDialogTitle>¿Limpiar Día?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                     Esta acción eliminará todos los turnos y anotaciones para el{' '}
+                                                     <strong>{format(date, 'PPP', { locale: es })}</strong>. No se puede deshacer.
+                                                  </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onClearDay(date)}>
+                                                      Limpiar Día
+                                                  </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                         </AlertDialogContent>
                                       </AlertDialog>
                                    </div>
                                </CardHeader>
