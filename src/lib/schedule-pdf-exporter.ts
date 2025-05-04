@@ -1,7 +1,7 @@
 // src/lib/schedule-pdf-exporter.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parse, startOfWeek, endOfWeek } from 'date-fns'; // Added startOfWeek, endOfWeek
+import { format, parse, startOfWeek, endOfWeek, getDay } from 'date-fns'; // Added startOfWeek, endOfWeek, getDay
 import { es } from 'date-fns/locale';
 import type { ScheduleData, Department, Employee, ShiftAssignment } from '@/types/schedule';
 import { formatTo12Hour } from './time-utils'; // Import the helper
@@ -357,4 +357,3 @@ const parseTimeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
 };
-```
