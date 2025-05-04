@@ -1,3 +1,4 @@
+
 'use client'; // Ensure this directive is present
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent, DragEvent } from 'react';
@@ -1070,6 +1071,10 @@ export default function SchedulePage() {
                     locationId: dept?.locationId || selectedLocationId || (locations.length > 0 ? locations[0].id : ''), // Default to current or first location
                     iconName: iconName
                 });
+                 // Clear form if adding new
+                 if (!item) {
+                    setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
+                 }
                 break;
             case 'employee':
                 const emp = item as Employee | null;
@@ -1081,9 +1086,15 @@ export default function SchedulePage() {
                     locationIds: initialLocationIds.length > 0 ? initialLocationIds : (locations.length > 0 ? [locations[0].id] : []), // Ensure at least one location if possible
                     departmentIds: initialDepartmentIds
                 });
+                 // Clear form if adding new
+                if (!item) {
+                    setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] });
+                 }
                 break;
             case 'template':
                  console.log("Template selected:", item);
+                 // If adding a template (via + button), maybe show a different form/modal?
+                 // For now, selecting a template just shows its details implicitly.
                 break;
         }
     };
@@ -2217,25 +2228,25 @@ export default function SchedulePage() {
 
              {/* Decorative Images */}
               {/* Left image */}
-              <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+              <div className="absolute top-[-20px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
                 <Image
                     src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Left image source
-                    alt="Ilustración decorativa izquierda"
-                    width={240} // Increased width
-                    height={240} // Increased height proportionally
-                    className="object-contain relative -top-12 left-8 transform -rotate-12" // Adjusted vertical position
-                    data-ai-hint="decorative illustration left"
+                    alt="Ilustración de taza de café"
+                    width={120} // Increased width
+                    height={120} // Increased height proportionally
+                    className="object-contain transform -rotate-12" // Adjusted vertical position
+                    data-ai-hint="coffee cup illustration"
                 />
             </div>
             {/* Right image */}
             <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
                  <Image
                     src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Right image source
-                    alt="Ilustración decorativa derecha"
+                    alt="Ilustración de elementos de oficina"
                     width={150}
                     height={150}
                     className="object-contain transform rotate-12"
-                    data-ai-hint="decorative illustration right"
+                    data-ai-hint="office elements illustration"
                  />
              </div>
 
@@ -2714,7 +2725,7 @@ export default function SchedulePage() {
                      <AlertDialogHeader>
                          <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
                          <AlertDialogDescription>
-                            Esta acción eliminará todos los turnos de la semana del{' '}
+                            Esta acción eliminará todos los turnos y notas de la semana del{' '}
                             {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
                             {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
                          </AlertDialogDescription>
