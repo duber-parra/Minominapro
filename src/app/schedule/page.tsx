@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX } from 'lucide-react';
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync } from 'lucide-react'; // Added FolderSync
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -59,6 +59,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
+// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Keep this commented out
+
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule';
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns';
@@ -266,7 +268,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
             return parsed as T;
         } else if (key === SCHEDULE_NOTES_KEY) {
             // Special handling for notes (string)
-             return typeof parsed === 'string' ? parsed : (typeof savedData === 'string' ? savedData : defaultValue) as T;
+            // Load directly without JSON parsing
+            return (savedData ?? defaultValue) as T;
         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
             return parsed as T;
@@ -381,6 +384,11 @@ export default function SchedulePage() {
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // Loading state for saving template
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
     const [notesModalForDate, setNotesModalForDate] = useState<Date | null>(null); // State to open notes modal for a specific date
+    const [departmentMismatchWarning, setDepartmentMismatchWarning] = useState<{
+        employee: Employee;
+        targetDepartment: Department;
+        date: Date;
+    } | null>(null); // State for department mismatch warning
 
 
     const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default general notes
@@ -676,46 +684,49 @@ export default function SchedulePage() {
     }, [scheduleData, targetDate, viewMode, shiftRequestContext]);
 
     const availableEmployees = useMemo(() => {
-        // For week view D&D (desktop), show all filtered employees
-        if (viewMode === 'week' && !isMobile) {
-            return filteredEmployees;
-        }
-
-        // For day view or mobile week view (+ button flow)
+        // Determine the date for filtering based on viewMode and context
         const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
-        const deptForFiltering = shiftRequestContext?.departmentId; // Get department context if available
 
-        if (!dateForFiltering) {
-            return filteredEmployees; // No specific date context, show all for location
-        }
-
-        const dateKey = format(dateForFiltering, 'yyyy-MM-dd');
+        // Get IDs of employees already assigned on the target date
         const assignedIdsOnDate = new Set<string>();
-        const daySchedule = scheduleData[dateKey];
-        if (daySchedule && daySchedule.assignments) {
-            Object.values(daySchedule.assignments).flat().forEach(assignment => {
-                assignedIdsOnDate.add(assignment.employee.id);
-            });
+        if (dateForFiltering) {
+            const dateKey = format(dateForFiltering, 'yyyy-MM-dd');
+            const daySchedule = scheduleData[dateKey];
+            if (daySchedule && daySchedule.assignments) {
+                Object.values(daySchedule.assignments).flat().forEach(assignment => {
+                    assignedIdsOnDate.add(assignment.employee.id);
+                });
+            }
         }
-         // Filter employees of the location that are NOT assigned on the specific date
-         // And optionally prioritize employees associated with the target department
-         let potentiallyAvailable = filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
 
-          // If a department context is provided, sort those associated with it first
-          if (deptForFiltering) {
-              potentiallyAvailable.sort((a, b) => {
-                  const aInDept = a.departmentIds?.includes(deptForFiltering) ? -1 : 1;
-                  const bInDept = b.departmentIds?.includes(deptForFiltering) ? -1 : 1;
-                  if (aInDept !== bInDept) return aInDept - bInDept;
-                  return a.name.localeCompare(b.name); // Secondary sort by name
-              });
-          } else {
-              potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name)); // Default sort by name
-          }
+        // Filter employees based on selected location and availability on the target date
+        let potentiallyAvailable = filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
 
+        // If shiftRequestContext has departmentId (meaning '+' was clicked), prioritize employees associated with that department
+        const deptForFiltering = shiftRequestContext?.departmentId;
+        if (deptForFiltering) {
+             potentiallyAvailable.sort((a, b) => {
+                 const aInDept = a.departmentIds?.includes(deptForFiltering) ? -1 : 1; // Employees in dept first
+                 const bInDept = b.departmentIds?.includes(deptForFiltering) ? -1 : 1;
+                 if (aInDept !== bInDept) return aInDept - bInDept;
+                 return a.name.localeCompare(b.name); // Secondary sort by name
+             });
+        } else {
+            // Default sort by name if no department context
+            potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        // If in week view on desktop (drag-and-drop), return all employees for the location regardless of assignment status
+        // because the user might be dragging to a different day.
+        if (viewMode === 'week' && !isMobile) {
+             // Return all employees for the location, maybe sorted alphabetically
+             return [...filteredEmployees].sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        // For Day view or Mobile Week view (+ button flow), return the filtered and sorted available employees
         return potentiallyAvailable;
 
-    }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isMobile]); // Added isMobile
+    }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isMobile]); // Added isMobile dependency
 
 
     useEffect(() => {
@@ -888,7 +899,7 @@ export default function SchedulePage() {
     const handleDragEnd = (event: DragEndEvent) => {
         const { over, active } = event;
 
-        if (isMobile || !isClient || !over || !active) return; // Ignore drag on mobile, ensure client side
+        if (isMobile || !isClient || !over || !active) return;
 
         const employeeId = active.id as string;
         const targetData = over.data.current as { type: string; id: string; date?: string };
@@ -898,13 +909,13 @@ export default function SchedulePage() {
             return;
         }
 
-        const departmentId = targetData.id;
+        const targetDepartmentId = targetData.id;
         const dropDate = parseISO(targetData.date);
 
         const employee = employees.find(emp => emp.id === employeeId);
-        if (!employee) return;
+        const targetDepartment = departments.find(dept => dept.id === targetDepartmentId);
+        if (!employee || !targetDepartment) return;
 
-        // Check if employee is already assigned on this specific date
         const dateKey = format(dropDate, 'yyyy-MM-dd');
         const daySchedule = scheduleData[dateKey];
         if (daySchedule && daySchedule.assignments) {
@@ -917,10 +928,23 @@ export default function SchedulePage() {
                      description: `${employee.name} ya tiene un turno asignado para el ${format(dropDate, 'PPP', { locale: es })}.`,
                      variant: 'destructive',
                  });
-                 return; // Prevent assigning again on the same day
+                 return;
              }
         }
-        handleOpenShiftModalForDrop(employee, departmentId, dropDate);
+
+        // Check for department mismatch
+        const employeeDepartments = employee.departmentIds || [];
+        if (employeeDepartments.length > 0 && !employeeDepartments.includes(targetDepartmentId)) {
+            setDepartmentMismatchWarning({
+                 employee,
+                 targetDepartment,
+                 date: dropDate
+             });
+             return; // Show warning and stop assignment for now
+        }
+
+        // If no mismatch or warning confirmed, proceed with opening the modal
+        handleOpenShiftModalForDrop(employee, targetDepartmentId, dropDate);
     };
 
 
@@ -1533,20 +1557,21 @@ export default function SchedulePage() {
                 let assignmentsLoadedCount = 0;
 
                  const applyAssignments = (targetDateKey: string, dailyAssignments: DailyAssignments) => {
-                     const existingDayData = updatedSchedule[targetDateKey] || { date: parseDateFns(targetDateKey, 'yyyy-MM-dd', new Date()), assignments: {} };
+                     const targetDate = parseDateFns(targetDateKey, 'yyyy-MM-dd', new Date());
+                     const existingDayData = updatedSchedule[targetDateKey] || { date: targetDate, assignments: {} };
                      const newDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                      let dayLoadedCount = 0;
 
                      Object.keys(dailyAssignments).forEach(deptId => {
-                         const departmentExists = filteredDepartments.some(d => d.id === deptId);
+                         const departmentExists = departments.some(d => d.id === deptId && d.locationId === selectedLocationId); // Check department exists in selected location
                          if (!departmentExists) {
                               console.warn(`Departamento ${deptId} del template no existe en la sede actual, omitiendo asignaciones.`);
                               return;
                          }
 
                          newDayAssignments[deptId] = (dailyAssignments[deptId] || []).map((templateAssign) => {
-                             const fullEmployee = employees.find(emp => emp.id === templateAssign.employee.id);
-                             if (!fullEmployee || !filteredEmployees.some(fe => fe.id === fullEmployee.id)) {
+                             const fullEmployee = employees.find(emp => emp.id === templateAssign.employee.id && emp.locationIds.includes(selectedLocationId)); // Check employee exists and belongs to location
+                             if (!fullEmployee) {
                                  console.warn(`Empleado ${templateAssign.employee.id} del template no encontrado o no pertenece a la sede actual, omitiendo asignación.`);
                                  return null;
                              }
@@ -1564,7 +1589,7 @@ export default function SchedulePage() {
                      });
 
                      if (Object.keys(newDayAssignments).length > 0) {
-                          updatedSchedule[targetDateKey] = { ...existingDayData, assignments: newDayAssignments };
+                          updatedSchedule[targetDateKey] = { ...existingDayData, date: targetDate, assignments: newDayAssignments };
                           assignmentsLoadedCount += dayLoadedCount;
                      } else {
                           console.log(`No valid assignments loaded for ${targetDateKey}, keeping existing data.`);
@@ -1606,9 +1631,9 @@ export default function SchedulePage() {
             console.error("Error applying template:", error);
             toast({ title: 'Error al Aplicar', description: 'Ocurrió un error al aplicar las asignaciones del template.', variant: 'destructive' });
         }
-         setIsTemplateModalOpen(false);
+         setIsTemplateModalOpen(false); // Close modal after loading
 
-    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]);
+    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, departments, selectedLocationId, currentDate]);
 
 
       const handleDeleteTemplate = (templateId: string) => {
@@ -1786,6 +1811,15 @@ export default function SchedulePage() {
          } catch (err) {
              console.error('Error al copiar ID:', err);
              toast({ title: 'Error al Copiar', description: 'No se pudo copiar el ID.', variant: 'destructive' });
+         }
+     };
+
+     // Function to handle confirmation of department mismatch assignment
+     const handleConfirmDepartmentMismatch = () => {
+         if (departmentMismatchWarning) {
+             const { employee, targetDepartment, date } = departmentMismatchWarning;
+             handleOpenShiftModalForDrop(employee, targetDepartment.id, date);
+             setDepartmentMismatchWarning(null); // Clear warning
          }
      };
 
@@ -2033,7 +2067,7 @@ export default function SchedulePage() {
                               isMobile={isMobile}
                               getNotesForDate={getNotesForDate}
                               onOpenNotesModal={handleOpenNotesModalForDate} // Pass the new handler
-                              employees={employees} // Pass employees to ScheduleView
+                              employees={employees} // Pass employees to render tooltip content correctly
                           />
                        </div>
                    </div>
@@ -2046,46 +2080,6 @@ export default function SchedulePage() {
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
 
-                    <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                        <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
-                    </Button>
-                    <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-600 hover:text-white">
-                        <FileDown className="mr-2 h-4 w-4" /> PDF
-                    </Button>
-                    {viewMode === 'week' && (
-                        <Button
-                            variant="outline"
-                            onClick={handleDuplicateWeek}
-                            title="Duplicar semana completa a la siguiente"
-                            className="hover:bg-primary hover:text-primary-foreground"
-                        >
-                            <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
-                        </Button>
-                    )}
-                    {/* Clear Week Button */}
-                     {viewMode === 'week' && (
-                        <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                             <Button variant="outline" size="sm" className="hover:bg-destructive hover:text-destructive-foreground">
-                                <CalendarX className="mr-2 h-4 w-4" /> Limpiar Semana
-                             </Button>
-                           </AlertDialogTrigger>
-                           <AlertDialogContent>
-                             <AlertDialogHeader>
-                               <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
-                               <AlertDialogDescription>
-                                 Esta acción eliminará todos los turnos de la semana del{' '}
-                                 {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
-                                 {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
-                               </AlertDialogDescription>
-                             </AlertDialogHeader>
-                             <AlertDialogFooter>
-                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                               <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearWeek}>Limpiar Semana</AlertDialogAction>
-                             </AlertDialogFooter>
-                           </AlertDialogContent>
-                        </AlertDialog>
-                     )}
                      {/* Template Management Button */}
                       <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                          <DialogTrigger asChild>
@@ -2167,6 +2161,47 @@ export default function SchedulePage() {
                              </DialogFooter>
                          </DialogContent>
                      </Dialog>
+
+                    <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                        <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
+                    </Button>
+                    <Button onClick={handleExportPDF} variant="outline" className="hover:bg-red-600 hover:text-white">
+                        <FileDown className="mr-2 h-4 w-4" /> PDF
+                    </Button>
+                    {viewMode === 'week' && (
+                        <Button
+                            variant="outline"
+                            onClick={handleDuplicateWeek}
+                            title="Duplicar semana completa a la siguiente"
+                            className="hover:bg-primary hover:text-primary-foreground"
+                        >
+                            <CopyPlus className="mr-2 h-4 w-4" /> Duplicar Semana
+                        </Button>
+                    )}
+                    {/* Clear Week Button */}
+                     {viewMode === 'week' && (
+                        <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button variant="outline" size="sm" className="hover:bg-destructive hover:text-destructive-foreground">
+                                <CalendarX className="mr-2 h-4 w-4" /> Limpiar Semana
+                             </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>¿Limpiar Semana Completa?</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 Esta acción eliminará todos los turnos de la semana del{' '}
+                                 {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })} al{' '}
+                                 {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd/MM/yy', { locale: es })}. No se puede deshacer.
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                               <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleClearWeek}>Limpiar Semana</AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                        </AlertDialog>
+                     )}
                     <Button onClick={handleSaveSchedule} variant="default" className="hover:bg-primary/90">
                         <Save className="mr-2 h-4 w-4" /> Guardar Horario
                     </Button>
@@ -2506,6 +2541,24 @@ export default function SchedulePage() {
                      </AlertDialogFooter>
                  </AlertDialogContent>
              </AlertDialog>
+
+            {/* Department Mismatch Warning Dialog */}
+             <AlertDialog open={!!departmentMismatchWarning} onOpenChange={() => setDepartmentMismatchWarning(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Advertencia de Departamento</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              El colaborador <strong>{departmentMismatchWarning?.employee.name}</strong> no está asignado principalmente al departamento <strong>{departmentMismatchWarning?.targetDepartment.name}</strong>.
+                              <br /><br />
+                              ¿Deseas asignarlo de todas formas?
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setDepartmentMismatchWarning(null)}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleConfirmDepartmentMismatch}>Asignar Igualmente</AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
 
 
         </main>
