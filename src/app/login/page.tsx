@@ -16,12 +16,20 @@ import {
     GoogleAuthProvider,
     onAuthStateChanged
 } from "firebase/auth";
-import { initializeApp, getApp } from "firebase/app"; // Import getApp
+import { initializeApp, getApps, getApp } from "firebase/app"; // Import getApps and getApp
 import { useRouter } from 'next/navigation';
 
-// TODO: add .env variables
+// Use environment variables for Firebase config.
+// IMPORTANT: Create a .env.local file in the root of your project and add these variables:
+// NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_API_KEY
+// NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
+// NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+// NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
+// NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+// NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
+// Make sure to prefix them with NEXT_PUBLIC_ so they are available on the client-side.
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY, // Use environment variables
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
@@ -30,21 +38,21 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase only once
-let firebaseApp: ReturnType<typeof initializeApp> | undefined = undefined;
 function ensureFirebaseInitialized() {
-    if (!firebaseApp) {
-        try {
-            firebaseApp = initializeApp(firebaseConfig);
-        } catch (error: any) {
-            if (error.code === 'app/duplicate-app') {
-                 firebaseApp = getApp(); // Use existing app instance
-            } else {
-                console.error("Firebase initialization error:", error);
-                throw error; // Rethrow other errors
-            }
-        }
+    // Check if API key is provided
+    if (!firebaseConfig.apiKey) {
+        throw new Error("Firebase API Key is missing. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_API_KEY is set.");
     }
-    return firebaseApp;
+    if (!getApps().length) {
+        try {
+            return initializeApp(firebaseConfig);
+        } catch (error: any) {
+             console.error("Firebase initialization error:", error);
+             throw new Error("Could not initialize Firebase. Check console for details.");
+        }
+    } else {
+        return getApp(); // Use existing app instance
+    }
 }
 
 
@@ -71,9 +79,9 @@ export default function LoginPage() {
         // Cleanup subscription on unmount
         return () => unsubscribe();
 
-    } catch (initError) {
+    } catch (initError: any) {
         console.error("Error during Firebase init or auth check:", initError);
-        setError("Error al inicializar la autenticación.");
+        setError(initError.message || "Error al inicializar la autenticación.");
     }
   }, [router]); // Add router to dependency array
 
@@ -82,14 +90,22 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-        const app = ensureFirebaseInitialized();
+        const app = ensureFirebaseInitialized(); // Ensure initialized before getting auth
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
         // onAuthStateChanged will handle the redirect
-      } catch (error) {
+      } catch (error: any) { // Catch specific Firebase errors if possible
         console.error("Google Sign-In Error:", error);
-        setError('Error al iniciar sesión con Google. Intenta de nuevo.');
+        if (error.code === 'auth/popup-closed-by-user') {
+             setError('El inicio de sesión con Google fue cancelado.');
+        } else if (error.code === 'auth/network-request-failed') {
+            setError('Error de red. Verifica tu conexión e intenta de nuevo.');
+        } else if (error.message.includes("Firebase API Key is missing")) {
+            setError(error.message); // Show the specific missing key error
+        } else {
+            setError('Error al iniciar sesión con Google. Intenta de nuevo.');
+        }
       } finally { // Ensure isLoading is set to false even if there's an error
         setIsLoading(false);
       }
@@ -143,3 +159,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
