@@ -14,7 +14,8 @@ import {
     getAuth,
     signInWithPopup,
     GoogleAuthProvider,
-    onAuthStateChanged
+    onAuthStateChanged,
+    User // Import User type
 } from "firebase/auth";
 import { initializeApp, getApps, getApp } from "firebase/app"; // Import getApps and getApp
 import { useRouter } from 'next/navigation';
@@ -57,6 +58,22 @@ function ensureFirebaseInitialized() {
     }
 }
 
+// --- Placeholder Function for First Login Check ---
+// In a real app, this would interact with your backend/database
+// to check if the user has completed the initial setup.
+const isFirstLogin = async (user: User): Promise<boolean> => {
+    console.log("Checking if first login for user:", user.uid);
+    // Example: Assume users created within the last 5 minutes are "new"
+    // THIS IS NOT RELIABLE FOR PRODUCTION. Use a flag in Firestore/Database.
+    const isNew = user.metadata.creationTime === user.metadata.lastSignInTime;
+    // const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    // const creationTime = new Date(user.metadata.creationTime || 0).getTime();
+    // const isNew = creationTime > fiveMinutesAgo;
+    console.log("Is considered first login?", isNew);
+    return isNew;
+}
+// --- End Placeholder ---
+
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -70,10 +87,16 @@ export default function LoginPage() {
         const auth = getAuth(app);
 
         // Check for existing authentication
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => { // Make async
           if (user) {
-            // User is signed in, redirect to home page
-            router.push('/');
+            // --- First Login Check ---
+            // const firstLogin = await isFirstLogin(user); // Check if it's the first login
+            // if (firstLogin) {
+            //   router.push('/profile-setup'); // Redirect to setup page
+            // } else {
+                 router.push('/'); // Redirect to home page for existing users
+            // }
+            // -----------------------
           } else {
             console.log('No user logged in');
           }
@@ -96,7 +119,7 @@ export default function LoginPage() {
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
-        // onAuthStateChanged will handle the redirect
+        // onAuthStateChanged will handle the redirect after checking if it's the first login
       } catch (error: any) { // Catch specific Firebase errors if possible
         console.error("Google Sign-In Error:", error);
         if (error.code === 'auth/popup-closed-by-user') {
