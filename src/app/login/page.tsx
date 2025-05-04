@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -40,18 +39,23 @@ const firebaseConfig = {
 
 // Initialize Firebase only once
 function ensureFirebaseInitialized() {
-    // Check if API key is provided
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Check for placeholder too
-        console.error("Firebase API Key is missing or is placeholder in configuration object. Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-        throw new Error("La clave API de Firebase falta o es un marcador de posición. Por favor, verifica tu archivo .env.local y asegúrate de que NEXT_PUBLIC_FIREBASE_API_KEY esté configurado correctamente y que el servidor se haya reiniciado.");
+    // Check if API key is provided and not the placeholder
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk" || firebaseConfig.apiKey === "YOUR_API_KEY") {
+        const errorMsg = "La clave API de Firebase falta o es un marcador de posición. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.";
+        console.error(errorMsg, "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+        throw new Error(errorMsg);
     }
     if (!getApps().length) {
         try {
-            console.log("Initializing Firebase with config:", { ...firebaseConfig, apiKey: firebaseConfig.apiKey ? '***' : 'MISSING!' }); // Don't log the key itself
+            console.log("Initializing Firebase..."); // Log initialization attempt
             return initializeApp(firebaseConfig);
         } catch (error: any) {
              console.error("Firebase initialization error:", error);
-             throw new Error("Could not initialize Firebase. Check console for details.");
+             // Provide a more specific error message if possible
+             if (error.code === 'auth/invalid-api-key' || error.message.includes('invalid-api-key')) {
+                 throw new Error("La clave API de Firebase no es válida. Revisa la configuración en Firebase Console y tu archivo .env.local.");
+             }
+             throw new Error("No se pudo inicializar Firebase. Revisa la consola para más detalles.");
         }
     } else {
         return getApp(); // Use existing app instance
@@ -63,12 +67,9 @@ function ensureFirebaseInitialized() {
 // to check if the user has completed the initial setup.
 const isFirstLogin = async (user: User): Promise<boolean> => {
     console.log("Checking if first login for user:", user.uid);
-    // Example: Assume users created within the last 5 minutes are "new"
-    // THIS IS NOT RELIABLE FOR PRODUCTION. Use a flag in Firestore/Database.
+    // Example: Check creation time vs last sign-in time.
+    // This is a common pattern but might require adjusting tolerance depending on Firebase behavior.
     const isNew = user.metadata.creationTime === user.metadata.lastSignInTime;
-    // const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    // const creationTime = new Date(user.metadata.creationTime || 0).getTime();
-    // const isNew = creationTime > fiveMinutesAgo;
     console.log("Is considered first login?", isNew);
     return isNew;
 }
@@ -90,15 +91,17 @@ export default function LoginPage() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => { // Make async
           if (user) {
             // --- First Login Check ---
-            // const firstLogin = await isFirstLogin(user); // Check if it's the first login
-            // if (firstLogin) {
-            //   router.push('/profile-setup'); // Redirect to setup page
-            // } else {
+            const firstLogin = await isFirstLogin(user); // Check if it's the first login
+            if (firstLogin) {
+               console.log("First login detected, redirecting to profile setup.");
+               router.push('/profile-setup'); // Redirect to setup page
+            } else {
+                console.log("Existing user detected, redirecting to home.");
                  router.push('/'); // Redirect to home page for existing users
-            // }
+            }
             // -----------------------
           } else {
-            console.log('No user logged in');
+            console.log('No user currently logged in (onAuthStateChanged).');
           }
         });
         // Cleanup subscription on unmount
@@ -115,26 +118,36 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
+        console.log("Attempting Google Sign-In...");
         const app = ensureFirebaseInitialized(); // Ensure initialized before getting auth
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
+        // Consider adding custom parameters if needed, e.g., language preference
+        // provider.setCustomParameters({ 'login_hint': 'user@example.com' });
         await signInWithPopup(auth, provider);
         // onAuthStateChanged will handle the redirect after checking if it's the first login
+        console.log("Google Sign-In Popup successful (before onAuthStateChanged handles redirect).");
       } catch (error: any) { // Catch specific Firebase errors if possible
         console.error("Google Sign-In Error:", error);
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
+
         if (error.code === 'auth/popup-closed-by-user') {
-             setError('El inicio de sesión con Google fue cancelado.');
+             setError('Inicio cancelado. Si no cerraste la ventana, revisa si tu navegador bloquea ventanas emergentes.');
+        } else if (error.code === 'auth/cancelled-popup-request') {
+             setError('Se canceló una solicitud de inicio de sesión anterior. Intenta de nuevo.');
+        } else if (error.code === 'auth/popup-blocked') {
+             setError('El navegador bloqueó la ventana emergente de Google. Habilita las ventanas emergentes para este sitio e intenta de nuevo.');
         } else if (error.code === 'auth/network-request-failed') {
             setError('Error de red. Verifica tu conexión e intenta de nuevo.');
-        } else if (error.message && error.message.includes("La clave API de Firebase falta")) { // Catch specific message from ensureFirebaseInitialized
+        } else if (error.message && error.message.includes("La clave API de Firebase falta")) {
             setError(error.message); // Show the specific missing key error
         } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
              setError('La clave API de Firebase no es válida. Verifica tu archivo .env.local y la configuración en Firebase Console.');
         } else if (error.code === 'auth/unauthorized-domain') {
-             // Specific error message for unauthorized domain
-             setError('Error: Dominio no autorizado. Por favor, añade este dominio a la lista de dominios autorizados en la configuración de autenticación de Firebase.');
+             setError('Error: Dominio no autorizado. Asegúrate de que "' + window.location.hostname + '" esté en la lista de dominios autorizados en Firebase Auth.');
         } else {
-            setError('Error al iniciar sesión con Google. Intenta de nuevo.');
+            setError(`Error al iniciar sesión con Google: ${error.message || 'Intenta de nuevo.'}`);
         }
       } finally { // Ensure isLoading is set to false even if there's an error
         setIsLoading(false);
@@ -177,6 +190,7 @@ export default function LoginPage() {
           </Button>
         </CardContent>
          {/* Optionally keep the link to register, or remove if registration is also Google-only */}
+        {/*
         <CardFooter className="flex justify-center text-sm">
           <p className="text-muted-foreground">
             ¿No tienes una cuenta?{' '}
@@ -185,6 +199,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </CardFooter>
+         */}
       </Card>
     </div>
   );
