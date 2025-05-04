@@ -15,7 +15,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react';
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -78,7 +78,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList';
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -545,7 +545,7 @@ export default function SchedulePage() {
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
         setSelectedLocationId(initialSelectedLoc);
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLoc }));
-        setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [], departmentIds: [] })); // Initialize departmentIds
+        setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: initialSelectedLoc ? [initialSelectedLoc] : [], departmentIds: [] })); // Reset name/id too
 
         setIsLoadingPage(false); // Stop loading indicator
     }, []); // Empty dependency array ensures this runs only once on mount
@@ -754,13 +754,14 @@ export default function SchedulePage() {
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
              const locationMatch = temp.locationId === selectedLocationId;
-             const typeMatch = temp.type === viewMode;
-             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
-             return locationMatch && typeMatch;
+             // Remove the type match filter to show all templates for the location
+             // const typeMatch = temp.type === viewMode;
+             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}`);
+             return locationMatch;
         });
-        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
+        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}:`, filtered);
         return filtered;
-    }, [savedTemplates, selectedLocationId, viewMode]);
+    }, [savedTemplates, selectedLocationId]); // Removed viewMode dependency
 
 
     // Memoized list of available employees, considering current view and assigned employees
@@ -2002,7 +2003,7 @@ export default function SchedulePage() {
 
     // --- New Config Modal Rendering Logic ---
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
-        <ScrollArea className="h-full border rounded-md p-2"> {/* Adjust height dynamically */}
+         <ScrollArea className="h-full border rounded-md p-2"> {/* Added scroll for list */}
             {items.map(item => (
                 <div
                     key={item.id}
@@ -2017,21 +2018,27 @@ export default function SchedulePage() {
                         {item.name}
                         {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
                         {type === 'employee' && <span className="text-xs italic ml-1">(ID: {item.id})</span>}
-                        {type === 'template' && <span className="text-xs italic ml-1">({item.type}, {item.createdAt ? format(new Date(item.createdAt), 'dd/MM/yy') : '?'})</span>}
+                         {type === 'template' && (
+                            <span className="text-xs italic ml-1">
+                                ({item.type === 'day' ? 'Diario' : 'Semanal'}, {item.createdAt ? format(new Date(item.createdAt), 'dd/MM/yy') : '?'})
+                            </span>
+                         )}
                     </span>
-                     {/* Action buttons (Edit, Delete) - Ensure they don't wrap */}
-                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5 flex-shrink-0"> {/* Prevent shrinking */}
-                        {type !== 'template' && ( // Templates might not have an edit form
+                     {/* Action buttons (Edit, Delete, Copy ID, Load Template) */}
+                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5 flex-shrink-0">
+                        {/* Edit Button (Not for templates) */}
+                        {type !== 'template' && (
                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); openConfigForm(type, item); }} title={`Editar ${type}`}>
                                  <Edit className="h-4 w-4" />
                              </Button>
                         )}
+                         {/* Copy ID Button (Only for employees) */}
                          {type === 'employee' && (
                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); handleCopyEmployeeId(item.id); }} title="Copiar ID">
                                  <Copy className="h-4 w-4" />
                              </Button>
                          )}
-                          {/* Load template button */}
+                          {/* Load Template Button (Only for templates) */}
                           {type === 'template' && (
                             <Button
                                 variant="ghost"
@@ -2078,8 +2085,10 @@ export default function SchedulePage() {
                             <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Sede</CardTitle>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
-                            <Label htmlFor="location-name">Nombre</Label>
-                            <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
+                            <div>
+                                <Label htmlFor="location-name">Nombre</Label>
+                                <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
+                            </div>
                         </CardContent>
                          <CardFooter className="flex justify-end gap-2 border-t pt-4">
                             <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
@@ -2313,15 +2322,15 @@ export default function SchedulePage() {
                                                                 variant="outline"
                                                                 size="icon"
                                                                 onClick={() => {
-                                                                    const typeMap = {
+                                                                    const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
                                                                         sedes: 'location',
                                                                         departamentos: 'department',
                                                                         colaboradores: 'employee',
                                                                         templates: 'template' // Though adding templates here is disabled visually
                                                                     };
-                                                                    const formType = typeMap[activeConfigTab as keyof typeof typeMap];
+                                                                    const formType = typeMap[activeConfigTab];
                                                                     if (formType && formType !== 'template') {
-                                                                        openConfigForm(formType as 'location' | 'department' | 'employee', null); // Pass null for adding
+                                                                        openConfigForm(formType, null); // Pass null for adding
                                                                     }
                                                                 }}
                                                                 title={`Agregar ${activeConfigTab}`}
@@ -2512,11 +2521,11 @@ export default function SchedulePage() {
                              <DialogHeader>
                                  <DialogTitle>Templates Guardados</DialogTitle>
                                  <DialogDescription>
-                                     Selecciona un template para cargarlo o eliminarlo. Se muestran los templates correspondientes a la sede y vista actual ({viewMode}).
+                                     Selecciona un template para cargarlo o eliminarlo.
                                  </DialogDescription>
                              </DialogHeader>
                              <ScheduleTemplateList
-                                 templates={filteredTemplates}
+                                 templates={filteredTemplates} // Pass the correctly filtered templates
                                  onLoadTemplate={handleLoadTemplate}
                                  onDeleteTemplate={(id) => setTemplateToDeleteId(id)}
                              />
@@ -2768,3 +2777,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+

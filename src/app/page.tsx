@@ -694,13 +694,13 @@ export default function Home() {
     >
 
         {/* Decorative Images */}
-        <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Lowered slightly */}
             <Image
                 src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
                 alt="Ilustración de taza de café"
                 width={120} // Adjust size as needed
                 height={120} // Adjust size as needed
-                className="object-contain relative -top-10 left-8 transform -rotate-12" // Adjusted vertical position slightly
+                className="object-contain transform -rotate-12" // Adjusted vertical position slightly
                 data-ai-hint="coffee cup illustration"
             />
         </div>
@@ -948,4 +948,5 @@ export default function Home() {
     </main>
   );
 }
+
 

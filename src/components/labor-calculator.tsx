@@ -28,7 +28,7 @@ type HourType = keyof typeof valoresHoraLaboral;
 type OperatorType = '+' | '-' | 'x' | '÷';
 
 const CalculadoraLaboral: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false); // Start minimized by default
   const [mode, setMode] = useState<'valorHoras' | 'duracionTurno'>('valorHoras');
   const { toast } = useToast();
   const calculatorRef = useRef<HTMLDivElement>(null); // Ref for the calculator card
@@ -329,10 +329,20 @@ const CalculadoraLaboral: React.FC = () => {
     }
   };
 
+    // Function to format the number with spaces for thousands separators
+    const formatDisplayNumber = (value: string): string => {
+        if (value === "Error" || isNaN(parseFloat(value))) {
+            return value; // Keep "Error" or other non-numeric displays as is
+        }
+        const parts = value.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // Add space for thousands
+        return parts.join('.');
+    };
+
 
   // Format display value - show raw number for valorHoras, duration string otherwise
   const formattedDisplayValue = mode === 'valorHoras'
-    ? (isNaN(parseFloat(displayValue)) ? displayValue : displayValue) // Show raw number or "Error"
+     ? formatDisplayNumber(displayValue) // Format numeric display
     : durationResult || '0 horas, 0 minutos'; // Show duration result
 
 
@@ -363,7 +373,7 @@ const CalculadoraLaboral: React.FC = () => {
         )}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 bg-primary rounded-t-lg">
-          <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-white"> {/* Changed text to white */}
             {mode === 'valorHoras' ? <Calculator className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
             Calculadora Laboral
           </CardTitle>
@@ -468,3 +478,4 @@ const CalculadoraLaboral: React.FC = () => {
 };
 
 export default CalculadoraLaboral;
+
