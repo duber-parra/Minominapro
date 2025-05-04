@@ -78,7 +78,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
+// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -1581,7 +1581,7 @@ export default function SchedulePage() {
          setIsSavingTemplate(false);
      };
 
-     const handleLoadTemplate = (templateId: string) => {
+     const handleLoadTemplate = useCallback((templateId: string) => {
         console.log("Attempting to load template with ID:", templateId);
         const templateToLoad = scheduleTemplates.find(t => t.id === templateId);
 
@@ -1591,18 +1591,17 @@ export default function SchedulePage() {
             return;
         }
 
-         // Ensure the template type matches the current view mode
-         if (templateToLoad.type !== viewMode) {
+        // Ensure the template type matches the current view mode
+        if (templateToLoad.type !== viewMode) {
              toast({
                  title: "Tipo Incorrecto",
                  description: `El template "${templateToLoad.name}" es ${templateToLoad.type === 'day' ? 'diario' : 'semanal'}. Cambia a la vista ${templateToLoad.type === 'day' ? 'diaria' : 'semanal'} para cargarlo.`,
                  variant: "destructive"
              });
              return;
-         }
+        }
 
-
-         setScheduleData(prevSchedule => {
+        setScheduleData(prevSchedule => {
              const updatedSchedule = { ...prevSchedule };
 
              if (templateToLoad.type === 'day') {
@@ -1700,7 +1699,7 @@ export default function SchedulePage() {
 
         toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
         setIsTemplateListModalOpen(false); // Close modal after loading
-     };
+     }, [currentDate, employees, scheduleTemplates, setScheduleData, targetDate, toast, viewMode, weekDates]); // Dependencies for handleLoadTemplate
 
     const handleDeleteTemplate = (templateId: string) => {
         const template = scheduleTemplates.find(t => t.id === templateId);
@@ -2252,7 +2251,7 @@ export default function SchedulePage() {
             )}
 
              {/* Decorative Image */}
-             <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted top position */}
+             <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 sm:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted top position and reduced opacity on small screens */}
                 <Image
                     src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Left image source
                     alt="Ilustración teclado"
@@ -2291,17 +2290,17 @@ export default function SchedulePage() {
                                        </Button>
                                    </DialogTrigger>
                                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Adjusted padding */}
-                                      <DialogHeader className="p-4 border-b"> {/* Added padding */}
+                                      <DialogHeader className="p-4 border-b flex-shrink-0"> {/* Ensure header doesn't shrink */}
                                           <DialogTitle>Configuración General</DialogTitle>
-                                          <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription> {/* Re-added templates */}
+                                          <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
                                       </DialogHeader>
-                                        <div className="flex-grow overflow-hidden p-4"> {/* Added padding */}
+                                        <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
                                             <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeConfigTab} onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
-                                              <TabsList className="grid w-full grid-cols-4 mb-4"> {/* Changed to 4 cols */}
+                                              <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0"> {/* Ensure TabsList doesn't shrink */}
                                                 <TabsTrigger value="sedes">Sedes</TabsTrigger>
                                                 <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
                                                 <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
-                                                 <TabsTrigger value="templates">Templates</TabsTrigger> {/* Re-added Templates Trigger */}
+                                                 <TabsTrigger value="templates">Templates</TabsTrigger>
                                               </TabsList>
 
                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden"> {/* Layout Lista + Detalle */}
@@ -2316,35 +2315,35 @@ export default function SchedulePage() {
                                                                      activeConfigTab === 'sedes' ? locationSearch :
                                                                      activeConfigTab === 'departamentos' ? departmentSearch :
                                                                      activeConfigTab === 'colaboradores' ? employeeSearch :
-                                                                     templateSearch // Added template search
+                                                                     templateSearch
                                                                  }
                                                                  onChange={(e) => {
                                                                      const value = e.target.value;
                                                                      if (activeConfigTab === 'sedes') setLocationSearch(value);
                                                                      else if (activeConfigTab === 'departamentos') setDepartmentSearch(value);
                                                                      else if (activeConfigTab === 'colaboradores') setEmployeeSearch(value);
-                                                                     else if (activeConfigTab === 'templates') setTemplateSearch(value); // Added template search handler
+                                                                     else if (activeConfigTab === 'templates') setTemplateSearch(value);
                                                                  }}
                                                              />
-                                                             {/* Fix: Map tab value to type correctly, ensure item is null for add */}
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"
                                                                 onClick={() => {
-                                                                    const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = { // Added 'template'
+                                                                    const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
                                                                         sedes: 'location',
                                                                         departamentos: 'department',
                                                                         colaboradores: 'employee',
-                                                                        templates: 'template', // Added template mapping
+                                                                        templates: 'template',
                                                                     };
                                                                     const formType = typeMap[activeConfigTab];
                                                                     if (formType) {
-                                                                        openConfigForm(formType, null); // Pass null for adding
+                                                                        // Ensure selectedConfigItem is null when adding new
+                                                                        setSelectedConfigItem(null);
+                                                                        openConfigForm(formType, null);
                                                                     }
                                                                 }}
                                                                 title={`Agregar ${activeConfigTab}`}
-                                                                // Disable adding templates manually for now
-                                                                disabled={activeConfigTab === 'templates'}
+                                                                disabled={activeConfigTab === 'templates'} // Disable adding templates manually
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
@@ -2355,7 +2354,7 @@ export default function SchedulePage() {
                                                             <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
                                                             <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
                                                             <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
-                                                             <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent> {/* Re-added Templates Content */}
+                                                             <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
                                                         </div>
                                                     </div>
 
@@ -2366,6 +2365,7 @@ export default function SchedulePage() {
                                                 </div>
                                             </Tabs>
                                        </div>
+                                         {/* Removed Footer and Close button */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2519,12 +2519,6 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
-                      {/* Template List Button - Removed */}
-                      {/*
-                      <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                         <Library className="mr-2 h-4 w-4" /> Templates
-                      </Button>
-                      */}
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2650,30 +2644,6 @@ export default function SchedulePage() {
                       </AlertDialogFooter>
                   </AlertDialogContent>
               </AlertDialog>
-
-              {/* Template List Modal - Removed */}
-              {/*
-               <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                   <DialogContent className="sm:max-w-md">
-                       <DialogHeader>
-                           <DialogTitle>Templates Guardados ({viewMode === 'day' ? 'Diario' : 'Semanal'})</DialogTitle>
-                           <DialogDescription>
-                               Carga o elimina templates para la sede <strong>{locations.find(l => l.id === selectedLocationId)?.name || 'N/A'}</strong> y la vista <strong>{viewMode}</strong>.
-                           </DialogDescription>
-                       </DialogHeader>
-                       <ScheduleTemplateList
-                           templates={filteredTemplates} // Show filtered templates
-                           onLoadTemplate={handleLoadTemplate}
-                           onDeleteTemplate={(id) => setTemplateToDeleteId(id)} // Set ID for delete confirmation
-                       />
-                       <DialogFooter>
-                           <DialogClose asChild>
-                               <Button type="button" variant="secondary">Cerrar</Button>
-                           </DialogClose>
-                       </DialogFooter>
-                   </DialogContent>
-               </Dialog>
-               */}
 
               {/* Template Delete Confirmation Dialog */}
               <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
@@ -2832,3 +2802,4 @@ export default function SchedulePage() {
         </main>
     );
 }
+

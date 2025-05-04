@@ -429,11 +429,11 @@ export default function Home() {
              if (!isEditing) {
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
-                 toast({
-                     title: 'Día Agregado, Fecha Avanzada',
-                     description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
-                     variant: 'default'
-                 });
+                 // toast({
+                 //     title: 'Día Agregado, Fecha Avanzada',
+                 //     description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
+                 //     variant: 'default'
+                 // });
              } else {
                  // Show a different toast for successful EDIT
                  toast({
@@ -604,6 +604,8 @@ export default function Home() {
      if (isDateCalculated(nextDayDate)) {
         setIsLoadingDay(false);
         toast({ title: 'Fecha Ya Calculada', description: `Ya existe un cálculo para el ${format(nextDayDate, 'PPP', { locale: es })}. No se puede duplicar.`, variant: 'destructive', duration: 5000 });
+        // Automatically advance the date in the form even if duplication fails due to existing date
+        setValue('startDate', addDays(nextDayDate, 1), { shouldValidate: true, shouldDirty: true });
         return;
      }
     const nextDayValues: WorkdayFormValues = { ...lastDay.inputData, startDate: nextDayDate };
@@ -611,7 +613,7 @@ export default function Home() {
     try {
         const result = await calculateSingleWorkday(nextDayValues, newDayId);
         handleDayCalculationComplete(result);
-        if (!isCalculationError(result)) { toast({ title: 'Turno Duplicado', description: `Se duplicó el último turno para el ${format(nextDayDate, 'PPP', { locale: es })}.` }); }
+        // No separate toast here, handleDayCalculationComplete now handles the success toast and date advance
     } catch (error) {
         console.error("Error duplicando el turno:", error);
         const errorMessage = error instanceof Error ? error.message : "Hubo un error al duplicar.";
@@ -694,7 +696,7 @@ export default function Home() {
     >
 
         {/* Decorative Images */}
-         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Lowered slightly */}
+         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
             <Image
                 src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
                 alt="Ilustración de taza de café"
@@ -704,7 +706,7 @@ export default function Home() {
                 data-ai-hint="coffee cup illustration"
             />
         </div>
-         <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted positioning */}
+         <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
              <Image
                 src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
                 alt="Ilustración de elementos de oficina" // Updated alt text
@@ -948,5 +950,4 @@ export default function Home() {
     </main>
   );
 }
-
 
