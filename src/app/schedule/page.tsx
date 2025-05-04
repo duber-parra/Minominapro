@@ -62,6 +62,12 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"; // Import Tabs components
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
@@ -265,7 +271,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
             } else {
                 console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
                 // If data exists but is not an array, remove it (except for notes and schedule data)
-                if(key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_DATA_KEY) {
+                if(key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_DATA_KEY && key !== SCHEDULE_TEMPLATES_KEY) { // Added TEMPLATES_KEY exception
                     try {
                         localStorage.removeItem(key);
                         console.warn(`Removed invalid non-array item from localStorage for key: ${key}`);
@@ -299,8 +305,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
              return (localStorage.getItem(key) ?? defaultValue) as T;
          } else if (error instanceof SyntaxError) {
              console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
-              // Remove corrupted data for keys other than SCHEDULE_NOTES_KEY
-             if (key !== SCHEDULE_NOTES_KEY) {
+              // Remove corrupted data for keys other than SCHEDULE_NOTES_KEY and SCHEDULE_TEMPLATES_KEY
+             if (key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_TEMPLATES_KEY) {
                  try {
                      localStorage.removeItem(key);
                      console.warn(`Removed invalid item from localStorage for key: ${key}`);
@@ -379,51 +385,9 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
     if (typeof window === 'undefined') return []; // Solo en cliente
 
-    const loadedTemplates: ScheduleTemplate[] = [];
-    const templateKeyPrefix = "scheduleTemplate_"; // Changed prefix
-
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-
-            // Busca claves que COINCIDAN con el patrón de template
-            if (key && key.startsWith(templateKeyPrefix)) {
-                const storedData = localStorage.getItem(key);
-                if (storedData) {
-                    try {
-                        const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
-                        // Validación básica (opcional pero recomendada):
-                        if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
-                             // Podrías querer revivir fechas aquí si es necesario, similar a parseStoredData
-                             if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
-                                try {
-                                    parsedTemplate.createdAt = parseISO(parsedTemplate.createdAt);
-                                } catch (dateError) {
-                                    console.warn(`Error parsing createdAt date for template ${parsedTemplate.id}:`, dateError);
-                                    parsedTemplate.createdAt = new Date(); // Fallback
-                                }
-                             }
-                             loadedTemplates.push(parsedTemplate);
-                        } else {
-                             console.warn(`Dato inválido encontrado para la clave de template: ${key}`);
-                        }
-                    } catch (parseError) {
-                        console.error(`Error parseando JSON para la clave de template ${key}:`, parseError);
-                        // Podrías eliminar la clave inválida aquí si quieres: localStorage.removeItem(key);
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Error cargando templates de localStorage:", error);
-        // Podrías mostrar un toast de error aquí
-    }
-
-    // Opcional: Ordenar los templates por nombre o fecha de creación si existe
-     loadedTemplates.sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Newest first
-
-    console.log(`[loadScheduleTemplates] Cargados ${loadedTemplates.length} templates.`);
-    return loadedTemplates;
+    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
+    console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates from localStorage.`);
+    return loadedTemplates.sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Newest first
 };
 
 
@@ -496,6 +460,12 @@ export default function SchedulePage() {
 
     const [isClient, setIsClient] = useState(false);
 
+    // --- Search States ---
+    const [locationSearch, setLocationSearch] = useState('');
+    const [departmentSearch, setDepartmentSearch] = useState('');
+    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [templateSearch, setTemplateSearch] = useState('');
+
     const isMobile = useIsMobile();
     const { toast } = useToast();
 
@@ -517,7 +487,7 @@ export default function SchedulePage() {
         setScheduleData(loadedSched);
         setNotes(loadedNotesStr);
         setScheduleNotes(loadedEvents);
-        setSavedTemplates(loadedTpls);
+        setSavedTemplates(loadedTpls); // Set the loaded templates state
 
         // Set initial selected location and update form defaults accordingly
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
@@ -725,19 +695,16 @@ export default function SchedulePage() {
     ), [employees, selectedLocationId]);
 
     // Filter templates based on selected location and current view mode
-     const filteredTemplates = useMemo(() => {
+    const filteredTemplates = useMemo(() => {
         console.log("[Filter Memo] All templates in state:", savedTemplates);
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
-        const filtered = templatesArray.filter(temp => {
-            const locationMatch = temp.locationId === selectedLocationId;
-            const typeMatch = temp.type === viewMode; // Match current viewMode ('day' or 'week')
-            console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Loc Match=${locationMatch}, Type Match=${typeMatch}`);
-            return locationMatch && typeMatch;
-        });
+        const filtered = templatesArray.filter(temp =>
+             temp.locationId === selectedLocationId && temp.type === viewMode // Match current viewMode ('day' or 'week')
+        );
         console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
         return filtered;
-     }, [savedTemplates, selectedLocationId, viewMode]);
+    }, [savedTemplates, selectedLocationId, viewMode]);
 
 
     // Memoized list of available employees, considering current view and assigned employees
@@ -1064,7 +1031,7 @@ export default function SchedulePage() {
                 // Templates are usually listed and deleted, not edited via form in this structure
                  console.log("Template selected:", item);
                  // Maybe show template details read-only, or just handle load/delete from list
-                 setConfigFormType(null); // Reset form type if no form is shown
+                 // setConfigFormType(null); // Reset form type if no form is shown
                 break;
         }
     };
@@ -1090,6 +1057,7 @@ export default function SchedulePage() {
         }
         setConfigFormType(null); // Close form view after save
         setSelectedConfigItem(null);
+        setLocationSearch(''); // Clear search
     };
 
     const handleSaveDepartment = () => {
@@ -1113,6 +1081,7 @@ export default function SchedulePage() {
         }
         setConfigFormType(null); // Close form view
         setSelectedConfigItem(null);
+        setDepartmentSearch(''); // Clear search
     };
 
     const handleSaveEmployee = () => {
@@ -1169,6 +1138,7 @@ export default function SchedulePage() {
         }
         setConfigFormType(null); // Close form view
         setSelectedConfigItem(null);
+        setEmployeeSearch(''); // Clear search
     };
 
     const handleToggleEmployeeLocation = (locationId: string) => {
@@ -1262,6 +1232,7 @@ export default function SchedulePage() {
                          return updatedSchedule;
                      });
                     message = `Sede "${itemToDelete.name}" y sus datos asociados eliminados.`;
+                    setLocationSearch(''); // Clear search
                     break;
                 case 'department':
                     setDepartments(prevDeps => prevDeps.filter(dep => dep.id !== itemToDelete.id));
@@ -1297,6 +1268,7 @@ export default function SchedulePage() {
                         departmentIds: (emp.departmentIds || []).filter(deptId => deptId !== itemToDelete.id)
                      })));
                      message = `Departamento "${itemToDelete.name}" eliminado.`;
+                    setDepartmentSearch(''); // Clear search
                     break;
                 case 'employee':
                     setEmployees(prevEmps => prevEmps.filter(emp => emp.id !== itemToDelete.id));
@@ -1336,10 +1308,12 @@ export default function SchedulePage() {
                          return { ...tpl, assignments: newAssignments };
                      }));
                      message = `Colaborador "${itemToDelete.name}" eliminado.`;
-                     break;
+                    setEmployeeSearch(''); // Clear search
+                    break;
                  case 'template': // Handle template deletion
                      handleDeleteTemplate(itemToDelete.id);
                      message = `Template "${itemToDelete.name}" eliminado.`;
+                     setTemplateSearch(''); // Clear search
                      break;
              }
              toast({ title: 'Elemento Eliminado', description: message, variant: 'destructive' });
@@ -1716,7 +1690,8 @@ export default function SchedulePage() {
         });
 
         toast({ title: "Template Aplicado", description: `Se aplicaron las asignaciones del template "${templateToLoad.name}".` });
-        setIsTemplateListModalOpen(false); // Close modal after loading
+        // Optionally close the config modal after loading
+        // setIsConfigModalOpen(false);
 
     }, [savedTemplates, viewMode, targetDate, weekDates, setScheduleData, toast, employees, departments, filteredDepartments, selectedLocationId]); // Added dependencies
 
@@ -1936,9 +1911,28 @@ export default function SchedulePage() {
     }, [scheduleData, viewMode, targetDate, currentDate, weekDates, isClient]); // Added isClient
 
 
+    // --- Filtered Data for Config Lists ---
+    const filteredLocationsData = useMemo(() =>
+        locations.filter(loc => loc.name.toLowerCase().includes(locationSearch.toLowerCase())),
+        [locations, locationSearch]
+    );
+    const filteredDepartmentsData = useMemo(() =>
+        departments.filter(dept => dept.name.toLowerCase().includes(departmentSearch.toLowerCase())),
+        [departments, departmentSearch]
+    );
+    const filteredEmployeesData = useMemo(() =>
+        employees.filter(emp => emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) || emp.id.toLowerCase().includes(employeeSearch.toLowerCase())),
+        [employees, employeeSearch]
+    );
+    const filteredTemplatesData = useMemo(() =>
+        savedTemplates.filter(tpl => tpl.name.toLowerCase().includes(templateSearch.toLowerCase())),
+        [savedTemplates, templateSearch]
+    );
+
+
     // --- New Config Modal Rendering Logic ---
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
-        <ScrollArea className="h-[300px] border rounded-md p-2"> {/* Adjust height */}
+        <ScrollArea className="h-[calc(100%-4rem)] border rounded-md p-2"> {/* Adjust height dynamically */}
             {items.map(item => (
                 <div
                     key={item.id}
@@ -1953,7 +1947,7 @@ export default function SchedulePage() {
                         {item.name}
                         {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
                         {type === 'employee' && <span className="text-xs italic ml-1">(ID: {item.id})</span>}
-                        {type === 'template' && <span className="text-xs italic ml-1">({item.type}, {format(item.createdAt, 'dd/MM/yy')})</span>}
+                        {type === 'template' && <span className="text-xs italic ml-1">({item.type}, {item.createdAt ? format(new Date(item.createdAt), 'dd/MM/yy') : '?'})</span>}
                     </span>
                      {/* Action buttons (Edit, Delete) */}
                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
@@ -2029,7 +2023,7 @@ export default function SchedulePage() {
                         <CardHeader>
                             <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Departamento</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-grow space-y-3">
+                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]"> {/* Added scroll */}
                             <div>
                                 <Label htmlFor="department-name">Nombre</Label>
                                 <Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento" />
@@ -2151,18 +2145,6 @@ export default function SchedulePage() {
     return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
 
-             {/* Decorative Images */}
-              <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
-                 <Image
-                     src="https://i.postimg.cc/PJVW7XZG/teclado.png"
-                     alt="Ilustración decorativa de teclado"
-                     width={200} // Increased size
-                     height={200} // Increased size
-                     className="object-contain relative -top-10 left-8 transform -rotate-12"
-                     data-ai-hint="keyboard illustration"
-                 />
-             </div>
-
 
              {/* Title */}
               <div className="text-center mb-6 md:mb-8">
@@ -2176,7 +2158,7 @@ export default function SchedulePage() {
              {/* Controls Section - Top Bar - Transparent */}
               <div className="bg-transparent border-none shadow-none p-0 mb-6 md:mb-8">
                       <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
-                         {/* Location Selector */}
+                         {/* Location Selector & Config Button */}
                          <div className="flex items-center gap-2 flex-shrink-0">
                              <Building className="h-5 w-5 text-primary flex-shrink-0" />
                              <LocationSelector
@@ -2184,7 +2166,6 @@ export default function SchedulePage() {
                                  selectedLocationId={selectedLocationId}
                                  onLocationChange={handleLocationChange}
                              />
-                             {/* Settings Button Trigger */}
                               <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                                    <DialogTrigger asChild>
                                        <Button variant="ghost" size="icon" title="Configuración">
@@ -2196,9 +2177,8 @@ export default function SchedulePage() {
                                           <DialogTitle>Configuración General</DialogTitle>
                                           <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
                                       </DialogHeader>
-                                       {/* Tabs for Config Sections */}
                                         <div className="flex-grow overflow-hidden p-4"> {/* Added padding */}
-                                            <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
+                                            <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeConfigTab} onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
                                               <TabsList className="grid w-full grid-cols-4 mb-4">
                                                 <TabsTrigger value="sedes">Sedes</TabsTrigger>
                                                 <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
@@ -2209,22 +2189,43 @@ export default function SchedulePage() {
                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden"> {/* Layout Lista + Detalle */}
                                                     {/* Columna Izquierda: Barra de Acciones y Lista */}
                                                     <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
-                                                        {/* Barra de Acciones (Solo para Sede, Depto, Colab) */}
-                                                        {activeConfigTab !== 'templates' && (
-                                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                                <Input placeholder={`Buscar en ${activeConfigTab}...`} className="flex-grow" />
-                                                                 <Button variant="outline" size="icon" onClick={() => openConfigForm(activeConfigTab as 'location' | 'department' | 'employee', null)} title={`Agregar ${activeConfigTab}`}>
+                                                        {/* Barra de Acciones (Con Input de Búsqueda) */}
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                             <Input
+                                                                 placeholder={`Buscar en ${activeConfigTab}...`}
+                                                                 className="flex-grow"
+                                                                 value={
+                                                                     activeConfigTab === 'sedes' ? locationSearch :
+                                                                     activeConfigTab === 'departamentos' ? departmentSearch :
+                                                                     activeConfigTab === 'colaboradores' ? employeeSearch :
+                                                                     templateSearch
+                                                                 }
+                                                                 onChange={(e) => {
+                                                                     const value = e.target.value;
+                                                                     if (activeConfigTab === 'sedes') setLocationSearch(value);
+                                                                     else if (activeConfigTab === 'departamentos') setDepartmentSearch(value);
+                                                                     else if (activeConfigTab === 'colaboradores') setEmployeeSearch(value);
+                                                                     else if (activeConfigTab === 'templates') setTemplateSearch(value);
+                                                                 }}
+                                                             />
+                                                            {activeConfigTab !== 'templates' && ( // No Add button for templates here
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    onClick={() => openConfigForm(activeConfigTab as 'location' | 'department' | 'employee', null)} // Correctly cast type
+                                                                    title={`Agregar ${activeConfigTab}`}
+                                                                >
                                                                     <PlusCircle className="h-4 w-4" />
                                                                 </Button>
-                                                            </div>
-                                                        )}
+                                                             )}
+                                                        </div>
 
                                                          {/* Contenido de la Lista según la Pestaña Activa */}
                                                         <div className="flex-grow overflow-hidden"> {/* Make list area scrollable */}
-                                                            <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(locations, 'location')} </TabsContent>
-                                                            <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(departments, 'department')} </TabsContent>
-                                                            <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(employees, 'employee')} </TabsContent>
-                                                            <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(savedTemplates, 'template')} </TabsContent>
+                                                            <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
+                                                            <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
+                                                            <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
+                                                            <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
                                                         </div>
                                                     </div>
 
@@ -2478,13 +2479,34 @@ export default function SchedulePage() {
                  notes={scheduleNotes}
                  employees={employees} // Pass employees for the dropdown
                  onAddNote={addScheduleNote}
-                 onDeleteNote={deleteScheduleNote} // Pass the direct delete function
+                 onDeleteNote={(id) => setNoteToDeleteId(id)} // Trigger delete confirmation
                  initialDate={notesModalForDate || undefined} // Pass specific date if set
                  // Pass context for filtering
                  viewMode={viewMode}
                  currentDate={currentDate}
                  weekDates={weekDates}
              />
+             {/* Note Delete Confirmation Dialog */}
+              <AlertDialog open={!!noteToDeleteId} onOpenChange={(open) => !open && setNoteToDeleteId(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              "{scheduleNotes.find(note => note.id === noteToDeleteId)?.note || ''}"
+                              <br />
+                              Esta acción no se puede deshacer.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                              onClick={() => noteToDeleteId && deleteScheduleNote(noteToDeleteId)} // Call direct delete function
+                              className="bg-destructive hover:bg-destructive/90">
+                              Eliminar Anotación
+                          </AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
 
             {/* Employee Selection Modal */}
              <EmployeeSelectionModal
@@ -2586,7 +2608,6 @@ export default function SchedulePage() {
                   </AlertDialogContent>
               </AlertDialog>
 
-              {/* Template List Modal - Removed */}
 
         </main>
     );
