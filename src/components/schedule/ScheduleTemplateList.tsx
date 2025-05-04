@@ -1,4 +1,5 @@
-{// src/components/schedule/ScheduleTemplateList.tsx
+// src/components/schedule/ScheduleTemplateList.tsx
+'use client'; // Ensure this component is treated as a client component
 
 import React from 'react';
 import type { ScheduleTemplate } from '@/types/schedule'; // O donde definas el tipo
@@ -25,16 +26,7 @@ export function ScheduleTemplateList({ templates, onLoadTemplate, onDeleteTempla
   }
 
   return (
-    // Removed Card structure as it's inside a Dialog now
-    // <Card className="shadow-lg bg-card">
-    //   <CardHeader>
-    //     <CardTitle className="flex items-center gap-2 text-lg">
-    //       <List className="h-4 w-4" /> Templates de Horario ({templates.length})
-    //     </CardTitle>
-    //     <CardDescription>Selecciona un template para cargar o eliminar.</CardDescription>
-    //   </CardHeader>
-    //   <CardContent>
-        <ScrollArea className="h-[40vh] pr-2"> {/* Adjusted height */}
+        <ScrollArea className="h-[calc(100%-4rem)] border rounded-md p-2"> {/* Adjust height dynamically */}
           <ul className="space-y-3">
             {templates.map((template) => (
               <li key={template.id} className="flex items-center justify-between p-3 border rounded-md bg-background hover:bg-accent">
@@ -47,18 +39,14 @@ export function ScheduleTemplateList({ templates, onLoadTemplate, onDeleteTempla
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Button variant="outline" size="sm" onClick={() => onLoadTemplate(template.id)} title="Cargar Template">
                     <Upload className="h-4 w-4" /> {/* Use Upload icon for Load */}
-                    {/* <span className="ml-1 hidden sm:inline">Cargar</span> */}
                   </Button>
                   <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDeleteTemplate(template.id)} title="Eliminar Template">
                     <Trash2 className="h-4 w-4" />
-                    {/* <span className="ml-1 hidden sm:inline">Eliminar</span> */}
                   </Button>
                 </div>
               </li>
             ))}
           </ul>
         </ScrollArea>
-    //   </CardContent>
-    // </Card>
   );
 }
