@@ -1,7 +1,7 @@
 // src/lib/schedule-pdf-exporter.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parse } from 'date-fns';
+import { format, parse, startOfWeek, endOfWeek } from 'date-fns'; // Added startOfWeek, endOfWeek
 import { es } from 'date-fns/locale';
 import type { ScheduleData, Department, Employee, ShiftAssignment } from '@/types/schedule';
 import { formatTo12Hour } from './time-utils'; // Import the helper
@@ -13,6 +13,7 @@ declare module 'jspdf' {
   }
 }
 
+// Interface for single location data
 interface ScheduleExportData {
     locationName: string;
     weekDates: Date[];
@@ -23,6 +24,22 @@ interface ScheduleExportData {
     calculateShiftDuration: (assignment: ShiftAssignment, shiftDate: Date) => number;
 }
 
+// Helper to add the watermark header
+function addWatermarkHeader(doc: jsPDF, initialY: number = 10): number {
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const watermarkText = "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos";
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150); // Set text color to light gray (opacity is harder)
+    doc.text(watermarkText, pageWidth / 2, initialY, { align: 'center' });
+    doc.setTextColor(0); // Reset text color to black for the rest of the content
+    return initialY + 5; // Return the Y position below the watermark
+}
+
+
+// --- Single Location PDF Export ---
 export function exportScheduleToPDF(data: ScheduleExportData): void {
     const doc = new jsPDF({
         orientation: 'landscape', // Landscape for week view
@@ -32,10 +49,13 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
 
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 40; // Start position for content (with margin)
+    let currentY = 15; // Start position for content (with margin)
     const leftMargin = 40;
     const rightMargin = 40;
     const tableWidth = pageWidth - leftMargin - rightMargin;
+
+     // --- Watermark Header ---
+     currentY = addWatermarkHeader(doc, 10);
 
     // --- Header ---
     doc.setFontSize(16);
@@ -65,65 +85,41 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
 
     const body: any[] = [];
 
-    // Group employees by department for the PDF structure
-    const employeesByDept: { [deptId: string]: Employee[] } = {};
+    // Iterate through employees associated with this location
     data.employees.forEach(emp => {
-        // Find which department the employee worked in *most* this week, or just use primary?
-        // For simplicity, let's group by primary department for now.
-        // A more complex logic might group by actual assignments.
-        // We need to iterate through all assignments to build rows per employee.
+        const employeeRow: any[] = [{ content: emp.name, styles: { valign: 'middle' } }]; // First cell is employee name
+        let hasShiftThisWeek = false;
 
-        // Alternative: Iterate departments, then employees assigned to that dept
-    });
+        data.weekDates.forEach(date => {
+            const daySchedule = data.getScheduleForDate(date);
+            let assignmentFound = false;
+            let cellContent = ' '; // Default to empty space
 
-
-    data.departments.forEach(dept => {
-         // Add Department Row
-         body.push([
-             {
-                 content: `${dept.name} (${data.employees.filter(e => {
-                     // Check if employee has any shift in this dept this week
-                     return data.weekDates.some(date => {
-                         const daySchedule = data.getScheduleForDate(date);
-                         return (daySchedule.assignments[dept.id] || []).some(a => a.employee.id === e.id);
-                     });
-                 }).length} empleados)`,
-                 colSpan: data.weekDates.length + 1, // Span across all columns
-                 styles: { fontStyle: 'bold', fillColor: [230, 230, 230], textColor: [0, 0, 0] } // Gray background
-             }
-         ]);
-
-        // Find employees who have at least one shift in this department during the week
-        const deptEmployees = data.employees.filter(emp =>
-            data.weekDates.some(date => {
-                const daySchedule = data.getScheduleForDate(date);
-                return (daySchedule.assignments[dept.id] || []).some(a => a.employee.id === emp.id);
-            })
-        );
-
-
-        // Add Employee Rows for this department
-        deptEmployees.forEach(emp => {
-             const employeeRow: any[] = [{ content: emp.name, styles: { valign: 'middle' } }]; // First cell is employee name
-
-             data.weekDates.forEach(date => {
-                const daySchedule = data.getScheduleForDate(date);
+            // Check all departments for an assignment for this employee on this date
+            data.departments.forEach(dept => {
                 const assignment = (daySchedule.assignments[dept.id] || []).find(a => a.employee.id === emp.id);
-
                 if (assignment) {
-                    // Format times using the helper
-                    let cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
-                    // Append break time if included
+                    assignmentFound = true;
+                    hasShiftThisWeek = true;
+                    cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
                     if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                        cellContent += `\nD: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`; // Add break time on new line
+                        cellContent += `\nD: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`;
                     }
-                     employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
-                } else {
-                     employeeRow.push({ content: 'Sin turno', styles: { halign: 'center', valign: 'middle', textColor: [150, 150, 150], fontSize: 8 } }); // Gray text for "Sin turno"
+                     // Optionally add department info if needed, e.g., `\n(${dept.name})`
                 }
-             });
-             body.push(employeeRow);
+            });
+
+             if (assignmentFound) {
+                  employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
+             } else {
+                  employeeRow.push({ content: ' ', styles: { halign: 'center', valign: 'middle', textColor: [150, 150, 150], fontSize: 8 } }); // Empty space for no shift
+             }
         });
+
+         // Only add the employee row if they had at least one shift in the week for this location
+         if (hasShiftThisWeek) {
+            body.push(employeeRow);
+         }
     });
 
 
@@ -155,7 +151,15 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },
-        didDrawPage: (hookData) => { currentY = hookData.cursor?.y ?? currentY; }
+        didDrawPage: (hookData) => {
+             currentY = hookData.cursor?.y ?? currentY;
+             const pageNum = doc.internal.getNumberOfPages();
+             addWatermarkHeader(doc, 10); // Add watermark near top
+             doc.setFontSize(8);
+             doc.setTextColor(150); // Keep footer text gray
+             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
+             doc.setTextColor(0); // Reset text color
+         }
     });
 
     // --- Save the PDF ---
@@ -164,9 +168,193 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
     doc.save(filename);
 }
 
-// Helper to parse HH:MM to minutes (same as in page.tsx, consider moving to utils)
+
+// --- Consolidated PDF Export (All Locations) ---
+export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportData[]): void {
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4'
+    });
+
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    let currentY = 15; // Start position
+    const leftMargin = 40;
+    const rightMargin = 40;
+
+    // --- Watermark Header for first page ---
+    currentY = addWatermarkHeader(doc, 10);
+
+    // --- Main Header ---
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Horario Semanal Consolidado', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 20;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    const weekStartFormatted = format(allLocationData[0].weekDates[0], 'dd MMMM', { locale: es });
+    const weekEndFormatted = format(allLocationData[0].weekDates[6], 'dd MMMM yyyy', { locale: es });
+    doc.text(`Semana: ${weekStartFormatted} - ${weekEndFormatted}`, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 30;
+
+    // --- Table Setup ---
+    const head: any[] = [
+        [{ content: 'EMPLEADO / SEDE / DÍA', styles: { halign: 'left', valign: 'middle' } }]
+    ];
+    allLocationData[0].weekDates.forEach(date => {
+        head[0].push({
+            content: `${format(date, 'EEE', { locale: es }).toUpperCase()}\n${format(date, 'dd MMM', { locale: es })}`,
+            styles: { halign: 'center', valign: 'middle' }
+        });
+    });
+
+    const body: any[] = [];
+     let totalHoursGrandTotal = 0;
+
+    // Group all unique employees across all locations first
+     const allEmployeesMap = new Map<string, Employee>();
+     allLocationData.forEach(locData => {
+         locData.employees.forEach(emp => {
+             if (!allEmployeesMap.has(emp.id)) {
+                 allEmployeesMap.set(emp.id, emp);
+             }
+         });
+     });
+     const sortedEmployees = Array.from(allEmployeesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+
+    // Iterate through sorted unique employees
+     sortedEmployees.forEach(emp => {
+        const employeeRow: any[] = [{ content: emp.name, styles: { valign: 'middle' } }];
+        let totalHoursWeek = 0;
+        let hasShiftThisWeek = false;
+
+        allLocationData[0].weekDates.forEach(date => {
+            let cellContent = ' '; // Default to empty space
+            let assignmentFound = false;
+
+             // Check assignments for this employee on this date ACROSS ALL locations
+             for (const locData of allLocationData) {
+                const daySchedule = locData.getScheduleForDate(date);
+                for (const deptId in daySchedule.assignments) {
+                    const assignment = daySchedule.assignments[deptId].find(a => a.employee.id === emp.id);
+                     if (assignment) {
+                         assignmentFound = true;
+                         hasShiftThisWeek = true;
+                         const duration = locData.calculateShiftDuration(assignment, date);
+                         totalHoursWeek += duration;
+                         cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
+                         // Add location name abbreviation or indicator
+                         cellContent += `\n(${locData.locationName.substring(0, 3).toUpperCase()})`; // e.g., (PRI) or (NOR)
+                         if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
+                              cellContent += `\nD:${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`;
+                         }
+                         break; // Found assignment for this employee on this day, move to next day
+                     }
+                 }
+                 if (assignmentFound) break; // Exit location loop if assignment found
+             }
+
+             if (assignmentFound) {
+                 employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
+             } else {
+                 // Check if it's a weekend (Saturday=6, Sunday=0) for "DESCANSO"
+                 const dayOfWeek = getDay(date);
+                  if (dayOfWeek === 6 || dayOfWeek === 0) {
+                     employeeRow.push({ content: 'DESCANSO', styles: { halign: 'center', valign: 'middle', fontSize: 7, fontStyle: 'italic', textColor: [255, 0, 0]} }); // Smaller italic red
+                  } else {
+                     employeeRow.push({ content: ' ', styles: { halign: 'center', valign: 'middle' } }); // Empty space for no shift on weekdays
+                  }
+             }
+         });
+
+         // Add total hours for the week if the employee worked
+         if (hasShiftThisWeek) {
+             employeeRow.push({ content: totalHoursWeek.toFixed(1), styles: { halign: 'right', valign: 'middle', fontStyle: 'bold', fontSize: 8 } });
+             totalHoursGrandTotal += totalHoursWeek; // Add to grand total
+         } else {
+            // Optionally add placeholder or leave empty if no shifts
+             // Check if weekends are marked as descanso
+             const descansoWeekend = allLocationData[0].weekDates.every(date => {
+                const dayOfWeek = getDay(date);
+                return dayOfWeek === 6 || dayOfWeek === 0; // If only weekends visible? unlikely
+             });
+             if(descansoWeekend) {
+                employeeRow.push({ content: 'DESC', styles: { halign: 'right', valign: 'middle', fontSize: 7, fontStyle: 'italic' } });
+             } else {
+                employeeRow.push({ content: '0.0', styles: { halign: 'right', valign: 'middle', fontSize: 8 } }); // Show 0.0 if no shifts
+             }
+         }
+
+         body.push(employeeRow);
+     });
+
+     // Add HR TOTAL column to header
+     head[0].push({ content: 'HR TOTAL', styles: { halign: 'center', valign: 'middle' } });
+
+     // Add Grand Total Row
+      const grandTotalRow: any[] = [
+         { content: 'TOTAL HORAS SEMANA:', colSpan: allLocationData[0].weekDates.length + 1, styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } },
+         { content: totalHoursGrandTotal.toFixed(1), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } }
+      ];
+      body.push(grandTotalRow);
+
+
+    // --- Draw Table ---
+    autoTable(doc, {
+        head: head,
+        body: body,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [76, 67, 223], // Primary color
+            textColor: [255, 255, 255],
+            fontSize: 9,
+            lineWidth: 0.5,
+            lineColor: [200, 200, 200]
+        },
+        columnStyles: {
+             0: { cellWidth: 100, fontStyle: 'bold' }, // Employee name column
+              // Styles for day columns + HR TOTAL column
+             ...Array.from({ length: allLocationData[0].weekDates.length + 1 }).reduce((styles, _, index) => {
+                 if (index < allLocationData[0].weekDates.length) { // Day columns
+                     styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 };
+                 } else { // HR TOTAL column
+                     styles[index + 1] = { cellWidth: 40, halign: 'right', fontStyle: 'bold', fontSize: 8 };
+                 }
+                 return styles;
+             }, {} as any)
+        },
+        styles: {
+            cellPadding: 3, // Reduced padding
+            fontSize: 8,
+            overflow: 'linebreak',
+            lineWidth: 0.5,
+            lineColor: [200, 200, 200]
+        },
+        didDrawPage: (hookData) => {
+            currentY = hookData.cursor?.y ?? currentY;
+             const pageNum = doc.internal.getNumberOfPages();
+             addWatermarkHeader(doc, 10); // Add watermark near top
+             doc.setFontSize(8);
+             doc.setTextColor(150);
+             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
+             doc.setTextColor(0); // Reset text color
+        }
+    });
+
+    // --- Save the PDF ---
+    const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+    const filename = `Horario_Consolidado_${timestamp}.pdf`;
+    doc.save(filename);
+}
+
+// Helper to parse HH:MM to minutes (consider moving to utils)
 const parseTimeToMinutes = (timeStr: string): number => {
     if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) return 0;
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
 };
+```
