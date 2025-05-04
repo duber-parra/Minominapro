@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, FolderSync as ImportIcon } from 'lucide-react'; // Added Library, X, Notebook, User, ImportIcon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon } from 'lucide-react'; // Added Library, X, Notebook, User, ImportIcon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -64,6 +64,7 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
+// Removed import for ScheduleTemplateList
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
@@ -792,7 +793,8 @@ export default function SchedulePage() {
         weekDates,
         viewMode,
         shiftRequestContext,
-        isEmployeeSelectionModalOpen // Add dependency
+        isEmployeeSelectionModalOpen, // Add dependency
+        departments // Added departments dependency for filtering
     ]);
 
 
@@ -1603,7 +1605,7 @@ export default function SchedulePage() {
                       if (!departmentInLocation) {
                           console.warn(`Department ${deptId} from template does not belong to the current location (${selectedLocationId}), skipping assignments.`);
                          return;
-                     }
+                      }
 
                     hydrated[deptId] = (templateAssignments[deptId] || []).map(templateAssign => {
                         const fullEmployee = employees.find(emp => emp.id === templateAssign.employee.id);
@@ -1612,7 +1614,9 @@ export default function SchedulePage() {
                             return null; // Skip assignment if employee doesn't exist
                         }
                         // Check if employee is already assigned on this date
-                        const isAlreadyAssigned = Object.values(updatedSchedule[dateKey]?.assignments || {}).flat().some(a => a.employee.id === fullEmployee.id);
+                        const existingDaySchedule = updatedSchedule[dateKey];
+                        const isAlreadyAssigned = Object.values(existingDaySchedule?.assignments || {}).flat().some(a => a.employee.id === fullEmployee.id);
+
                          if (isAlreadyAssigned) {
                              console.warn(`Employee ${fullEmployee.name} is already assigned on ${dateKey}, skipping duplicate assignment from template.`);
                              return null;
@@ -1640,14 +1644,27 @@ export default function SchedulePage() {
                 const weeklyTemplateAssignments = templateToLoad.assignments as WeeklyAssignments;
 
                  // Apply the template to the currently visible week dates
-                weekDates.forEach((date) => {
-                     const dateKey = format(date, 'yyyy-MM-dd');
-                     const dailyAssignmentsFromTemplate = weeklyTemplateAssignments[dateKey];
+                weekDates.forEach((date, index) => { // Use index for potential day mapping if needed
+                    // Find the corresponding template data for this day of the week
+                    // Assuming template keys are 'yyyy-MM-dd' from the week it was saved
+                    const templateDateKeys = Object.keys(weeklyTemplateAssignments);
+                    const sourceDateKey = templateDateKeys.find((key, tIndex) => {
+                        // Attempt to match based on day of the week (Monday=0, Sunday=6 in this context)
+                        const sourceDayIndex = getDay(parseISO(key));
+                        const targetDayIndex = getDay(date);
+                        // Adjust if start of week is different in template vs current view
+                        // Simple matching:
+                         return (sourceDayIndex === 0 ? 6 : sourceDayIndex -1) === index; // Assuming week starts Monday (index 0)
+                         // More robust: Calculate offset if needed
+                    });
 
-                     // Clear existing data for the day first, unless we're merging (not implemented here)
-                     delete updatedSchedule[dateKey];
+                    const dateKey = format(date, 'yyyy-MM-dd');
+                    // Clear existing data for the target day first
+                    delete updatedSchedule[dateKey];
 
-                     if (dailyAssignmentsFromTemplate) {
+
+                    if (sourceDateKey && weeklyTemplateAssignments[sourceDateKey]) {
+                        const dailyAssignmentsFromTemplate = weeklyTemplateAssignments[sourceDateKey];
                         // Hydrate assignments specifically for this date from the template
                         const hydratedAssignmentsForDay = hydrateAndCreateAssignments(dailyAssignmentsFromTemplate, date);
 
@@ -1657,12 +1674,12 @@ export default function SchedulePage() {
                                 date: date,
                                 assignments: hydratedAssignmentsForDay,
                             };
-                            console.log(`[Load Template] Applied WEEK template assignments to ${dateKey}:`, hydratedAssignmentsForDay);
+                            console.log(`[Load Template] Applied WEEK template assignments from ${sourceDateKey} to ${dateKey}:`, hydratedAssignmentsForDay);
                         } else {
                              console.log(`[Load Template] Template had no valid assignments for ${dateKey} after validation/hydration.`);
                          }
                      } else {
-                         console.log(`[Load Template] Template had no data for ${dateKey}.`);
+                         console.log(`[Load Template] Template had no corresponding data for ${dateKey} (target index ${index}).`);
                      }
                  });
             }
@@ -1946,44 +1963,44 @@ export default function SchedulePage() {
                                       </DialogHeader>
                                        {/* Form Selection and Lists */}
                                        <ScrollArea className="flex-grow py-4"> {/* Wrap the grid in ScrollArea */}
-                                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                               {/* Lists Column */}
-                                               <div className="md:col-span-1 flex flex-col gap-4 h-full">
-                                                   {/* Locations List */}
-                                                   <div className="flex flex-col space-y-2 border p-3 rounded-md h-1/3">
-                                                       <div className="flex justify-between items-center mb-1 flex-shrink-0">
-                                                           <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
-                                                           <Button variant="outline" size="xs" onClick={() => openConfigModal('location')} title="Agregar Sede">
-                                                              <Plus className="h-3 w-3" />
-                                                           </Button>
-                                                       </div>
-                                                       <ScrollArea className="flex-grow max-h-40"> {/* Limit list height */}
-                                                           <ul className="space-y-1 text-xs pr-2">
-                                                               {locations.map((loc) => (
-                                                                   <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
-                                                                       <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
-                                                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
-                                                                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openConfigModal('location', loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
-                                                                           <AlertDialog>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                {/* Left Panel (Lists) */}
+                                                <div className="md:col-span-1 flex flex-col gap-4 h-full max-h-[calc(80vh-100px)] overflow-y-auto"> {/* Added max-height and overflow */}
+                                                    {/* Locations List */}
+                                                    <div className="flex flex-col space-y-2 border p-3 rounded-md flex-shrink-0"> {/* Removed h-1/3 */}
+                                                        <div className="flex justify-between items-center mb-1 flex-shrink-0">
+                                                            <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Building className="h-4 w-4 text-muted-foreground"/>Sedes ({locations.length})</h4>
+                                                            <Button variant="outline" size="xs" onClick={() => openConfigModal('location')} title="Agregar Sede">
+                                                                <Plus className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                        <ScrollArea className="flex-grow max-h-40"> {/* Limit list height */}
+                                                            <ul className="space-y-1 text-xs pr-2">
+                                                                {locations.map((loc) => (
+                                                                    <li key={loc.id} className="flex items-center justify-between group py-1 border-b">
+                                                                        <span className={`truncate ${loc.id === selectedLocationId ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{loc.name}</span>
+                                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openConfigModal('location', loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
+                                                                            <AlertDialog>
                                                                                 <AlertDialogTrigger asChild>
-                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                                                 </AlertDialogTrigger>
                                                                                 <AlertDialogContent>
-                                                                                     <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes) y se borrarán turnos relacionados. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
-                                                                                     <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
-                                                                                 </AlertDialogContent>
-                                                                           </AlertDialog>
-                                                                       </div>
-                                                                   </li>
-                                                               ))}
-                                                           </ul>
-                                                       </ScrollArea>
-                                                   </div>
+                                                                                    <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Sede "{itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes) y se borrarán turnos relacionados. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
+                                                                                    <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                                                                                </AlertDialogContent>
+                                                                            </AlertDialog>
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </ScrollArea>
+                                                    </div>
 
-                                                   {/* Departments List */}
-                                                   <div className="flex flex-col space-y-2 border p-3 rounded-md h-1/3">
+                                                    {/* Departments List */}
+                                                    <div className="flex flex-col space-y-2 border p-3 rounded-md flex-shrink-0"> {/* Removed h-1/3 */}
                                                         <div className="flex justify-between items-center mb-1 flex-shrink-0">
-                                                             <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
+                                                            <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Building2 className="h-4 w-4 text-muted-foreground"/>Departamentos ({departments.length})</h4>
                                                             <Button variant="outline" size="xs" onClick={() => openConfigModal('department')} title="Agregar Departamento">
                                                                 <Plus className="h-3 w-3" />
                                                             </Button>
@@ -1998,15 +2015,15 @@ export default function SchedulePage() {
                                                                         </span>
                                                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
                                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openConfigModal('department', dep)} title="Editar Departamento"><Edit className="h-4 w-4" /></Button>
-                                                                             <AlertDialog>
-                                                                                 <AlertDialogTrigger asChild>
-                                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
-                                                                                 </AlertDialogTrigger>
-                                                                                 <AlertDialogContent>
-                                                                                      <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
-                                                                                      <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
-                                                                                  </AlertDialogContent>
-                                                                             </AlertDialog>
+                                                                            <AlertDialog>
+                                                                                <AlertDialogTrigger asChild>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('department', dep.id, dep.name)} title="Eliminar Departamento"><Trash2 className="h-4 w-4" /></Button>
+                                                                                </AlertDialogTrigger>
+                                                                                <AlertDialogContent>
+                                                                                    <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Departamento "{itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
+                                                                                    <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                                                                                </AlertDialogContent>
+                                                                            </AlertDialog>
                                                                         </div>
                                                                     </li>
                                                                 ))}
@@ -2015,40 +2032,40 @@ export default function SchedulePage() {
                                                     </div>
 
                                                    {/* Employees List */}
-                                                   <div className="flex flex-col space-y-2 border p-3 rounded-md h-1/3">
-                                                       <div className="flex justify-between items-center mb-1 flex-shrink-0">
-                                                           <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
-                                                           <Button variant="outline" size="xs" onClick={() => openConfigModal('employee')} title="Agregar Colaborador">
-                                                               <Plus className="h-3 w-3" />
-                                                           </Button>
-                                                       </div>
-                                                       <ScrollArea className="flex-grow max-h-40"> {/* Limit list height */}
-                                                           <ul className="space-y-1 text-xs pr-2">
-                                                               {employees.map((emp) => (
-                                                                   <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
-                                                                       <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
-                                                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
+                                                    <div className="flex flex-col space-y-2 border p-3 rounded-md flex-shrink-0"> {/* Removed h-1/3 */}
+                                                        <div className="flex justify-between items-center mb-1 flex-shrink-0">
+                                                            <h4 className="font-semibold text-sm text-foreground flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground"/>Colaboradores ({employees.length})</h4>
+                                                            <Button variant="outline" size="xs" onClick={() => openConfigModal('employee')} title="Agregar Colaborador">
+                                                                <Plus className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                        <ScrollArea className="flex-grow max-h-40"> {/* Limit list height */}
+                                                            <ul className="space-y-1 text-xs pr-2">
+                                                                {employees.map((emp) => (
+                                                                    <li key={emp.id} className="flex items-center justify-between group py-1 border-b">
+                                                                        <span className="truncate text-muted-foreground">{emp.name} <span className="text-xs italic">(ID: {emp.id})</span></span>
+                                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
                                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyEmployeeId(emp.id)} title="Copiar ID"><Copy className="h-4 w-4" /></Button>
                                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openConfigModal('employee', emp)} title="Editar Colaborador"><Edit className="h-4 w-4" /></Button>
-                                                                             <AlertDialog>
-                                                                                 <AlertDialogTrigger asChild>
-                                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
-                                                                                 </AlertDialogTrigger>
-                                                                                 <AlertDialogContent>
-                                                                                      <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
-                                                                                      <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
-                                                                                  </AlertDialogContent>
-                                                                             </AlertDialog>
-                                                                       </div>
-                                                                   </li>
-                                                               ))}
-                                                           </ul>
-                                                       </ScrollArea>
-                                                   </div>
-                                               </div>
+                                                                            <AlertDialog>
+                                                                                <AlertDialogTrigger asChild>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('employee', emp.id, emp.name)} title="Eliminar Colaborador"><Trash2 className="h-4 w-4" /></Button>
+                                                                                </AlertDialogTrigger>
+                                                                                <AlertDialogContent>
+                                                                                    <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Eliminar Colaborador "{itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
+                                                                                    <AlertDialogFooter><AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                                                                                </AlertDialogContent>
+                                                                            </AlertDialog>
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </ScrollArea>
+                                                    </div>
+                                                </div>
 
-                                               {/* Form Area */}
-                                               <div className="md:col-span-2 flex flex-col border rounded-md p-4">
+                                                {/* Form Area */}
+                                                <div className="md:col-span-2 flex flex-col border rounded-md p-4">
                                                     {configFormType ? (
                                                         <>
                                                             {/* Location Form */}
@@ -2183,8 +2200,8 @@ export default function SchedulePage() {
                                                         </div>
                                                     )}
                                                 </div>
-                                           </div>
-                                       </ScrollArea>
+                                            </div>
+                                        </ScrollArea>
                                        <DialogFooter className="mt-4 border-t pt-4">
                                            <Button variant="secondary" onClick={() => setIsConfigModalOpen(false)}>Cerrar</Button>
                                        </DialogFooter>
@@ -2341,63 +2358,7 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
-                    {/* Template List Button */}
-                    <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                         <DialogTrigger asChild>
-                              <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                                  <Library className="mr-2 h-4 w-4" /> Templates
-                              </Button>
-                         </DialogTrigger>
-                         <DialogContent className="sm:max-w-md">
-                              <DialogHeader>
-                                  <DialogTitle className="flex items-center gap-2"><Library className="h-5 w-5" /> Templates Guardados</DialogTitle>
-                                  <DialogDescription>Carga o elimina templates para la vista actual ({viewMode}).</DialogDescription>
-                              </DialogHeader>
-                               {/* Render ScheduleTemplateList */}
-                               {isClient && ( // Render only on client
-                                    <div className="mt-4">
-                                        <ul className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
-                                            {filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
-                                                <li key={template.id} className="flex items-center justify-between p-3 border rounded-md bg-background hover:bg-accent">
-                                                    <div className="flex-grow mr-2 overflow-hidden">
-                                                        <span className="font-medium truncate block" title={template.name}>
-                                                            {template.name || `Template (${template.id.substring(0, 8)})`}
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground block">
-                                                            Tipo: {template.type === 'day' ? 'Día' : 'Semana'}
-                                                            {template.createdAt && ` | Creado: ${format(new Date(template.createdAt), 'dd/MM/yy HH:mm', { locale: es })}`}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <Button variant="outline" size="sm" onClick={() => handleLoadTemplate(template.id)} title="Cargar Template">
-                                                            <Upload className="h-4 w-4" />
-                                                        </Button>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" title="Eliminar Template">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader><AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle><AlertDialogDescription>¿Seguro de eliminar "{template.name}"? No se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
-                                                                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive" onClick={() => handleDeleteTemplate(template.id)}>Eliminar</AlertDialogAction></AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </div>
-                                                </li>
-                                            )) : (
-                                                 <p className="text-sm text-center text-muted-foreground italic py-4">No hay templates para esta vista/sede.</p>
-                                            )}
-                                        </ul>
-                                    </div>
-                               )}
-                              <DialogFooter>
-                                  <DialogClose asChild>
-                                      <Button variant="secondary">Cerrar</Button>
-                                  </DialogClose>
-                              </DialogFooter>
-                         </DialogContent>
-                    </Dialog>
+                    {/* Removed template functionality */}
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2439,10 +2400,7 @@ export default function SchedulePage() {
                            </AlertDialogContent>
                         </AlertDialog>
                      )}
-                    {/* Save Template Button */}
-                    <Button onClick={handleSaveTemplate} variant="outline" disabled={isSavingTemplate} className="hover:bg-primary hover:text-primary-foreground">
-                        {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Guardar Template
-                    </Button>
+                    {/* Removed Save Template Button */}
 
                     {/* Save Schedule Button */}
                     <Button onClick={handleSaveSchedule} variant="default" className="hover:bg-primary/90">
@@ -2571,21 +2529,7 @@ export default function SchedulePage() {
                  </AlertDialogContent>
              </AlertDialog>
 
-             {/* Template Delete Confirmation */}
-             <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
-                <AlertDialogContent>
-                   <AlertDialogHeader>
-                     <AlertDialogTitle>¿Eliminar Template?</AlertDialogTitle>
-                     <AlertDialogDescription>
-                       ¿Seguro de eliminar el template "{savedTemplates.find(t => t.id === templateToDeleteId)?.name || 'seleccionado'}"? No se puede deshacer.
-                     </AlertDialogDescription>
-                   </AlertDialogHeader>
-                   <AlertDialogFooter>
-                     <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                     <AlertDialogAction className="bg-destructive" onClick={() => handleDeleteTemplate(templateToDeleteId!)}>Eliminar Template</AlertDialogAction>
-                   </AlertDialogFooter>
-                </AlertDialogContent>
-             </AlertDialog>
+             {/* Removed template delete confirmation */}
 
 
              {/* Note Delete Confirmation Dialog (Handled within the ScheduleNotesModal) */}
