@@ -1,3 +1,4 @@
+
 // src/components/schedule/ScheduleView.tsx
 import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import type { Department, ScheduleData, ShiftAssignment, ScheduleNote, Employee } from '@/types/schedule'; // Added ScheduleNote and Employee
@@ -15,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip" // Import Tooltip components
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'; // Import AlertDialog components
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface ScheduleViewProps {
   departments: Department[];
@@ -182,7 +184,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                     size="icon"
                                     className="h-6 w-6 text-destructive hover:text-destructive/80"
                                     title="Limpiar turnos del día"
-                                    disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                                    disabled={!isClient || (totalAssignmentsForDay === 0 && notesForDay.length === 0)} // Disable if not client or no assignments/notes
                                 >
                                     <Eraser className="h-4 w-4" />
                                 </Button>
@@ -239,9 +241,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                    const dateKey = format(date, 'yyyy-MM-dd');
                    const notesForDay = getNotesForDate(date); // Get notes for this day
                     // Calculate count only on client to avoid hydration mismatch
-                    const totalAssignmentsForDay = isClient
-                        ? Object.values(daySchedule.assignments).reduce((sum, deptAssignments) => sum + deptAssignments.length, 0)
-                        : 0; // Show 0 during SSR and initial render
+                   const totalAssignmentsForDay = isClient
+                       ? Object.values(daySchedule.assignments || {}).reduce((sum, deptAssignments) => sum + (deptAssignments?.length || 0), 0)
+                       : 0; // Show 0 during SSR and initial render
                    const isLastDayOfWeek = index === weekDates.length - 1;
                    const isCurrentHoliday = isHoliday(date);
 
@@ -312,7 +314,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                         )}
                                    </CardTitle>
                                    <CardDescription className="text-[10px] text-muted-foreground text-center"> {/* Extra small text */}
-                                       {format(date, 'MMM', { locale: es })} ({totalAssignmentsForDay})
+                                       {format(date, 'MMM', { locale: es })} ({isClient ? totalAssignmentsForDay : '...'}) {/* Show count only on client */}
                                        {isCurrentHoliday && <span className="text-primary block font-medium">Festivo</span>} {/* Use primary color for Festivo text */}
                                    </CardDescription>
                                    {/* Action Buttons: Duplicate and Clear */}
@@ -337,7 +339,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                  className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-50 hover:opacity-100"
                                                  title="Limpiar turnos del día"
                                                  // onClick is implicitly handled by AlertDialogTrigger when not using asChild
-                                                 disabled={totalAssignmentsForDay === 0 && notesForDay.length === 0} // Disable if no assignments or notes
+                                                 disabled={!isClient || (totalAssignmentsForDay === 0 && notesForDay.length === 0)} // Disable if not client or no assignments/notes
                                              >
                                                  <Eraser className="h-2.5 w-2.5" /> {/* Smaller icon */}
                                              </Button>

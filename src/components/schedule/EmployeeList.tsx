@@ -7,6 +7,7 @@ import { DraggableEmployee } from './DraggableEmployee';
 import type { Employee } from '@/types/schedule';
 import { Users } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -21,7 +22,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
   }, []);
 
   // Calculate count only on client
-  const employeeCount = isClient ? employees.length : 0;
+  const employeeCount = employees.length; // Calculate length directly
 
   // Do not render this component on mobile
   if (isMobile) {
@@ -33,25 +34,31 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({ employees }) => {
       <CardHeader>
          <CardTitle className="text-lg font-medium flex items-center gap-2 truncate"> {/* Add truncate here */}
              <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Prevent icon shrink */}
-             Colaboradores Disponibles ({employeeCount}) {/* Use client-side count */}
+             {/* Show count only on client to avoid hydration mismatch */}
+             Colaboradores Disponibles ({isClient ? employeeCount : '...'})
          </CardTitle>
       </CardHeader>
        <CardContent className="space-y-3 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* Make content scrollable */}
-        {isClient ? ( // Only render the list on the client
+        {isClient ? ( // Only render the list content on the client
           employees.length > 0 ? (
             employees.map((employee) => (
               <DraggableEmployee key={employee.id} employee={employee} />
             ))
           ) : (
             <p className="text-sm text-muted-foreground text-center pt-4 italic">
-              No hay colaboradores para esta sede o ya están asignados.
+              No hay colaboradores disponibles.
             </p>
           )
         ) : (
-          // Optionally show a loading state or placeholder during SSR/initial hydration
-          <p className="text-sm text-muted-foreground text-center pt-4 italic">
-            Cargando colaboradores...
-          </p>
+          // Show skeleton placeholders during SSR/initial hydration
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-2 border rounded-md bg-muted h-10">
+                     <Skeleton className="h-4 w-3/4" />
+                     <Skeleton className="h-4 w-4" />
+                 </div>
+             ))}
+          </div>
         )}
       </CardContent>
     </Card>

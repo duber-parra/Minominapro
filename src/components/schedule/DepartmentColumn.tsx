@@ -1,3 +1,4 @@
+
 // src/components/schedule/DepartmentColumn.tsx
 'use client'; // Ensure client component
 
@@ -47,7 +48,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
         id: department.id,
         date: dateKey, // Pass date string in data
     },
-    disabled: isMobile, // Disable dropping on mobile
+    disabled: isMobile || !isClient, // Disable dropping on mobile or until client-side hydration
   });
 
   const style = {
@@ -75,10 +76,12 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
 
   // Actual content rendering logic
   const renderContent = () => {
+     const assignmentCount = assignments.length; // Calculate length here
+
     if (isWeekView) {
       return (
         <>
-          {assignments.length > 0 ? (
+          {assignmentCount > 0 ? (
             assignments.map((assignment) => (
               <ShiftCard
                 key={assignment.id}
@@ -93,24 +96,14 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
              !isMobile && <div className="h-4"></div> // Small spacer
           )}
           {/* Single '+' button at the bottom for week view on mobile */}
-          {isMobile && (
-               <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 p-0 text-muted-foreground hover:text-primary block mx-auto mt-1" // Centered, small
-                  onClick={() => onAddShiftRequest(department.id, date)}
-                  title="Añadir Colaborador"
-              >
-                  <Plus className="h-3 w-3" />
-              </Button>
-          )}
+          {/* Removed the mobile '+' button, handled in ScheduleView now */}
         </>
       );
     } else {
       // Full rendering for day view
       return (
         <>
-          {assignments.length > 0 ? (
+          {assignmentCount > 0 ? (
             assignments.map((assignment) => (
               <ShiftCard
                 key={assignment.id}
@@ -131,7 +124,7 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
 
   // Main return logic
   if (isWeekView) {
-     // Simplified structure for week view, '+' button logic handled inside renderContent
+     // Simplified structure for week view, '+' button logic handled inside ScheduleView
     return (
       <div ref={setNodeRef} style={style} className="p-1 space-y-0.5">
         {isClient ? renderContent() : renderPlaceholder()}
@@ -144,7 +137,8 @@ export const DepartmentColumn: React.FC<DepartmentColumnProps> = ({
         <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 border-b">
            <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
                {department.icon && <department.icon className="h-3.5 w-3.5 text-muted-foreground" />}
-               {department.name} ({isClient ? assignments.length : '...'}) {/* Show count only on client */}
+                {/* Show count only on client */}
+               {department.name} ({isClient ? assignments.length : '...'})
            </CardTitle>
            {/* Single '+' button in the header for Day View */}
           <Button
