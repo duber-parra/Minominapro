@@ -1,3 +1,4 @@
+
 {// src/app/schedule/page.tsx
 'use client'; // Ensure this directive is present
 
@@ -293,9 +294,11 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         }
     } catch (error) {
         // Handle JSON parsing errors or other potential issues
-         if (error instanceof SyntaxError && key !== SCHEDULE_NOTES_KEY) { // Ignore parse error for plain text notes
+         if (error instanceof SyntaxError && key === SCHEDULE_NOTES_KEY) { // Allow plain text for notes
+             return (localStorage.getItem(key) ?? defaultValue) as T;
+         } else if (error instanceof SyntaxError) {
              console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
-             // Don't remove notes on parse error, but remove others
+              // Remove corrupted data for keys other than SCHEDULE_NOTES_KEY
              if (key !== SCHEDULE_NOTES_KEY) {
                  try {
                      localStorage.removeItem(key);
@@ -304,7 +307,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                      console.error(`Error removing invalid item from localStorage for key ${key}:`, removeError);
                  }
              }
-         } else if (!(error instanceof SyntaxError)) { // Log other errors normally
+         } else { // Log other errors normally
              console.error(`Error loading ${key} from localStorage:`, error);
          }
     }
@@ -369,6 +372,7 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
          return defaultValue;
      }
 };
+
 
 // New function to load templates
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
@@ -1925,18 +1929,19 @@ export default function SchedulePage() {
     }, [scheduleData, viewMode, targetDate, currentDate, weekDates, isClient]); // Added isClient
 
 
-    // Ensure this return statement is inside the component function
+    return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
+
              {/* Decorative Images */}
             <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
-                <Image
-                    src="https://i.postimg.cc/PJVW7XZG/teclado.png"
-                    alt="Ilustración decorativa de teclado"
-                    width={200} // Increased size
-                    height={200} // Increased size
-                    className="object-contain relative -top-10 left-8 transform -rotate-12"
-                    data-ai-hint="keyboard illustration"
-                />
+                 <Image
+                     src="https://i.postimg.cc/PJVW7XZG/teclado.png"
+                     alt="Ilustración decorativa de teclado"
+                     width={200} // Increased size
+                     height={200} // Increased size
+                     className="object-contain relative -top-10 left-8 transform -rotate-12"
+                     data-ai-hint="keyboard illustration"
+                 />
             </div>
 
 
