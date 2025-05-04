@@ -267,8 +267,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
             // More complex types might need more checks, but for now assume it's okay if it parses
             return parsed as T;
         } else if (key === SCHEDULE_NOTES_KEY) {
-            // Special handling for notes (string)
-            // Load directly without JSON parsing
+            // Special handling for notes (string) - no JSON parsing
             return (savedData ?? defaultValue) as T;
         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
@@ -684,47 +683,48 @@ export default function SchedulePage() {
     }, [scheduleData, targetDate, viewMode, shiftRequestContext]);
 
     const availableEmployees = useMemo(() => {
-        // Determine the date for filtering based on viewMode and context
-        const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
+         // Determine the date for filtering based on viewMode and context
+         const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
 
-        // Get IDs of employees already assigned on the target date
-        const assignedIdsOnDate = new Set<string>();
-        if (dateForFiltering) {
-            const dateKey = format(dateForFiltering, 'yyyy-MM-dd');
-            const daySchedule = scheduleData[dateKey];
-            if (daySchedule && daySchedule.assignments) {
-                Object.values(daySchedule.assignments).flat().forEach(assignment => {
-                    assignedIdsOnDate.add(assignment.employee.id);
-                });
-            }
-        }
+         // Get IDs of employees already assigned on the target date
+         const assignedIdsOnDate = new Set<string>();
+         if (dateForFiltering) {
+             const dateKey = format(dateForFiltering, 'yyyy-MM-dd');
+             const daySchedule = scheduleData[dateKey];
+             if (daySchedule && daySchedule.assignments) {
+                 Object.values(daySchedule.assignments).flat().forEach(assignment => {
+                     assignedIdsOnDate.add(assignment.employee.id);
+                 });
+             }
+         }
 
-        // Filter employees based on selected location and availability on the target date
-        let potentiallyAvailable = filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
+         // Filter employees based on selected location
+         let potentiallyAvailable = filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
 
-        // If shiftRequestContext has departmentId (meaning '+' was clicked), prioritize employees associated with that department
-        const deptForFiltering = shiftRequestContext?.departmentId;
-        if (deptForFiltering) {
-             potentiallyAvailable.sort((a, b) => {
-                 const aInDept = a.departmentIds?.includes(deptForFiltering) ? -1 : 1; // Employees in dept first
-                 const bInDept = b.departmentIds?.includes(deptForFiltering) ? -1 : 1;
-                 if (aInDept !== bInDept) return aInDept - bInDept;
-                 return a.name.localeCompare(b.name); // Secondary sort by name
-             });
-        } else {
-            // Default sort by name if no department context
-            potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        // If in week view on desktop (drag-and-drop), return all employees for the location regardless of assignment status
-        // because the user might be dragging to a different day.
-        if (viewMode === 'week' && !isMobile) {
-             // Return all employees for the location, maybe sorted alphabetically
+         // If EmployeeSelectionModal is open (indicated by shiftRequestContext having a departmentId),
+         // filter strictly by department association.
+         const deptForFiltering = shiftRequestContext?.departmentId;
+         if (deptForFiltering) {
+             potentiallyAvailable = potentiallyAvailable.filter(emp =>
+                 emp.departmentIds?.includes(deptForFiltering)
+             );
+              // Optionally, sort employees within the department first, then others
+              potentiallyAvailable.sort((a, b) => {
+                  const aInDept = a.departmentIds?.includes(deptForFiltering) ? -1 : 1; // Employees in dept first
+                  const bInDept = b.departmentIds?.includes(deptForFiltering) ? -1 : 1;
+                  if (aInDept !== bInDept) return aInDept - bInDept;
+                  return a.name.localeCompare(b.name); // Secondary sort by name
+              });
+         } else if (viewMode === 'week' && !isMobile) {
+             // For desktop week view (drag-and-drop list), show all employees for the location regardless of assignment status or department filtering context.
              return [...filteredEmployees].sort((a, b) => a.name.localeCompare(b.name));
-        }
+         } else {
+              // Default sort by name if no specific department context for filtering (e.g., Day view list or mobile + button initial state)
+              potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name));
+         }
 
-        // For Day view or Mobile Week view (+ button flow), return the filtered and sorted available employees
-        return potentiallyAvailable;
+
+         return potentiallyAvailable;
 
     }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isMobile]); // Added isMobile dependency
 
@@ -1470,7 +1470,7 @@ export default function SchedulePage() {
                      // Deep copy and format for DailyAssignments
                      assignmentsToSave = JSON.parse(JSON.stringify(daySchedule.assignments));
                       Object.keys(assignmentsToSave).forEach(deptId => {
-                          assignmentsToSave[deptId] = (assignmentsToSave[deptId] as ShiftAssignment[]).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
+                          (assignmentsToSave as DailyAssignments)[deptId] = ((assignmentsToSave as DailyAssignments)[deptId] || []).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
                       });
                  } else {
                      toast({ title: 'Template Vacío', description: 'No hay turnos asignados para guardar en este día.', variant: 'default' });
@@ -1487,7 +1487,7 @@ export default function SchedulePage() {
                           const dailyAssignmentsFormatted: DailyAssignments = {};
                           const assignmentsRaw = JSON.parse(JSON.stringify(daySchedule.assignments));
                            Object.keys(assignmentsRaw).forEach(deptId => {
-                               dailyAssignmentsFormatted[deptId] = (assignmentsRaw[deptId] as ShiftAssignment[]).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
+                               dailyAssignmentsFormatted[deptId] = (assignmentsRaw[deptId] || []).map(({ id, employee, ...rest }) => ({ ...rest, employee: { id: employee.id } }));
                            });
                           weeklyAssignments[dayKey] = dailyAssignmentsFormatted;
                      }
@@ -1604,8 +1604,8 @@ export default function SchedulePage() {
                      const templateWeekAssignments = templateToLoad.assignments as WeeklyAssignments;
                      const weekStartsOnMonday = startOfWeek(currentDate, { weekStartsOn: 1 });
                     Object.keys(templateWeekAssignments).forEach(templateDateKey => {
-                        const templateDate = parseISO(templateDateKey);
-                        if (isValid(templateDate)) {
+                        const templateDate = parseDateFns(templateDateKey, 'yyyy-MM-dd', new Date()); // Changed parseISO to parseDateFns
+                        if (isValidDate(templateDate)) {
                              const dayOfWeekIndex = (getDay(templateDate) + 6) % 7;
                              const targetApplyDate = addDays(weekStartsOnMonday, dayOfWeekIndex);
                              const targetApplyDateKey = format(targetApplyDate, 'yyyy-MM-dd');
@@ -2202,6 +2202,7 @@ export default function SchedulePage() {
                            </AlertDialogContent>
                         </AlertDialog>
                      )}
+                    {/* Save Schedule Button */}
                     <Button onClick={handleSaveSchedule} variant="default" className="hover:bg-primary/90">
                         <Save className="mr-2 h-4 w-4" /> Guardar Horario
                     </Button>
@@ -2564,3 +2565,5 @@ export default function SchedulePage() {
         </main>
     );
 }
+
+    
