@@ -40,9 +40,9 @@ const firebaseConfig = {
 // Initialize Firebase only once
 function ensureFirebaseInitialized() {
     // Check if API key is provided
-    if (!firebaseConfig.apiKey) {
-        console.error("Firebase API Key is missing in configuration object. Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-        throw new Error("Firebase API Key is missing. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_API_KEY is set and the server was restarted.");
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Check for placeholder too
+        console.error("Firebase API Key is missing or is placeholder in configuration object. Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+        throw new Error("La clave API de Firebase falta o es un marcador de posición. Por favor, verifica tu archivo .env.local y asegúrate de que NEXT_PUBLIC_FIREBASE_API_KEY esté configurado correctamente y que el servidor se haya reiniciado.");
     }
     if (!getApps().length) {
         try {
@@ -103,7 +103,7 @@ export default function LoginPage() {
              setError('El inicio de sesión con Google fue cancelado.');
         } else if (error.code === 'auth/network-request-failed') {
             setError('Error de red. Verifica tu conexión e intenta de nuevo.');
-        } else if (error.message && error.message.includes("Firebase API Key is missing")) {
+        } else if (error.message && error.message.includes("La clave API de Firebase falta")) { // Catch specific message from ensureFirebaseInitialized
             setError(error.message); // Show the specific missing key error
         } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
              setError('La clave API de Firebase no es válida. Verifica tu archivo .env.local y la configuración en Firebase Console.');
