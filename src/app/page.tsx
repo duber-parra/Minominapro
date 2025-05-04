@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import Image from 'next/image'; // Import next/image
-import { WorkdayForm } from '@/components/workday-form';
+import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -42,6 +42,14 @@ import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import th
 import { AdjustmentModal } from '@/components/adjustment-modal'; // Import the new modal component
 import { formatTo12Hour } from '@/lib/time-utils'; // Import the time formatting helper
 import { useForm } from 'react-hook-form'; // Import useForm
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
 
 
 // Constants
@@ -429,11 +437,11 @@ export default function Home() {
              if (!isEditing) {
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
-                 // toast({
-                 //     title: 'Día Agregado, Fecha Avanzada',
-                 //     description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
-                 //     variant: 'default'
-                 // });
+                 toast({
+                     title: 'Día Agregado, Fecha Avanzada',
+                     description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
+                     variant: 'default'
+                 });
              } else {
                  // Show a different toast for successful EDIT
                  toast({
@@ -917,12 +925,23 @@ export default function Home() {
                  <CardDescription>Resultados para {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 {/* Single PDF Export Button */}
-                <Button
-                     onClick={handleExportPDF}
-                     variant="secondary"
-                     disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}>
-                     <FileDown className="mr-2 h-4 w-4" /> Exportar PDF Actual
-                </Button>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}
+                        >
+                             <FileDown className="mr-2 h-4 w-4" /> PDF <span className="ml-1 text-xs">(Actual)</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                       <DropdownMenuItem onClick={handleExportPDF} disabled={!quincenalSummary || !employeeId || !payPeriodStart || !payPeriodEnd}> Exportar Nómina Actual </DropdownMenuItem>
+                       <DropdownMenuSeparator />
+                       <DropdownMenuItem onClick={handleBulkExportPDF} disabled={savedPayrolls.length === 0} className="text-red-600 focus:text-red-700"> Exportar Lista Guardadas </DropdownMenuItem>
+                    </DropdownMenuContent>
+                 </DropdownMenu>
+
             </CardHeader>
             <CardContent>
                <ResultsDisplay

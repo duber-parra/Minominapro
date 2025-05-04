@@ -1,3 +1,4 @@
+
 // src/app/schedule/page.tsx
 
 'use client'; // Ensure this directive is present
@@ -15,7 +16,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -78,7 +79,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -157,12 +158,16 @@ const iconMap: { [key: string]: React.ElementType } = {
     Building: Building,
     Users: Users,
     Edit: Edit,
-    Building2: Building2, // Add other icons used
+    Building2: Building2,
+    ChefHat: ChefHat,   // Nuevo: Icono de Chef
+    Utensils: Utensils, // Nuevo: Icono de Utensilios (para Salón/Meseros)
+    Wine: Wine,         // Nuevo: Icono de Copa (para Barra)
+    Archive: Archive,   // Nuevo: Icono de Caja (para Caja o Bodega)
 };
 const initialDepartments: Department[] = [
-  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: Building },
-  { id: 'dep-2', name: 'Salón', locationId: 'loc-1', icon: Users },
-  { id: 'dep-3', name: 'Caja & Barra', locationId: 'loc-2', icon: Edit },
+  { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: ChefHat }, // Usa ChefHat
+  { id: 'dep-2', name: 'Salón', locationId: 'loc-1', icon: Utensils }, // Usa Utensils
+  { id: 'dep-3', name: 'Caja & Barra', locationId: 'loc-2', icon: Wine }, // Usa Wine
 ].map(dep => ({ ...dep, iconName: Object.keys(iconMap).find(key => iconMap[key] === dep.icon) })); // Add iconName initially
 
 
@@ -281,14 +286,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
             // More complex types might need more checks, but for now assume it's okay if it parses
             return parsed as T;
         } else if (key === SCHEDULE_NOTES_KEY) {
-            // Notes were string, now might be JSON. Try parsing, fallback to string.
-            try {
-                return JSON.parse(savedData) as T; // Assume notes are JSON now
-            } catch (e) {
-                // If parsing fails, assume it's the old plain text format
-                console.warn("Could not parse schedule notes as JSON, falling back to plain text:", savedData);
-                return (savedData ?? defaultValue) as T;
-            }
+             // Schedule notes are stored as a string, no parsing needed
+             return (savedData ?? defaultValue) as T;
         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
             return parsed as T;
@@ -1988,11 +1987,11 @@ export default function SchedulePage() {
                     key={item.id}
                     onClick={() => openConfigForm(type, item)}
                     className={cn(
-                        `p-2 mb-1 rounded cursor-pointer hover:bg-accent flex items-center justify-between group`,
+                        `relative p-2 mb-1 rounded cursor-pointer hover:bg-accent flex items-center justify-between group`, // Added relative
                         selectedConfigItem?.id === item.id ? 'bg-accent font-semibold' : ''
                     )}
                 >
-                    <span className="truncate flex items-center gap-1 flex-grow min-w-0 mr-2"> {/* Allow shrinking */}
+                    <span className="truncate flex items-center gap-1 flex-grow min-w-0 mr-10"> {/* Increased mr */}
                         {type === 'department' && item.icon && React.createElement(item.icon, { className: 'h-3 w-3 mr-1 flex-shrink-0' })}
                         {item.name}
                         {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
@@ -2002,8 +2001,8 @@ export default function SchedulePage() {
                              <span className="text-xs italic ml-1">({item.type === 'week' ? 'Semanal' : 'Diario'}, {locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>
                           )}
                     </span>
-                     {/* Action buttons (Edit, Delete, Copy ID, Load Template) */}
-                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5 flex-shrink-0">
+                     {/* Action buttons (Edit, Delete, Copy ID, Load Template) - Positioned Absolute */}
+                     <div className="absolute top-1/2 right-1 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0 flex-shrink-0"> {/* Positioned right */}
                          {/* Edit Button */}
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); openConfigForm(type, item); }} title={`Editar ${type}`}>
                               <Edit className="h-4 w-4" />
@@ -2090,7 +2089,7 @@ export default function SchedulePage() {
                                     <SelectTrigger id="department-icon"><SelectValue placeholder="Selecciona icono" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ninguno">Ninguno</SelectItem>
-                                        {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })} {iconName}</span></SelectItem>)}
+                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })} {iconName.replace(/([A-Z])/g, ' $1').trim()}</span></SelectItem>)} {/* Remove label */}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -2251,7 +2250,7 @@ export default function SchedulePage() {
             )}
 
              {/* Decorative Image */}
-             <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 sm:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted top position and reduced opacity on small screens */}
+              <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 sm:opacity-70 pointer-events-none" aria-hidden="true"> {/* Increased opacity */}
                 <Image
                     src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Left image source
                     alt="Ilustración teclado"
@@ -2580,7 +2579,6 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
-
                 </div>
 
 
