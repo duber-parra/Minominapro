@@ -18,8 +18,8 @@ export interface Department {
 export interface Employee {
   id: string; // User-defined or managed Employee ID (e.g., payroll ID)
   name: string;
-  // Changed primaryLocationId to locationIds array
   locationIds: string[]; // Array of location IDs the employee is associated with
+  departmentIds?: string[]; // Optional: Array of department IDs the employee is primarily associated with
   // Add other relevant employee details if needed (e.g., role, skills)
 }
 
@@ -57,7 +57,7 @@ export type WeeklyAssignments = {
 };
 
 
-// Interface for Schedule Templates (kept for clarity, though functionality removed temporarily)
+// Interface for Schedule Templates
 export interface ScheduleTemplate {
   id: string;
   name: string;

@@ -11,15 +11,15 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter, // Import CardFooter
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX } from 'lucide-react'; // Added CalendarX
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Import Label
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator'; // Import Separator
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // Import AlertDialog components
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog"; // Import Dialog components
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,7 +46,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
-  DropdownMenuTrigger, // Import DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 
@@ -54,20 +54,20 @@ import { LocationSelector } from '@/components/schedule/LocationSelector';
 import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
-import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
+import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
-import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import the new modal
+import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
 
-import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule'; // Added ScheduleTemplate and ScheduleNote
+import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule';
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportScheduleToPDF } from '@/lib/schedule-pdf-exporter';
 import { formatTo12Hour } from '@/lib/time-utils';
-import { parse as parseDateFns } from 'date-fns'; // Alias for clarity
+import { parse as parseDateFns } from 'date-fns';
 
 
 // Helper to generate dates for the current week
@@ -144,10 +144,10 @@ const initialDepartments: Department[] = [
 
 
 const initialEmployees: Employee[] = [
-  { id: '101', name: 'Carlos Pérez', locationIds: ['loc-1'] },
-  { id: '102', name: 'Ana Rodriguez', locationIds: ['loc-1'] },
-  { id: '201', name: 'Luis Gómez', locationIds: ['loc-2'] },
-  { id: '202', name: 'Maria García', locationIds: ['loc-1', 'loc-2'] }, // Example multi-location employee
+  { id: '101', name: 'Carlos Pérez', locationIds: ['loc-1'], departmentIds: ['dep-1'] }, // Added departmentIds
+  { id: '102', name: 'Ana Rodriguez', locationIds: ['loc-1'], departmentIds: ['dep-2'] }, // Added departmentIds
+  { id: '201', name: 'Luis Gómez', locationIds: ['loc-2'], departmentIds: ['dep-3'] }, // Added departmentIds
+  { id: '202', name: 'Maria García', locationIds: ['loc-1', 'loc-2'], departmentIds: ['dep-1', 'dep-3'] }, // Example multi-location/dept employee
 ];
 
 const defaultNotesText = `Lun a Jue: Parrillazo y Gauchos 12am. - Gaucho 11pm. | Vie a Sab: Parrillazo y Gauchos 1am. - Gaucho 12am. | Dom: Todos 11 pm`;
@@ -215,15 +215,16 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         const parsed = JSON.parse(savedData);
 
         // Basic check for array types
-        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_EVENTS_KEY].includes(key)) { // Added SCHEDULE_EVENTS_KEY
+        if ([LOCATIONS_KEY, EMPLOYEES_KEY, DEPARTMENTS_KEY, SCHEDULE_EVENTS_KEY, SCHEDULE_TEMPLATES_KEY].includes(key)) {
             if (Array.isArray(parsed)) {
-                  // Ensure employees have locationIds array
+                  // Ensure employees have locationIds array and optional departmentIds
                   if (key === EMPLOYEES_KEY) {
                       return parsed.map((emp: any) => ({
                           ...emp,
                           locationIds: Array.isArray(emp.locationIds)
                               ? emp.locationIds
-                              : (emp.primaryLocationId ? [emp.primaryLocationId] : []) // Convert old primaryLocationId
+                              : (emp.primaryLocationId ? [emp.primaryLocationId] : []), // Convert old primaryLocationId
+                          departmentIds: Array.isArray(emp.departmentIds) ? emp.departmentIds : [] // Ensure departmentIds is an array or empty array
                       })) as T;
                   }
                   // For ScheduleNotes, dates are already strings 'yyyy-MM-dd'
@@ -232,11 +233,25 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                           note && typeof note === 'object' && note.id && note.date && note.note
                       ) as T;
                   }
+                  // For Templates, revive createdAt date
+                  if (key === SCHEDULE_TEMPLATES_KEY) {
+                     return parsed.map(tpl => {
+                         if (tpl.createdAt && typeof tpl.createdAt === 'string') {
+                             try {
+                                 return { ...tpl, createdAt: parseISO(tpl.createdAt) };
+                             } catch (e) {
+                                 console.error("Error parsing template createdAt date:", e);
+                                 return { ...tpl, createdAt: undefined };
+                             }
+                         }
+                         return tpl;
+                     }) as T;
+                  }
                  return parsed as T;
             } else {
                 console.warn(`[loadFromLocalStorage] Expected array for key ${key}, but found:`, typeof parsed, ". Returning default.");
-                // If data exists but is not an array, remove it (except for notes)
-                if(key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_DATA_KEY) { // Avoid removing complex or string data
+                // If data exists but is not an array, remove it (except for notes and schedule data)
+                if(key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_DATA_KEY) {
                     try {
                         localStorage.removeItem(key);
                         console.warn(`Removed invalid non-array item from localStorage for key: ${key}`);
@@ -246,9 +261,12 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                 }
                 return defaultValue; // Return default if type mismatch
             }
-        } else if (key === SCHEDULE_DATA_KEY || key === SCHEDULE_TEMPLATES_KEY) { // Treat templates as complex objects too
+        } else if (key === SCHEDULE_DATA_KEY) {
             // More complex types might need more checks, but for now assume it's okay if it parses
             return parsed as T;
+        } else if (key === SCHEDULE_NOTES_KEY) {
+            // Special handling for notes (string)
+             return typeof parsed === 'string' ? parsed : (typeof savedData === 'string' ? savedData : defaultValue) as T;
         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
             return parsed as T;
@@ -315,7 +333,7 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
                                      return { ...assign, employee: fullEmployee };
                                  } else {
                                      console.warn(`Employee ID ${assign.employee.id} not found while loading schedule for assignment ${assign.id}`);
-                                     return { ...assign, employee: { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] } }; // Placeholder if employee not found
+                                     return { ...assign, employee: { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [], departmentIds: [] } }; // Placeholder if employee not found
                                  }
                              }
                              return assign; // Should not happen if saved correctly
@@ -334,27 +352,11 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 // --- Function to Load Schedule Templates ---
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    if (typeof window === 'undefined') return []; // Only run on client
-
-    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []); // Use helper
+    const loadedTemplates = loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
     console.log(`[loadScheduleTemplates] Loaded ${loadedTemplates.length} templates from key ${SCHEDULE_TEMPLATES_KEY}.`);
-
-    // Add createdAt revival if necessary (might already be handled by loadFromLocalStorage if SCHEDULE_TEMPLATES_KEY is in the array check)
-    return loadedTemplates
-        .map(tpl => {
-            if (tpl.createdAt && typeof tpl.createdAt === 'string') {
-                try {
-                    return { ...tpl, createdAt: parseISO(tpl.createdAt) };
-                } catch (e) {
-                    console.error("Error parsing template createdAt date:", e);
-                    return { ...tpl, createdAt: undefined }; // Or handle as invalid
-                }
-            }
-            return tpl;
-        })
-        .sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+    return loadedTemplates.sort((a, b) => {
+            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt).getTime() : 0);
+            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt).getTime() : 0);
             return dateB - dateA; // Sort newest first
         });
 };
@@ -404,10 +406,10 @@ export default function SchedulePage() {
 
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[] }>({ id: '', name: '', locationIds: [] });
+    const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[], departmentIds: string[] }>({ id: '', name: '', locationIds: [], departmentIds: [] });
 
 
-    const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null); // Removed 'template'
+    const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee'; id: string; name: string } | null>(null);
 
     const [clearingDate, setClearingDate] = useState<Date | null>(null);
     const [clearingWeek, setClearingWeek] = useState<boolean>(false); // State for clearing week confirmation
@@ -443,7 +445,7 @@ export default function SchedulePage() {
         const initialSelectedLoc = loadedLocations.length > 0 ? loadedLocations[0].id : '';
         setSelectedLocationId(initialSelectedLoc);
         setDepartmentFormData(prev => ({ ...prev, locationId: initialSelectedLoc }));
-        setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [] }));
+        setEmployeeFormData(prev => ({ ...prev, locationIds: initialSelectedLoc ? [initialSelectedLoc] : [], departmentIds: [] })); // Initialize departmentIds
 
     }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -626,7 +628,7 @@ export default function SchedulePage() {
                         return { ...assign, employee: fullEmployee };
                     } else {
                         console.warn(`Employee with ID ${assign.employee?.id || 'undefined'} not found for assignment ${assign.id}`);
-                         return { ...assign, employee: { id: assign.employee?.id || 'unknown', name: `(ID: ${assign.employee?.id || '??'})`, locationIds: [] } };
+                         return { ...assign, employee: { id: assign.employee?.id || 'unknown', name: `(ID: ${assign.employee?.id || '??'})`, locationIds: [], departmentIds: [] } };
                     }
                  }).filter(assign => assign !== null);
              });
@@ -681,6 +683,7 @@ export default function SchedulePage() {
 
         // For day view or mobile week view (+ button flow)
         const dateForFiltering = viewMode === 'day' ? targetDate : (shiftRequestContext?.date || null);
+        const deptForFiltering = shiftRequestContext?.departmentId; // Get department context if available
 
         if (!dateForFiltering) {
             return filteredEmployees; // No specific date context, show all for location
@@ -695,7 +698,22 @@ export default function SchedulePage() {
             });
         }
          // Filter employees of the location that are NOT assigned on the specific date
-        return filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
+         // And optionally prioritize employees associated with the target department
+         let potentiallyAvailable = filteredEmployees.filter(emp => !assignedIdsOnDate.has(emp.id));
+
+          // If a department context is provided, sort those associated with it first
+          if (deptForFiltering) {
+              potentiallyAvailable.sort((a, b) => {
+                  const aInDept = a.departmentIds?.includes(deptForFiltering) ? -1 : 1;
+                  const bInDept = b.departmentIds?.includes(deptForFiltering) ? -1 : 1;
+                  if (aInDept !== bInDept) return aInDept - bInDept;
+                  return a.name.localeCompare(b.name); // Secondary sort by name
+              });
+          } else {
+              potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name)); // Default sort by name
+          }
+
+        return potentiallyAvailable;
 
     }, [filteredEmployees, scheduleData, targetDate, viewMode, shiftRequestContext, isMobile]); // Added isMobile
 
@@ -710,7 +728,8 @@ export default function SchedulePage() {
         if (!editingEmployee && selectedLocationId) {
             setEmployeeFormData(prev => ({
                 ...prev,
-                locationIds: [selectedLocationId]
+                locationIds: [selectedLocationId],
+                departmentIds: [] // Reset departments when location changes or adding new
             }));
         }
      }, [selectedLocationId, editingEmployee]);
@@ -728,7 +747,8 @@ export default function SchedulePage() {
           if (!editingEmployee) {
              setEmployeeFormData(prev => ({
                 ...prev,
-                locationIds: [locationId]
+                locationIds: [locationId],
+                 departmentIds: [] // Reset departments when location changes
             }));
           }
     };
@@ -970,10 +990,13 @@ export default function SchedulePage() {
         setEditingEmployee(employee);
         // Ensure locationIds is always initialized as an array
         const initialLocationIds = Array.isArray(employee?.locationIds) ? employee.locationIds : (selectedLocationId ? [selectedLocationId] : []);
+        // Ensure departmentIds is always initialized as an array
+        const initialDepartmentIds = Array.isArray(employee?.departmentIds) ? employee.departmentIds : [];
         setEmployeeFormData({
             id: employee?.id || '',
             name: employee?.name || '',
-            locationIds: initialLocationIds
+            locationIds: initialLocationIds,
+            departmentIds: initialDepartmentIds // Initialize departmentIds
         });
         setIsEmployeeModalOpen(true);
     };
@@ -992,7 +1015,26 @@ export default function SchedulePage() {
             } else {
                 newLocationIds = [...currentIds, locationId];
             }
-            return { ...prev, locationIds: newLocationIds };
+             // Filter out departments that don't belong to the new set of locations
+             const validDepartmentIds = (prev.departmentIds || []).filter(deptId => {
+                 const dept = departments.find(d => d.id === deptId);
+                 return dept && newLocationIds.includes(dept.locationId);
+             });
+            return { ...prev, locationIds: newLocationIds, departmentIds: validDepartmentIds };
+        });
+    };
+
+    // Handle toggling department selection for an employee
+    const handleToggleEmployeeDepartment = (departmentId: string) => {
+        setEmployeeFormData(prev => {
+            const currentIds = Array.isArray(prev.departmentIds) ? prev.departmentIds : [];
+            let newDepartmentIds;
+            if (currentIds.includes(departmentId)) {
+                newDepartmentIds = currentIds.filter(id => id !== departmentId);
+            } else {
+                newDepartmentIds = [...currentIds, departmentId];
+            }
+            return { ...prev, departmentIds: newDepartmentIds };
         });
     };
 
@@ -1004,8 +1046,10 @@ export default function SchedulePage() {
          const locationIds = Array.isArray(employeeFormData.locationIds) && employeeFormData.locationIds.length > 0
                              ? employeeFormData.locationIds
                              : (selectedLocationId ? [selectedLocationId] : []);
+         // Ensure departmentIds is an array (can be empty)
+         const departmentIds = Array.isArray(employeeFormData.departmentIds) ? employeeFormData.departmentIds : [];
 
-          if (!id || !name) { // Removed locationIds check here, handled below
+          if (!id || !name) {
              toast({ title: 'Datos Incompletos', description: 'El ID y el nombre del colaborador son requeridos.', variant: 'destructive' });
              return;
           }
@@ -1023,7 +1067,7 @@ export default function SchedulePage() {
              }
          }
 
-         const updatedEmployeeData: Employee = { id, name, locationIds };
+         const updatedEmployeeData: Employee = { id, name, locationIds, departmentIds }; // Include departmentIds
 
         if (editingEmployee) {
             // Update existing employee
@@ -1055,6 +1099,14 @@ export default function SchedulePage() {
         setEditingEmployee(null); // Reset editing state
     };
 
+     // Filter departments available for employee assignment based on selected locations
+     const availableDepartmentsForEmployee = useMemo(() => {
+        if (!employeeFormData.locationIds || employeeFormData.locationIds.length === 0) {
+            return [];
+        }
+        return departments.filter(dept => employeeFormData.locationIds.includes(dept.locationId));
+     }, [departments, employeeFormData.locationIds]);
+
 
      // Confirm delete for locations, departments, employees
      const confirmDeleteItem = (type: 'location' | 'department' | 'employee', id: string, name: string) => {
@@ -1083,7 +1135,9 @@ export default function SchedulePage() {
                     // Remove location association from employees, filter out employees with no locations left
                     setEmployees(prevEmps => prevEmps.map(emp => ({
                         ...emp,
-                        locationIds: emp.locationIds.filter(locId => locId !== itemToDelete.id)
+                        locationIds: emp.locationIds.filter(locId => locId !== itemToDelete.id),
+                        // Also remove departments associated with the deleted location from the employee
+                        departmentIds: (emp.departmentIds || []).filter(deptId => !depsToDelete.includes(deptId))
                     })).filter(emp => emp.locationIds.length > 0)); // Remove employees with no locations left
 
                     // Remove associated templates
@@ -1141,6 +1195,11 @@ export default function SchedulePage() {
                          }
                          return tpl;
                      }));
+                     // Remove department from employees' departmentIds
+                     setEmployees(prevEmps => prevEmps.map(emp => ({
+                        ...emp,
+                        departmentIds: (emp.departmentIds || []).filter(deptId => deptId !== itemToDelete.id)
+                     })));
 
                      message = `Departamento "${itemToDelete.name}" eliminado.`;
                     break;
@@ -1250,7 +1309,7 @@ export default function SchedulePage() {
                   } else {
                        // Handle case where employee might not be found (e.g., if deleted between planning and duplicating)
                        console.warn(`Employee ${assign.employee.id} not found during duplication.`);
-                       assign.employee = { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] }; // Placeholder
+                       assign.employee = { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [], departmentIds: [] }; // Placeholder
                   }
              });
          });
@@ -1298,7 +1357,7 @@ export default function SchedulePage() {
                      duplicatedAssignments[deptId].forEach((assign: ShiftAssignment) => {
                          assign.id = `shift_${assign.employee.id}_${targetDayKey}_${assign.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`;
                           const fullEmployee = employees.find(emp => emp.id === assign.employee.id); // Use assign here
-                          assign.employee = fullEmployee || { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [] }; // Handle missing employee
+                          assign.employee = fullEmployee || { id: assign.employee.id, name: `(ID: ${assign.employee.id})`, locationIds: [], departmentIds: [] }; // Handle missing employee
                      });
                 });
 
@@ -1428,8 +1487,8 @@ export default function SchedulePage() {
 
             // Update the state by adding the new template
              setSavedTemplates(prev => [...prev, newTemplate].sort((a, b) => {
-                  const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-                  const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+                  const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt).getTime() : 0);
+                  const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt).getTime() : 0);
                   return dateB - dateA; // Sort newest first
              }));
 
@@ -1446,7 +1505,6 @@ export default function SchedulePage() {
 
      const handleLoadTemplate = useCallback((templateId: string) => {
         console.log("Intentando cargar template con ID:", templateId);
-        // Find template directly from state
         const templateToLoad = savedTemplates.find(t => t.id === templateId);
 
         if (!templateToLoad) {
@@ -1455,7 +1513,6 @@ export default function SchedulePage() {
             return;
         }
 
-         // Check if template type matches current view mode
         if (templateToLoad.type !== viewMode) {
             const requiredView = templateToLoad.type === 'week' ? 'semanal' : 'diaria';
             toast({
@@ -1475,47 +1532,41 @@ export default function SchedulePage() {
                 const updatedSchedule = { ...currentScheduleData };
                 let assignmentsLoadedCount = 0;
 
-                 // --- Lógica de Aplicación ---
                  const applyAssignments = (targetDateKey: string, dailyAssignments: DailyAssignments) => {
                      const existingDayData = updatedSchedule[targetDateKey] || { date: parseDateFns(targetDateKey, 'yyyy-MM-dd', new Date()), assignments: {} };
                      const newDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
                      let dayLoadedCount = 0;
 
                      Object.keys(dailyAssignments).forEach(deptId => {
-                         // Check if department exists in current filtered departments
                          const departmentExists = filteredDepartments.some(d => d.id === deptId);
                          if (!departmentExists) {
                               console.warn(`Departamento ${deptId} del template no existe en la sede actual, omitiendo asignaciones.`);
-                              return; // Skip assignments for non-existent department
+                              return;
                          }
 
                          newDayAssignments[deptId] = (dailyAssignments[deptId] || []).map((templateAssign) => {
                              const fullEmployee = employees.find(emp => emp.id === templateAssign.employee.id);
                              if (!fullEmployee || !filteredEmployees.some(fe => fe.id === fullEmployee.id)) {
                                  console.warn(`Empleado ${templateAssign.employee.id} del template no encontrado o no pertenece a la sede actual, omitiendo asignación.`);
-                                 return null; // Skip assignment if employee not found or not in location
+                                 return null;
                              }
                              dayLoadedCount++;
                               return {
                                   ...templateAssign,
                                   id: `shift_${fullEmployee.id}_${targetDateKey}_${templateAssign.startTime.replace(':', '')}_${Math.random().toString(36).substring(2, 7)}`,
-                                  employee: fullEmployee, // Use full employee object
+                                  employee: fullEmployee,
                               };
-                         }).filter((a): a is ShiftAssignment => a !== null); // Type guard to filter out nulls
+                         }).filter((a): a is ShiftAssignment => a !== null);
 
-                         // Clean up department if no valid assignments were loaded for it
                           if (newDayAssignments[deptId]?.length === 0) {
                               delete newDayAssignments[deptId];
                           }
                      });
 
-                     // Update or remove the day's data based on loaded assignments
                      if (Object.keys(newDayAssignments).length > 0) {
                           updatedSchedule[targetDateKey] = { ...existingDayData, assignments: newDayAssignments };
-                          assignmentsLoadedCount += dayLoadedCount; // Add valid assignments loaded for this day
+                          assignmentsLoadedCount += dayLoadedCount;
                      } else {
-                         // If no valid assignments were loaded for this day, potentially clear existing ones?
-                         // Or keep existing? For now, let's just not update if nothing valid loaded.
                           console.log(`No valid assignments loaded for ${targetDateKey}, keeping existing data.`);
                      }
                  };
@@ -1527,11 +1578,10 @@ export default function SchedulePage() {
                 } else if (templateToLoad.type === 'week' && viewMode === 'week') {
                      const templateWeekAssignments = templateToLoad.assignments as WeeklyAssignments;
                      const weekStartsOnMonday = startOfWeek(currentDate, { weekStartsOn: 1 });
-                    // Map assignments based on day of the week relative to the current view
                     Object.keys(templateWeekAssignments).forEach(templateDateKey => {
-                        const templateDate = parseISO(templateDateKey); // Parse template date string
+                        const templateDate = parseISO(templateDateKey);
                         if (isValid(templateDate)) {
-                             const dayOfWeekIndex = (getDay(templateDate) + 6) % 7; // 0=Mon, 6=Sun
+                             const dayOfWeekIndex = (getDay(templateDate) + 6) % 7;
                              const targetApplyDate = addDays(weekStartsOnMonday, dayOfWeekIndex);
                              const targetApplyDateKey = format(targetApplyDate, 'yyyy-MM-dd');
                              applyAssignments(targetApplyDateKey, templateWeekAssignments[templateDateKey]);
@@ -1540,10 +1590,9 @@ export default function SchedulePage() {
                         }
                     });
                 } else {
-                    // This case should technically be prevented by the initial check, but good to have a fallback.
                     console.error("Mismatch between template type and view mode during load application.");
                     toast({ title: "Error Interno", description: "No se pudo aplicar el template debido a un error de tipo.", variant: "destructive" });
-                    return currentScheduleData; // Return original data on error
+                    return currentScheduleData;
                 }
 
                 console.log("Nuevo estado del planificador:", updatedSchedule);
@@ -1551,34 +1600,29 @@ export default function SchedulePage() {
                     title: "Template Aplicado",
                     description: `Se aplicaron ${assignmentsLoadedCount} asignaciones de '${templateToLoad.name}'.`
                  });
-                return updatedSchedule; // Return the modified schedule
+                return updatedSchedule;
             });
         } catch (error) {
             console.error("Error applying template:", error);
             toast({ title: 'Error al Aplicar', description: 'Ocurrió un error al aplicar las asignaciones del template.', variant: 'destructive' });
         }
-        // Optionally close the modal
          setIsTemplateModalOpen(false);
 
-    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]); // Added filteredDepartments and filteredEmployees
+    }, [savedTemplates, toast, viewMode, targetDate, setScheduleData, employees, filteredDepartments, filteredEmployees, currentDate]);
 
 
       const handleDeleteTemplate = (templateId: string) => {
          try {
-             // Find the index of the template to remove
              const templateIndex = savedTemplates.findIndex(t => t.id === templateId);
              if (templateIndex === -1) {
                  toast({ title: 'Error', description: 'Template no encontrado para eliminar.', variant: 'destructive' });
                  return;
              }
-             // Create a new array without the template
              const updatedTemplates = [...savedTemplates];
              updatedTemplates.splice(templateIndex, 1);
-             // Update the state immediately
              setSavedTemplates(updatedTemplates);
-             // Note: The useEffect for saving templates will handle saving the updated array to localStorage.
              toast({ title: 'Template Eliminado', variant: 'destructive' });
-             setTemplateToDeleteId(null); // Close confirmation dialog if open
+             setTemplateToDeleteId(null);
          } catch (error) {
              console.error("Error deleting template:", error);
              toast({ title: 'Error al Eliminar', description: 'No se pudo eliminar el template.', variant: 'destructive' });
@@ -1750,15 +1794,15 @@ export default function SchedulePage() {
         <main className="container mx-auto p-4 md:p-8 max-w-full">
              {/* Illustration in top-left corner */}
               <div className="absolute top-0 left-0 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
-                  <Image
-                      src="https://i.postimg.cc/PJVW7XZG/teclado.png"
+                 <Image
+                      src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Using the image URL directly
                       alt="Ilustración de teclado y elementos de oficina"
                       width={400} // Increased width
                       height={200} // Increased height proportionally
                       className="object-contain"
-                      priority
-                      data-ai-hint="keyboard glasses pens"
-                  />
+                      priority // Load this image early
+                      data-ai-hint="keyboard glasses pens" // AI hint
+                 />
              </div>
 
 
@@ -1813,7 +1857,7 @@ export default function SchedulePage() {
                                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenLocationModal(loc)} title="Editar Sede"><Edit className="h-4 w-4" /></Button>
                                                              <AlertDialog>
                                                                  <AlertDialogTrigger asChild>
-                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
+                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => confirmDeleteItem('location', loc.id, loc.name)} title="Eliminar Sede"><Trash2 className="h-4 w-4" /></Button>
                                                                  </AlertDialogTrigger>
                                                                  {/* Delete Confirmation Content defined later */}
                                                              </AlertDialog>
@@ -2042,8 +2086,8 @@ export default function SchedulePage() {
                            </AlertDialogContent>
                         </AlertDialog>
                      )}
-                    {/* Template Button */}
-                     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+                     {/* Template Management Button */}
+                      <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                          <DialogTrigger asChild>
                              <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                                  <List className="mr-2 h-4 w-4" /> Templates
@@ -2298,6 +2342,41 @@ export default function SchedulePage() {
                                 </DropdownMenu>
                                 {employeeFormData.locationIds.length === 0 && <p className="text-xs text-destructive mt-1">Debes seleccionar al menos una sede.</p>}
                            </div>
+                             {/* Department Selection */}
+                             <div>
+                                  <Label htmlFor="employee-departments">Departamentos Asociados (Opcional)</Label>
+                                   <DropdownMenu>
+                                       <DropdownMenuTrigger asChild>
+                                           <Button variant="outline" className="w-full justify-start" disabled={availableDepartmentsForEmployee.length === 0}>
+                                               {employeeFormData.departmentIds.length > 0
+                                                   ? employeeFormData.departmentIds
+                                                         .map(id => departments.find(d => d.id === id)?.name)
+                                                         .filter(Boolean)
+                                                         .join(', ')
+                                                   : (availableDepartmentsForEmployee.length === 0 ? 'Selecciona sede(s) primero' : 'Selecciona departamentos')}
+                                               <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
+                                           </Button>
+                                       </DropdownMenuTrigger>
+                                       <DropdownMenuContent className="w-full">
+                                           <DropdownMenuLabel>Selecciona Departamentos</DropdownMenuLabel>
+                                           <DropdownMenuSeparator />
+                                            {availableDepartmentsForEmployee.length > 0 ? (
+                                                availableDepartmentsForEmployee.map(dept => (
+                                                    <DropdownMenuCheckboxItem
+                                                        key={dept.id}
+                                                        checked={(employeeFormData.departmentIds || []).includes(dept.id)}
+                                                        onCheckedChange={() => handleToggleEmployeeDepartment(dept.id)}
+                                                        onSelect={(e) => e.preventDefault()}
+                                                    >
+                                                        {dept.name} <span className="text-xs text-muted-foreground ml-1">({locations.find(l => l.id === dept.locationId)?.name})</span>
+                                                    </DropdownMenuCheckboxItem>
+                                                ))
+                                            ) : (
+                                                 <DropdownMenuItem disabled>No hay departamentos disponibles para las sedes seleccionadas.</DropdownMenuItem>
+                                            )}
+                                       </DropdownMenuContent>
+                                   </DropdownMenu>
+                              </div>
                      </div>
                     <DialogFooter>
                          <DialogClose asChild>
@@ -2418,10 +2497,10 @@ export default function SchedulePage() {
                      </AlertDialogHeader>
                      <AlertDialogFooter>
                          <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                         <AlertDialogAction
+                          <AlertDialogAction
                              className="bg-destructive hover:bg-destructive/90"
                              onClick={() => noteToDeleteId && deleteScheduleNote(noteToDeleteId)}
-                         >
+                          >
                              Eliminar Anotación
                          </AlertDialogAction>
                      </AlertDialogFooter>
