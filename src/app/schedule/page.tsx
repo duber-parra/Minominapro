@@ -2252,12 +2252,12 @@ export default function SchedulePage() {
             )}
 
              {/* Decorative Image */}
-            <div className="absolute top-[-20px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true">
+             <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none" aria-hidden="true"> {/* Adjusted top position */}
                 <Image
                     src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Left image source
                     alt="Ilustración teclado"
-                    width={150} // Increased width
-                    height={150} // Increased height proportionally
+                    width={255} // Increased width by 1.7x (150 * 1.7)
+                    height={255} // Increased height by 1.7x (150 * 1.7)
                     className="object-contain transform -rotate-12"
                     data-ai-hint="keyboard illustration"
                 />
@@ -2366,7 +2366,6 @@ export default function SchedulePage() {
                                                 </div>
                                             </Tabs>
                                        </div>
-                                        {/* Removed DialogFooter */}
                                    </DialogContent>
                                </Dialog>
                          </div>
