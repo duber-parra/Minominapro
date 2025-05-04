@@ -20,12 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"; // Keep Accordion import if used elsewhere, but remove from config modal logic later
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -75,13 +69,10 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-
-
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate } from '@/types/schedule'; // Added ScheduleTemplate
 import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -386,7 +377,53 @@ const loadScheduleDataFromLocalStorage = (employees: Employee[], defaultValue: {
 
 // Function to load templates from localStorage
 const loadScheduleTemplates = (): ScheduleTemplate[] => {
-    return loadFromLocalStorage<ScheduleTemplate[]>(SCHEDULE_TEMPLATES_KEY, []);
+    if (typeof window === 'undefined') return []; // Solo en cliente
+
+    const loadedTemplates: ScheduleTemplate[] = [];
+    const templateKeyPrefix = "scheduleTemplate_"; // Changed prefix
+
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+
+            // Busca claves que COINCIDAN con el patrón de template
+            if (key && key.startsWith(templateKeyPrefix)) {
+                const storedData = localStorage.getItem(key);
+                if (storedData) {
+                    try {
+                        const parsedTemplate = JSON.parse(storedData) as ScheduleTemplate;
+                        // Validación básica (opcional pero recomendada):
+                        if (parsedTemplate && typeof parsedTemplate === 'object' && parsedTemplate.id && parsedTemplate.name) {
+                             // Podrías querer revivir fechas aquí si es necesario, similar a parseStoredData
+                             if (parsedTemplate.createdAt && typeof parsedTemplate.createdAt === 'string') {
+                                try {
+                                    parsedTemplate.createdAt = parseISO(parsedTemplate.createdAt);
+                                } catch (dateError) {
+                                    console.warn(`Error parsing createdAt date for template ${parsedTemplate.id}:`, dateError);
+                                    parsedTemplate.createdAt = new Date(); // Fallback
+                                }
+                             }
+                             loadedTemplates.push(parsedTemplate);
+                        } else {
+                             console.warn(`Dato inválido encontrado para la clave de template: ${key}`);
+                        }
+                    } catch (parseError) {
+                        console.error(`Error parseando JSON para la clave de template ${key}:`, parseError);
+                        // Podrías eliminar la clave inválida aquí si quieres: localStorage.removeItem(key);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error cargando templates de localStorage:", error);
+        // Podrías mostrar un toast de error aquí
+    }
+
+    // Opcional: Ordenar los templates por nombre o fecha de creación si existe
+     loadedTemplates.sort((a, b) => (b.createdAt instanceof Date ? b.createdAt.getTime() : 0) - (a.createdAt instanceof Date ? a.createdAt.getTime() : 0)); // Newest first
+
+    console.log(`[loadScheduleTemplates] Cargados ${loadedTemplates.length} templates.`);
+    return loadedTemplates;
 };
 
 
@@ -441,7 +478,6 @@ export default function SchedulePage() {
     const [selectedConfigItem, setSelectedConfigItem] = useState<any | null>(null); // State for the item selected in the new config modal list
     const [activeConfigTab, setActiveConfigTab] = useState<string>("sedes"); // State for the active tab in the new config modal
 
-    const [editingLocation, setEditingLocation] = useState<Location | null>(null);
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
@@ -1475,7 +1511,7 @@ export default function SchedulePage() {
         setIsSavingTemplate(true);
         try {
             const newTemplate: ScheduleTemplate = {
-                id: `tpl-${Date.now()}`,
+                id: `scheduleTemplate_${Date.now()}`, // Use consistent prefix
                 name: templateName,
                 locationId: selectedLocationId,
                 type: viewMode,
@@ -1917,6 +1953,7 @@ export default function SchedulePage() {
                         {item.name}
                         {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
                         {type === 'employee' && <span className="text-xs italic ml-1">(ID: {item.id})</span>}
+                        {type === 'template' && <span className="text-xs italic ml-1">({item.type}, {format(item.createdAt, 'dd/MM/yy')})</span>}
                     </span>
                      {/* Action buttons (Edit, Delete) */}
                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0.5">
@@ -1930,6 +1967,19 @@ export default function SchedulePage() {
                                  <Copy className="h-4 w-4" />
                              </Button>
                          )}
+                          {/* Load template button */}
+                          {type === 'template' && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={(e) => { e.stopPropagation(); handleLoadTemplate(item.id); }}
+                                title="Cargar Template"
+                            >
+                                <Upload className="h-4 w-4" />
+                            </Button>
+                         )}
+                         {/* Delete Button */}
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
@@ -2342,10 +2392,6 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
                      </Button>
-                    {/* Load Template Button */}
-                    <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                        <UploadCloud className="mr-2 h-4 w-4" /> Cargar Template
-                    </Button>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2540,27 +2586,7 @@ export default function SchedulePage() {
                   </AlertDialogContent>
               </AlertDialog>
 
-              {/* Template List Modal */}
-               <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                  <DialogContent className="max-w-md">
-                     <DialogHeader>
-                        <DialogTitle>Cargar Template Guardado</DialogTitle>
-                        <DialogDescription>
-                           Selecciona un template guardado para aplicar al horario actual ({viewMode === 'day' ? 'día' : 'semana'}).
-                           Solo se muestran templates compatibles con la vista actual.
-                        </DialogDescription>
-                     </DialogHeader>
-                      <ScheduleTemplateList
-                          templates={filteredTemplates}
-                          onLoadTemplate={handleLoadTemplate}
-                          onDeleteTemplate={(id) => confirmDeleteItem('template', id, savedTemplates.find(t => t.id === id)?.name || 'Template')}
-                      />
-                     <DialogFooter>
-                        <Button variant="secondary" onClick={() => setIsTemplateListModalOpen(false)}>Cerrar</Button>
-                     </DialogFooter>
-                  </DialogContent>
-               </Dialog>
-
+              {/* Template List Modal - Removed */}
 
         </main>
     );
