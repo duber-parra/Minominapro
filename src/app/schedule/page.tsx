@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync } from 'lucide-react'; // Added FolderSync
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal } from 'lucide-react'; // Added BarChartHorizontal
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -48,6 +48,15 @@ import {
   DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetClose,
+} from "@/components/ui/sheet"; // Import Sheet components
 
 
 import { LocationSelector } from '@/components/schedule/LocationSelector';
@@ -59,7 +68,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Keep this commented out
 
 
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote } from '@/types/schedule';
@@ -364,6 +372,12 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
 };
 
 
+// New interface for the summary data
+interface EmployeeHoursSummary {
+  id: string;
+  name: string;
+  totalHours: number;
+}
 
 
 export default function SchedulePage() {
@@ -388,6 +402,10 @@ export default function SchedulePage() {
         targetDepartment: Department;
         date: Date;
     } | null>(null); // State for department mismatch warning
+
+    // New state for the Summary Sheet
+    const [isSummarySheetOpen, setIsSummarySheetOpen] = useState(false);
+    const [employeeHoursSummary, setEmployeeHoursSummary] = useState<EmployeeHoursSummary[]>([]);
 
 
     const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize with default general notes
@@ -1605,9 +1623,14 @@ export default function SchedulePage() {
                      const weekStartsOnMonday = startOfWeek(currentDate, { weekStartsOn: 1 });
                     Object.keys(templateWeekAssignments).forEach(templateDateKey => {
                         const templateDate = parseDateFns(templateDateKey, 'yyyy-MM-dd', new Date()); // Changed parseISO to parseDateFns
-                        if (isValidDate(templateDate)) {
-                             const dayOfWeekIndex = (getDay(templateDate) + 6) % 7;
-                             const targetApplyDate = addDays(weekStartsOnMonday, dayOfWeekIndex);
+                        if (isValid(templateDate)) { // Use isValid from date-fns
+                             const dayOfWeek = getDay(templateDate); // 0=Sun, 1=Mon,...
+                             const targetDateIndex = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // Adjust index for Monday start (0=Mon, 6=Sun)
+                             if (targetDateIndex < 0 || targetDateIndex >= 7) {
+                                 console.error("Invalid target date index calculated:", targetDateIndex, "for date:", templateDate);
+                                 return; // Skip this day if index calculation fails
+                             }
+                             const targetApplyDate = addDays(weekStartsOnMonday, targetDateIndex);
                              const targetApplyDateKey = format(targetApplyDate, 'yyyy-MM-dd');
                              applyAssignments(targetApplyDateKey, templateWeekAssignments[templateDateKey]);
                         } else {
@@ -1823,6 +1846,50 @@ export default function SchedulePage() {
          }
      };
 
+    // --- Logic to Calculate Employee Hours Summary ---
+    useEffect(() => {
+        if (!isClient) return; // Don't run on server
+
+        const calculateSummary = () => {
+            const summaryMap = new Map<string, { id: string, name: string, totalHours: number }>();
+            const datesInView = viewMode === 'day' ? [targetDate] : weekDates;
+
+            datesInView.forEach(date => {
+                if (!date || !isValid(date)) return; // Skip invalid dates
+
+                const dateKey = format(date, 'yyyy-MM-dd');
+                const daySchedule = scheduleData[dateKey];
+
+                if (daySchedule && daySchedule.assignments) {
+                    Object.values(daySchedule.assignments).flat().forEach(assignment => {
+                        const employee = assignment.employee;
+                        if (!employee || !employee.id) return; // Skip if employee info is missing
+
+                        const duration = calculateShiftDuration(assignment, date);
+
+                        if (summaryMap.has(employee.id)) {
+                            summaryMap.get(employee.id)!.totalHours += duration;
+                        } else {
+                            summaryMap.set(employee.id, {
+                                id: employee.id,
+                                name: employee.name || `(ID: ${employee.id})`, // Use name or fallback
+                                totalHours: duration,
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Convert map to array and sort by total hours descending
+            const summaryArray = Array.from(summaryMap.values()).sort((a, b) => b.totalHours - a.totalHours);
+            setEmployeeHoursSummary(summaryArray);
+        };
+
+        calculateSummary();
+        // Recalculate whenever scheduleData, viewMode, targetDate, or currentDate changes
+    }, [scheduleData, viewMode, targetDate, currentDate, weekDates, isClient]); // Added isClient
+
+
     // Ensure this return statement is inside the component function
     return (
         <main className="container mx-auto p-4 md:p-8 max-w-full">
@@ -1860,8 +1927,8 @@ export default function SchedulePage() {
                              selectedLocationId={selectedLocationId}
                              onLocationChange={handleLocationChange}
                          />
-                         {/* Settings Button Trigger */}
-                         <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+                          {/* Settings Button Trigger */}
+                          <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
                              <DialogTrigger asChild>
                                  <Button variant="ghost" size="icon" title="Configuración" className="flex-shrink-0">
                                      <Settings className="h-5 w-5"/>
@@ -1969,7 +2036,7 @@ export default function SchedulePage() {
                                      </DialogClose>
                                  </DialogFooter>
                              </DialogContent>
-                         </Dialog>
+                          </Dialog>
                      </div>
 
                     {/* Day/Week Navigation */}
@@ -2030,6 +2097,46 @@ export default function SchedulePage() {
                             </SelectContent>
                         </Select>
                     </div>
+
+                     {/* Summary Sheet Trigger */}
+                     <div className="flex items-center justify-center flex-shrink-0">
+                         <Sheet open={isSummarySheetOpen} onOpenChange={setIsSummarySheetOpen}>
+                             <SheetTrigger asChild>
+                                 <Button variant="outline" title="Resumen de Horas Programadas">
+                                     <BarChartHorizontal className="h-5 w-5" />
+                                 </Button>
+                             </SheetTrigger>
+                             <SheetContent side="right" className="w-full sm:max-w-sm">
+                                 <SheetHeader>
+                                     <SheetTitle>Resumen de Horas</SheetTitle>
+                                     <SheetDescription>
+                                        Total de horas programadas para el período visible: <br/>
+                                        {viewMode === 'day'
+                                            ? format(targetDate, 'PPP', { locale: es })
+                                            : `Semana del ${format(weekDates[0], 'dd MMM', { locale: es })} al ${format(weekDates[6], 'dd MMM yyyy', { locale: es })}`}
+                                     </SheetDescription>
+                                 </SheetHeader>
+                                 <ScrollArea className="h-[calc(100vh-150px)] mt-4">
+                                     {employeeHoursSummary.length > 0 ? (
+                                         <ul className="space-y-2 pr-4">
+                                             {employeeHoursSummary.map(summary => (
+                                                 <li key={summary.id} className="flex justify-between items-center border-b pb-1">
+                                                     <span className="font-medium text-sm">{summary.name}</span>
+                                                     <span className="text-sm text-primary font-semibold">{summary.totalHours.toFixed(2)} h</span>
+                                                 </li>
+                                             ))}
+                                         </ul>
+                                     ) : (
+                                         <p className="text-center text-muted-foreground italic mt-10">No hay horas programadas para este período.</p>
+                                     )}
+                                 </ScrollArea>
+                                 <SheetClose asChild className="mt-4">
+                                     <Button type="button" variant="secondary" className="w-full">Cerrar</Button>
+                                 </SheetClose>
+                             </SheetContent>
+                         </Sheet>
+                     </div>
+
                  </div>
              </div>
 
@@ -2241,7 +2348,7 @@ export default function SchedulePage() {
                  notes={scheduleNotes}
                  employees={employees} // Pass employees for the dropdown
                  onAddNote={addScheduleNote}
-                 onDeleteNote={(id) => setNoteToDeleteId(id)} // Trigger confirmation dialog
+                 onDeleteNote={setNoteToDeleteId} // Pass the function to set the ID for confirmation
                  initialDate={notesModalForDate || undefined} // Pass specific date if set
                  // Pass context for filtering
                  viewMode={viewMode}
@@ -2565,5 +2672,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-    

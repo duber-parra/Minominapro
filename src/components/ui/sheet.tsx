@@ -11,7 +11,7 @@ const Sheet = SheetPrimitive.Root
 
 const SheetTrigger = SheetPrimitive.Trigger
 
-const SheetClose = SheetPrimitive.Close
+const SheetClose = SheetPrimitive.Close // Export SheetClose
 
 const SheetPortal = SheetPrimitive.Portal
 
@@ -131,7 +131,7 @@ export {
   SheetPortal,
   SheetOverlay,
   SheetTrigger,
-  SheetClose,
+  SheetClose, // Ensure SheetClose is exported
   SheetContent,
   SheetHeader,
   SheetFooter,
