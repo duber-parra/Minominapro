@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -41,10 +40,12 @@ const firebaseConfig = {
 function ensureFirebaseInitialized() {
     // Check if API key is provided
     if (!firebaseConfig.apiKey) {
-        throw new Error("Firebase API Key is missing. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_API_KEY is set.");
+        console.error("Firebase API Key is missing in configuration object. Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+        throw new Error("Firebase API Key is missing. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_API_KEY is set and the server was restarted.");
     }
     if (!getApps().length) {
         try {
+            console.log("Initializing Firebase with config:", { ...firebaseConfig, apiKey: firebaseConfig.apiKey ? '***' : 'MISSING!' }); // Don't log the key itself
             return initializeApp(firebaseConfig);
         } catch (error: any) {
              console.error("Firebase initialization error:", error);
@@ -101,8 +102,10 @@ export default function LoginPage() {
              setError('El inicio de sesión con Google fue cancelado.');
         } else if (error.code === 'auth/network-request-failed') {
             setError('Error de red. Verifica tu conexión e intenta de nuevo.');
-        } else if (error.message.includes("Firebase API Key is missing")) {
+        } else if (error.message && error.message.includes("Firebase API Key is missing")) {
             setError(error.message); // Show the specific missing key error
+        } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
+             setError('La clave API de Firebase no es válida. Verifica tu archivo .env.local y la configuración en Firebase Console.');
         } else {
             setError('Error al iniciar sesión con Google. Intenta de nuevo.');
         }
@@ -159,4 +162,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
