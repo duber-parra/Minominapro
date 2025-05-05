@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload, List
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive, FileJson } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload, List, FileJson
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -85,7 +85,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote, ShiftDetails } from '@/types/schedule'; // Added ScheduleTemplate and ScheduleNote, ShiftDetails
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFns, isSameDay, isWithinInterval, getDay } from 'date-fns'; // Added endOfWeek, parseDateFns
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFns, isSameDay, isWithinInterval, getDay } from 'date-fns'; // Added endOfWeek, parseDateFns, isSameDay
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
@@ -155,14 +155,14 @@ const initialLocations: Location[] = [
 
 // Define initial departments with icon components
 const iconMap: { [key: string]: React.ElementType } = {
-    Building: Building,
-    Users: Users,
-    Edit: Edit,
-    Building2: Building2,
     ChefHat: ChefHat,   // Nuevo: Icono de Chef
     Utensils: Utensils, // Nuevo: Icono de Utensilios (para Salón/Meseros)
     Wine: Wine,         // Nuevo: Icono de Copa (para Barra)
     Archive: Archive,   // Nuevo: Icono de Caja (para Bodega)
+    Building: Building,
+    Users: Users,
+    Edit: Edit,
+    Building2: Building2,
 };
 const initialDepartments: Department[] = [
   { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: ChefHat }, // Usa ChefHat
@@ -436,7 +436,7 @@ export default function SchedulePage() {
     const [scheduleData, setScheduleData] = useState<{ [dateKey: string]: ScheduleData }>(() => loadScheduleDataFromLocalStorage(employees, {}));
     const [scheduleNotes, setScheduleNotes] = useState<ScheduleNote[]>(() => loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, [])); // Load calendar notes/events
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
-    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>(() => loadScheduleTemplates()); // State for templates
+    const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Initialize empty, load in useEffect
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // State for template saving modal
     const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for confirming template deletion
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
@@ -514,9 +514,7 @@ export default function SchedulePage() {
         setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
         setEmployeeFormData(prev => ({ ...prev, locationIds: selectedLocationId ? [selectedLocationId] : [] }));
          // Load templates explicitly on mount if not already loaded by useState initializer
-         if (savedTemplates.length === 0) {
-            setSavedTemplates(loadScheduleTemplates());
-        }
+         setSavedTemplates(loadScheduleTemplates());
         setIsLoadingPage(false); // Stop loading indicator
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Empty dependency array ensures this runs only once on mount
@@ -736,10 +734,10 @@ export default function SchedulePage() {
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
+            // Check if temp.locationId matches selectedLocationId
+            const locationMatch = temp.locationId === selectedLocationId;
              // Check if temp.type matches viewMode ('day' or 'week')
             const typeMatch = temp.type === viewMode;
-             // Check if temp.locationId matches selectedLocationId
-             const locationMatch = temp.locationId === selectedLocationId;
              // Log details for debugging
              console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
             return typeMatch && locationMatch;
@@ -763,7 +761,9 @@ export default function SchedulePage() {
             const daySchedule = scheduleData[dateKey];
             if (daySchedule && daySchedule.assignments) {
                 Object.values(daySchedule.assignments).flat().forEach(assignment => {
-                    assignedIdsOnDates.add(assignment.employee.id);
+                    if (assignment.employee && assignment.employee.id) { // Check if employee and id exist
+                        assignedIdsOnDates.add(assignment.employee.id);
+                    }
                 });
             }
         });
@@ -786,17 +786,20 @@ export default function SchedulePage() {
                 const daySchedule = scheduleData[targetDayKey];
                 if (daySchedule && daySchedule.assignments) {
                      Object.values(daySchedule.assignments).flat().forEach(assignment => {
-                         assignedOnTargetDay.add(assignment.employee.id);
+                         if (assignment.employee && assignment.employee.id) { // Check employee and id
+                             assignedOnTargetDay.add(assignment.employee.id);
+                         }
                      });
                 }
-                potentiallyAvailable = potentiallyAvailable.filter(emp => !assignedOnTargetDay.has(emp.id));
+                potentiallyAvailable = potentiallyAvailable.filter(emp => emp.id && !assignedOnTargetDay.has(emp.id)); // Check emp.id
              } else {
                  console.warn("Available employees filter: No valid date found for filtering.");
              }
-        } else { // Week view drag-drop list should show all employees for the location
-             // Show all employees for the location in the week view list
-             potentiallyAvailable = filteredEmployees;
         }
+        // } else { // Week view drag-drop list should show all employees for the location
+        //      // Show all employees for the location in the week view list
+        //      potentiallyAvailable = filteredEmployees;
+        // }
 
 
         // Filter by department if the EmployeeSelectionModal is open and a department context exists
@@ -812,7 +815,7 @@ export default function SchedulePage() {
         }
 
         // Always sort alphabetically
-        potentiallyAvailable.sort((a, b) => a.name.localeCompare(b.name));
+        potentiallyAvailable.sort((a, b) => (a.name || '').localeCompare(b.name || '')); // Add fallback for name
 
         return potentiallyAvailable;
 
@@ -1204,7 +1207,7 @@ export default function SchedulePage() {
              });
         } else {
             const newEmployee = updatedEmployeeData;
-            setEmployees(prev => [...prev, newEmployee].sort((a, b) => a.name.localeCompare(b.name))); // Keep sorted
+            setEmployees(prev => [...prev, newEmployee].sort((a, b) => (a.name || '').localeCompare(b.name || ''))); // Keep sorted, handle potential null names
              toast({ title: 'Colaborador Agregado', description: `Colaborador "${name}" (ID: ${id}) agregado.` });
         }
         setConfigFormType(null); // Close form view
@@ -2184,7 +2187,7 @@ export default function SchedulePage() {
     }, [scheduleData, viewMode, targetDate, currentDate, weekDates, isClient]); // Added isClient
 
 
-    // --- Filtered Data for Config Lists ---
+     // --- Filtered Data for Config Lists ---
     const filteredLocationsData = useMemo(() =>
         locations.filter(loc => loc.name.toLowerCase().includes(locationSearch.toLowerCase())),
         [locations, locationSearch]
@@ -2194,11 +2197,11 @@ export default function SchedulePage() {
         [departments, departmentSearch]
     );
     const filteredEmployeesData = useMemo(() =>
-        employees.filter(emp => emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) || emp.id.toLowerCase().includes(employeeSearch.toLowerCase())),
+        employees.filter(emp => (emp.name || '').toLowerCase().includes(employeeSearch.toLowerCase()) || (emp.id || '').toLowerCase().includes(employeeSearch.toLowerCase())), // Add fallback for name and id
         [employees, employeeSearch]
     );
      const filteredTemplatesData = useMemo(() =>
-        (Array.isArray(savedTemplates) ? savedTemplates : []).filter(tpl => tpl.name.toLowerCase().includes(templateSearch.toLowerCase())),
+        (Array.isArray(savedTemplates) ? savedTemplates : []).filter(tpl => (tpl.name || '').toLowerCase().includes(templateSearch.toLowerCase())), // Add fallback for name
         [savedTemplates, templateSearch]
      );
 
@@ -2330,7 +2333,7 @@ export default function SchedulePage() {
                                                  handleToggleEmployeeDepartment={handleToggleEmployeeDepartment}
                                                  availableDepartmentsForEmployee={availableDepartmentsForEmployee}
                                                  activeTab={activeConfigTab}
-                                                 setActiveTab={setActiveTabFn} // Pass the setter function
+                                                 setActiveTab={setActiveConfigTab} // Pass state setter directly
                                                  locationSearch={locationSearch}
                                                  setLocationSearch={setLocationSearch}
                                                  departmentSearch={departmentSearch}
@@ -2536,7 +2539,10 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
-                       {/* Load Template Button - Removed, now in Config */}
+                      {/* Template List Button */}
+                       <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                            <Library className="mr-2 h-4 w-4" /> Ver Templates
+                       </Button>
                 </div>
 
 
@@ -2652,7 +2658,29 @@ export default function SchedulePage() {
                   </DialogContent>
               </Dialog>
 
-             {/* Template List Modal - Removed, integrated into ConfigTabs */}
+             {/* Template List Modal */}
+              <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                  <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                           <DialogTitle>Cargar Template ({viewMode === 'day' ? 'Diario' : 'Semanal'})</DialogTitle>
+                           <DialogDescription>Selecciona un template para aplicar al {viewMode === 'day' ? `día ${format(targetDate, 'dd/MM')}` : `la semana actual`}. Las asignaciones existentes se reemplazarán.</DialogDescription>
+                      </DialogHeader>
+                       {filteredTemplates.length > 0 ? (
+                           <ScheduleTemplateList
+                                templates={filteredTemplates}
+                                onLoadTemplate={handleLoadTemplate}
+                                onDeleteTemplate={handleDeleteTemplate} // Pass delete handler
+                            />
+                       ) : (
+                           <p className="text-center text-muted-foreground italic py-4">No hay templates guardados para esta sede y vista.</p>
+                       )}
+                       <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">Cerrar</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                  </DialogContent>
+              </Dialog>
 
 
             {/* Employee Selection Modal */}
