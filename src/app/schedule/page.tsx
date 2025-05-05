@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload, FileJson
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -76,21 +76,22 @@ import { EmployeeList } from '@/components/schedule/EmployeeList';
 import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
-import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-// Removed template list import as functionality was removed/moved
+import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import Notes modal
+import { SummaryDashboard } from '@/components/schedule/SummaryDashboard'; // Import the dashboard
+import { ConfigTabs } from '@/components/schedule/ConfigTabs'; // Import ConfigTabs
 import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmployeeSelectionModal } from '@/components/schedule/EmployeeSelectionModal';
 import type { Location, Department, Employee, ShiftAssignment, ScheduleData, DailyAssignments, WeeklyAssignments, ScheduleTemplate, ScheduleNote, ShiftDetails } from '@/types/schedule'; // Added ScheduleTemplate and ScheduleNote, ShiftDetails
-import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFnsInternal, isSameDay, isWithinInterval, getDay } from 'date-fns'; // Added endOfWeek
+import { startOfWeek, endOfWeek, addDays, format, addWeeks, subWeeks, parseISO, getYear, isValid, differenceInMinutes, parse as parseDateFns, isSameDay, isWithinInterval, getDay } from 'date-fns'; // Added endOfWeek, parseDateFns
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportScheduleToPDF, exportConsolidatedScheduleToPDF, ScheduleExportData } from '@/lib/schedule-pdf-exporter'; // Import BOTH PDF export functions
 import { formatTo12Hour } from '@/lib/time-utils';
-import { parse as parseDateFns } from 'date-fns';
+// Removed direct import of parse from date-fns as it conflicts
 
 
 // Helper to generate dates for the current week
@@ -188,14 +189,14 @@ const parseTimeToMinutes = (timeStr: string): number => {
 const calculateShiftDuration = (assignment: ShiftAssignment, shiftDate: Date): number => {
     try {
         const startDateStr = format(shiftDate, 'yyyy-MM-dd');
-        const startTime = parseDateFnsInternal(`${startDateStr} ${assignment.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        const startTime = parseDateFns(`${startDateStr} ${assignment.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
         const startTimeMinutes = parseTimeToMinutes(assignment.startTime);
         const endTimeMinutes = parseTimeToMinutes(assignment.endTime);
-        let endTime = parseDateFnsInternal(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        let endTime = parseDateFns(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
         if (!isValid(endTime) || endTimeMinutes < startTimeMinutes) {
              if (endTimeMinutes < startTimeMinutes) {
-                endTime = addDays(parseDateFnsInternal(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date()), 1);
+                endTime = addDays(parseDateFns(`${startDateStr} ${assignment.endTime}`, 'yyyy-MM-dd HH:mm', new Date()), 1);
              } else {
                  console.warn('Invalid end time for duration calculation:', assignment);
                  return 0;
@@ -470,10 +471,8 @@ export default function SchedulePage() {
 
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
-    // const [editingDepartment, setEditingDepartment] = useState<Department | null>(null); // This seems redundant with selectedConfigItem
     const [departmentFormData, setDepartmentFormData] = useState<{ name: string, locationId: string, iconName?: string }>({ name: '', locationId: '', iconName: undefined });
 
-    // const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null); // This seems redundant with selectedConfigItem
     const [employeeFormData, setEmployeeFormData] = useState<{ id: string, name: string, locationIds: string[], departmentIds: string[] }>({ id: '', name: '', locationIds: [], departmentIds: [] });
 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>(null); // Re-added 'template' type
@@ -496,6 +495,7 @@ export default function SchedulePage() {
     const [isLoadingPage, setIsLoadingPage] = useState(false); // Added state
 
     const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+    const scheduleJsonInputRef = useRef<HTMLInputElement>(null); // Ref for schedule JSON import
 
 
     const isMobile = useIsMobile();
@@ -535,8 +535,11 @@ export default function SchedulePage() {
 
     useEffect(() => {
         if (!currentDate || !isClient) return; // Don't fetch if currentDate is null or not client
-        const startYear = getYear(startOfWeek(currentDate, { weekStartsOn: 1 }));
-        const endYear = getYear(endOfWeek(currentDate, { weekStartsOn: 1 }));
+        const datesInView = viewMode === 'day' ? [currentDate] : getWeekDates(currentDate); // Get relevant dates
+        if (datesInView.length === 0 || !isValid(datesInView[0])) return; // Ensure we have valid dates
+
+        const startYear = getYear(datesInView[0]);
+        const endYear = getYear(datesInView[datesInView.length - 1]);
         const yearsToFetch = new Set([startYear, endYear]);
 
         setIsCheckingHoliday(true);
@@ -547,13 +550,14 @@ export default function SchedulePage() {
                 setHolidaySet(combinedSet);
             })
             .catch(error => {
-                console.error("Error fetching holidays for week view:", error);
+                console.error("Error fetching holidays for view:", error);
                 setHolidaySet(new Set());
             })
             .finally(() => {
                 setIsCheckingHoliday(false);
             });
-    }, [currentDate, isClient]);
+    }, [currentDate, viewMode, isClient]); // Re-fetch when view or dates change
+
 
      // --- Save Data to localStorage on Change ---
      useEffect(() => {
@@ -628,9 +632,7 @@ export default function SchedulePage() {
      useEffect(() => {
         if (isClient) {
             try {
-                //console.log("[Save Effect] Saving schedule notes:", scheduleNotes);
                 localStorage.setItem(SCHEDULE_EVENTS_KEY, JSON.stringify(scheduleNotes));
-                //console.log("[Save Effect] Schedule notes saved successfully.");
             } catch (error) {
                 console.error("Error saving schedule notes to localStorage:", error);
                 toast({
@@ -826,7 +828,6 @@ export default function SchedulePage() {
         viewMode,
         shiftRequestContext,
         isEmployeeSelectionModalOpen, // Add dependency
-        // departments // Removed departments dependency as it's not directly used here
     ]);
 
 
@@ -1091,9 +1092,7 @@ export default function SchedulePage() {
                 });
                 break;
             case 'template':
-                 // If editing a template, load its data (or handle adding new)
                  console.warn("Template viewing/editing form.");
-                 // No form data needed just for viewing details
                  break;
         }
     };
@@ -1848,11 +1847,6 @@ export default function SchedulePage() {
                     iconName: Object.keys(iconMap).find(key => iconMap[key] === icon)
                 })),
                 employees,
-                 savedTemplates: scheduleTemplates.map(tpl => ({ // Include templates, ensure date is stringified
-                     ...tpl,
-                     assignments: tpl.assignments, // Keep assignments as they are
-                     createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : tpl.createdAt
-                 })),
                  scheduleNotes, // Include calendar notes/events
                  notes, // Include general notes
             };
@@ -1866,7 +1860,7 @@ export default function SchedulePage() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            toast({ title: "Configuración Exportada", description: "Los datos de configuración y templates han sido exportados." });
+            toast({ title: "Configuración Exportada", description: "Los datos de configuración, notas y eventos han sido exportados." });
         } catch (error) {
              console.error("Error exporting configuration:", error);
              toast({ title: "Error al Exportar", description: "No se pudo exportar la configuración.", variant: "destructive" });
@@ -1898,22 +1892,6 @@ export default function SchedulePage() {
                     icon: dep.iconName ? iconMap[dep.iconName] : Building,
                 }));
 
-                // Revive dates and validate assignments for templates if present
-                 const loadedTemplates = (configData.savedTemplates || []).map((tpl: any) => {
-                     if (!tpl || typeof tpl !== 'object' || !tpl.id || !tpl.name) return null; // Skip invalid
-                     // Ensure assignments is an object
-                     const assignments = (tpl.assignments && typeof tpl.assignments === 'object' && !Array.isArray(tpl.assignments)) ? tpl.assignments : {};
-                     const revived = {
-                         ...tpl,
-                         assignments: assignments, // Use validated/defaulted assignments
-                         createdAt: tpl.createdAt && typeof tpl.createdAt === 'string' ? parseISO(tpl.createdAt) : undefined
-                     };
-                     if (revived.createdAt && !isValid(revived.createdAt)) {
-                         revived.createdAt = undefined;
-                     }
-                     return revived;
-                 }).filter((tpl: any) => tpl !== null);
-
 
                  // Load notes and events if present
                  const loadedEvents = Array.isArray(configData.scheduleNotes) ? configData.scheduleNotes : [];
@@ -1923,7 +1901,7 @@ export default function SchedulePage() {
                 setLocations(configData.locations);
                 setDepartments(loadedDepartments);
                 setEmployees(configData.employees);
-                setScheduleTemplates(loadedTemplates); // Load templates
+                // Templates are now handled separately (not in config export/import)
                 setScheduleNotes(loadedEvents); // Load calendar notes/events
                 setNotes(loadedNotesStr); // Load general notes
 
@@ -1945,6 +1923,132 @@ export default function SchedulePage() {
                 // Reset file input
                 if (fileInputRef.current) {
                     fileInputRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+
+     // --- Handlers for Schedule JSON Export/Import ---
+     const handleExportScheduleJson = () => {
+        if (!currentDate || !weekDates || weekDates.length === 0) {
+            toast({ title: "Error", description: "Fechas de semana inválidas para exportar.", variant: "destructive" });
+            return;
+        }
+        try {
+             // Collect schedule data for the current week for ALL locations
+             const dataToExport: { [dateKey: string]: ScheduleData } = {};
+             weekDates.forEach(date => {
+                const dateKey = format(date, 'yyyy-MM-dd');
+                if (scheduleData[dateKey]) {
+                    // Prepare data for export: Dates to ISO strings, Employee to ID only
+                    const dayData = JSON.parse(JSON.stringify(scheduleData[dateKey])); // Deep clone
+                    if (dayData.date instanceof Date) {
+                         dayData.date = dayData.date.toISOString();
+                     }
+                    if (dayData.assignments) {
+                         Object.keys(dayData.assignments).forEach(deptId => {
+                             (dayData.assignments[deptId] || []).forEach((assign: any) => {
+                                 if (assign.employee && typeof assign.employee === 'object') {
+                                     assign.employee = { id: assign.employee.id }; // Only keep ID
+                                 }
+                             });
+                         });
+                     }
+                    dataToExport[dateKey] = dayData;
+                }
+            });
+
+            if (Object.keys(dataToExport).length === 0) {
+                toast({ title: "Nada que Exportar", description: "No hay horario planificado en esta semana para exportar.", variant: "default" });
+                return;
+            }
+
+            const jsonString = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const weekStartStr = format(weekDates[0], 'yyyy-MM-dd');
+            a.download = `horario_semana_${weekStartStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast({ title: "Exportación Exitosa", description: "Se exportó el horario de la semana actual." });
+        } catch (error) {
+            console.error("Error exportando horario JSON:", error);
+            toast({ title: "Error al Exportar", description: "No se pudo exportar el horario.", variant: "destructive" });
+        }
+    };
+
+    const handleImportScheduleJson = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const jsonString = e.target?.result as string;
+                const importedScheduleData = JSON.parse(jsonString);
+
+                if (!importedScheduleData || typeof importedScheduleData !== 'object') {
+                    throw new Error("El archivo JSON no contiene datos de horario válidos.");
+                }
+
+                let updatedCount = 0;
+                const updatedSchedule = { ...scheduleData }; // Start with current schedule
+
+                Object.keys(importedScheduleData).forEach(dateKey => {
+                     const dayData = importedScheduleData[dateKey];
+                     if (!dayData || !dayData.date || !dayData.assignments) {
+                         console.warn(`Omitiendo datos inválidos para la fecha ${dateKey}`);
+                         return;
+                     }
+
+                     const dateObj = parseISO(dayData.date); // Dates were stringified
+                     if (!isValid(dateObj)) {
+                          console.warn(`Fecha inválida ${dayData.date} en datos importados.`);
+                          return;
+                     }
+
+                     // Hydrate employee data
+                     const hydratedAssignments: { [deptId: string]: ShiftAssignment[] } = {};
+                     Object.keys(dayData.assignments).forEach(deptId => {
+                         const assignments = dayData.assignments[deptId];
+                         if (Array.isArray(assignments)) {
+                             hydratedAssignments[deptId] = assignments.map((assign: any) => {
+                                 const fullEmployee = employees.find(emp => emp.id === assign.employee?.id);
+                                 if (!fullEmployee) {
+                                      console.warn(`Empleado ID ${assign.employee?.id} no encontrado al importar horario.`);
+                                      // Skip assignment if employee doesn't exist? Or use placeholder? Let's skip for now.
+                                      return null;
+                                 }
+                                 return { ...assign, employee: fullEmployee };
+                             }).filter(Boolean) as ShiftAssignment[]; // Filter out nulls
+                         }
+                     });
+
+                     // Overwrite the data for this specific date in the main schedule state
+                     updatedSchedule[dateKey] = { date: dateObj, assignments: hydratedAssignments };
+                     updatedCount++;
+                });
+
+                if (updatedCount > 0) {
+                    setScheduleData(updatedSchedule); // Update the main schedule state
+                    toast({ title: "Importación Exitosa", description: `Se cargaron/actualizaron los horarios para ${updatedCount} día(s).` });
+                } else {
+                    toast({ title: "Importación Vacía", description: "No se encontraron datos de horario válidos para importar.", variant: "default" });
+                }
+
+            } catch (error) {
+                console.error("Error importando horario JSON:", error);
+                const message = error instanceof Error ? error.message : "No se pudo importar el archivo JSON.";
+                toast({ title: "Error al Importar", description: message, variant: "destructive" });
+            } finally {
+                // Reset file input
+                if (scheduleJsonInputRef.current) {
+                    scheduleJsonInputRef.current.value = '';
                 }
             }
         };
@@ -2049,6 +2153,7 @@ export default function SchedulePage() {
         const locationName = locations.find(l => l.id === selectedLocationId)?.name || selectedLocationId;
 
         if (viewMode === 'day') {
+            if (!targetDate) return; // Ensure targetDate is valid
             const dateStr = format(targetDate, 'EEEE dd \'de\' MMMM', { locale: es });
             textToCopy = `*Horario ${locationName} - ${dateStr}*\n\n`;
             const daySchedule = getScheduleForDate(targetDate);
@@ -2221,266 +2326,6 @@ export default function SchedulePage() {
 
 
 
-    // --- New Config Modal Rendering Logic ---
-    const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
-         <ScrollArea className="h-full border rounded-md p-2"> {/* Added scroll for list */}
-            {items.map(item => (
-                <div
-                    key={item.id}
-                    onClick={() => openConfigForm(type, item)}
-                    className={cn(
-                        `relative p-2 mb-1 rounded cursor-pointer hover:bg-accent flex items-center justify-between group`, // Added relative
-                        selectedConfigItem?.id === item.id ? 'bg-accent font-semibold' : ''
-                    )}
-                >
-                    <span className="truncate flex items-center gap-1 flex-grow min-w-0 mr-10"> {/* Increased mr */}
-                        {type === 'department' && item.icon && React.createElement(item.icon, { className: 'h-3 w-3 mr-1 flex-shrink-0' })}
-                        {item.name}
-                        {type === 'department' && <span className="text-xs italic ml-1">({locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>}
-                        {type === 'employee' && <span className="text-xs italic ml-1">(ID: {item.id})</span>}
-                          {/* Render template specific info */}
-                          {type === 'template' && (
-                             <span className="text-xs italic ml-1">({item.type === 'week' ? 'Semanal' : 'Diario'}, {locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>
-                          )}
-                    </span>
-                     {/* Action buttons (Edit, Delete, Copy ID, Load Template) - Positioned Absolute */}
-                     <div className="absolute top-1/2 right-1 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0 flex-shrink-0"> {/* Positioned right */}
-                         {/* Edit Button */}
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); openConfigForm(type, item); }} title={`Editar ${type}`}>
-                              <Edit className="h-4 w-4" />
-                          </Button>
-                         {/* Copy ID Button (Only for employees) */}
-                         {type === 'employee' && (
-                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); handleCopyEmployeeId(item.id); }} title="Copiar ID">
-                                 <Copy className="h-4 w-4" />
-                             </Button>
-                         )}
-                           {/* Load Template Button */}
-                           {type === 'template' && (
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); handleLoadTemplate(item.id); }} title="Cargar Template">
-                                <Upload className="h-4 w-4" />
-                              </Button>
-                           )}
-                         {/* Delete Button */}
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
-                                     <Trash2 className="h-4 w-4" />
-                                 </Button>
-                            </AlertDialogTrigger>
-                           <AlertDialogContent>
-                               <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                   <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                                   <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
-                               </AlertDialogFooter>
-                           </AlertDialogContent>
-                         </AlertDialog>
-                     </div>
-                </div>
-            ))}
-            {items.length === 0 && <div className="text-center text-muted-foreground p-4">No hay elementos.</div>}
-        </ScrollArea>
-    );
-
-    const renderConfigDetailForm = () => {
-        if (!configFormType) {
-            return <div className="p-4 text-center text-muted-foreground">Selecciona un elemento de la lista para ver/editar detalles o presiona '+' para crear uno nuevo.</div>;
-        }
-
-        switch (configFormType) {
-            case 'location':
-                return (
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                            <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Sede</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
-                            <div>
-                                <Label htmlFor="location-name">Nombre</Label>
-                                <Input id="location-name" value={locationFormData.name} onChange={(e) => setLocationFormData({ name: e.target.value })} placeholder="Nombre de la Sede" />
-                            </div>
-                        </CardContent>
-                         <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                            <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
-                            <Button onClick={handleSaveLocation}>Guardar Sede</Button>
-                        </CardFooter>
-                    </Card>
-                );
-            case 'department':
-                return (
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                            <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Departamento</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]"> {/* Added scroll */}
-                            <div>
-                                <Label htmlFor="department-name">Nombre</Label>
-                                <Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento" />
-                            </div>
-                            <div>
-                                <Label htmlFor="department-location">Sede</Label>
-                                <Select value={departmentFormData.locationId} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, locationId: value }))}>
-                                    <SelectTrigger id="department-location"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
-                                    <SelectContent> {locations.map(loc => <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>)} </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="department-icon">Icono (Opcional)</Label>
-                                <Select value={departmentFormData.iconName} onValueChange={(value) => setDepartmentFormData(prev => ({ ...prev, iconName: value === 'ninguno' ? undefined : value }))}>
-                                    <SelectTrigger id="department-icon"><SelectValue placeholder="Selecciona icono" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ninguno">Ninguno</SelectItem>
-                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })} {/* Removed label */}</span></SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </CardContent>
-                         <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                            <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
-                            <Button onClick={handleSaveDepartment}>Guardar Departamento</Button>
-                        </CardFooter>
-                    </Card>
-                );
-            case 'employee':
-                return (
-                     <Card className="h-full flex flex-col">
-                        <CardHeader>
-                            <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Colaborador</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]"> {/* Make content scrollable */}
-                            <div>
-                                <Label htmlFor="employee-id">ID Colaborador</Label>
-                                <Input id="employee-id" value={employeeFormData.id} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, id: e.target.value }))} placeholder="ID (Ej: Cédula)" disabled={!!selectedConfigItem} />
-                            </div>
-                            <div>
-                                <Label htmlFor="employee-name">Nombre Completo</Label>
-                                <Input id="employee-name" value={employeeFormData.name} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre y Apellido" />
-                            </div>
-                            {/* Location Multi-Select */}
-                            <div>
-                                <Label>Sedes</Label>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-start">
-                                            {employeeFormData.locationIds.length > 0
-                                                ? employeeFormData.locationIds
-                                                    .map(id => locations.find(l => l.id === id)?.name)
-                                                    .filter(Boolean)
-                                                    .join(', ')
-                                                : "Seleccionar Sedes"}
-                                            <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-56">
-                                        <DropdownMenuLabel>Sedes Disponibles</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {locations.map((location) => (
-                                            <DropdownMenuCheckboxItem
-                                                key={location.id}
-                                                checked={employeeFormData.locationIds.includes(location.id)}
-                                                onCheckedChange={() => handleToggleEmployeeLocation(location.id)}
-                                            >
-                                                {location.name}
-                                            </DropdownMenuCheckboxItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            {/* Department Multi-Select */}
-                            <div>
-                                <Label>Departamentos (Opcional)</Label>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-start" disabled={availableDepartmentsForEmployee.length === 0}>
-                                            {employeeFormData.departmentIds.length > 0
-                                                ? employeeFormData.departmentIds
-                                                    .map(id => departments.find(d => d.id === id)?.name)
-                                                    .filter(Boolean)
-                                                    .join(', ')
-                                                : (availableDepartmentsForEmployee.length === 0 ? "Primero selecciona sede" : "Seleccionar Deptos")}
-                                            <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50"/>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-56">
-                                        <DropdownMenuLabel>Departamentos Disponibles</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {availableDepartmentsForEmployee.map((dept) => (
-                                            <DropdownMenuCheckboxItem
-                                                key={dept.id}
-                                                checked={employeeFormData.departmentIds.includes(dept.id)}
-                                                onCheckedChange={() => handleToggleEmployeeDepartment(dept.id)}
-                                            >
-                                                {dept.name} <span className="text-xs text-muted-foreground ml-1">({locations.find(l => l.id === dept.locationId)?.name})</span>
-                                            </DropdownMenuCheckboxItem>
-                                        ))}
-                                        {availableDepartmentsForEmployee.length === 0 && <DropdownMenuItem disabled>No hay departamentos para las sedes seleccionadas.</DropdownMenuItem>}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </CardContent>
-                         <CardFooter className="flex justify-between gap-2 border-t pt-4"> {/* Changed justify-end to justify-between */}
-                            {selectedConfigItem && ( // Show delete button only when editing
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" > {/* Keep destructive variant */}
-                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Colaborador
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Eliminar Colaborador?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Eliminar a "{selectedConfigItem.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name)}
-                                                className="bg-destructive hover:bg-destructive/90"
-                                            >
-                                                Eliminar
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-                            <div className="flex gap-2 ml-auto"> {/* Group Cancel and Save */}
-                                <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
-                                <Button onClick={handleSaveEmployee}>Guardar Colaborador</Button>
-                            </div>
-                         </CardFooter>
-                    </Card>
-                );
-             case 'template': // Placeholder for template editing/adding form
-                 return (
-                     <Card className="h-full flex flex-col">
-                         <CardHeader>
-                             <CardTitle>{selectedConfigItem ? 'Detalles Template' : 'Agregar Template (Manual no implementado)'}</CardTitle>
-                         </CardHeader>
-                         <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
-                             {selectedConfigItem ? (
-                                 <>
-                                     <div><Label>Nombre:</Label> <p>{selectedConfigItem.name}</p></div>
-                                     <div><Label>Tipo:</Label> <p>{selectedConfigItem.type === 'week' ? 'Semanal' : 'Diario'}</p></div>
-                                     <div><Label>Sede:</Label> <p>{locations.find(l => l.id === selectedConfigItem.locationId)?.name || 'N/A'}</p></div>
-                                     {/* Consider showing a summary of assignments or a JSON view */}
-                                      <Textarea readOnly value={JSON.stringify(selectedConfigItem.assignments, null, 2)} rows={10} />
-                                 </>
-                             ) : (
-                                 <p className="text-muted-foreground">La creación manual de templates no está implementada. Guarda templates desde el planificador.</p>
-                             )}
-                         </CardContent>
-                         <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                             <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cerrar</Button>
-                             {/* Add other actions if needed, like 'Aplicar Template' if context allows */}
-                         </CardFooter>
-                     </Card>
-                 );
-        }
-    };
-
     // Render null or a loader during initial server render and hydration phase
      if (!isClient || !currentDate) {
          return (
@@ -2523,9 +2368,7 @@ export default function SchedulePage() {
 
 
              {/* Controls Section - Top Bar */}
-             {/* Removed Card wrapper and styling */}
               <div className="bg-transparent border-none p-0 mb-6 md:mb-8">
-                 {/* Removed CardHeader */}
                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                          {/* Location Selector & Config Button */}
                          <div className="flex items-center gap-2 flex-shrink-0">
@@ -2547,8 +2390,8 @@ export default function SchedulePage() {
                                            <DialogTitle>Configuración General</DialogTitle>
                                            <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
                                          </div>
-                                         <div className="flex items-center gap-2 pr-8"> {/* Right side buttons - Added padding-right */}
-                                             {/* Import Button */}
+                                          <div className="flex items-center gap-2 pr-8"> {/* Right side buttons - Adjusted position, added padding-right */}
+                                              {/* Config Import Button */}
                                               <input
                                                   type="file"
                                                   accept=".json"
@@ -2563,96 +2406,64 @@ export default function SchedulePage() {
                                                   onClick={() => fileInputRef.current?.click()}
                                                   title="Importar configuración (JSON)"
                                               >
-                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar
+                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar Conf.
                                               </Button>
-                                             {/* Export Button */}
+                                             {/* Config Export Button */}
                                               <Button
                                                   variant="outline"
                                                   size="sm"
                                                   onClick={handleExportConfig}
                                                   title="Exportar configuración (JSON)"
                                               >
-                                                  <Download className="mr-2 h-4 w-4" /> Exportar
+                                                  <Download className="mr-2 h-4 w-4" /> Exportar Conf.
                                               </Button>
                                          </div>
                                         </DialogHeader>
                                         <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
-                                            <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeConfigTab} onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
-                                              <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0"> {/* Ensure TabsList doesn't shrink */}
-                                                <TabsTrigger value="sedes">Sedes</TabsTrigger>
-                                                <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
-                                                <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
-                                                 <TabsTrigger value="templates">Templates</TabsTrigger>
-                                              </TabsList>
-
-                                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden"> {/* Layout Lista + Detalle */}
-                                                    {/* Columna Izquierda: Barra de Acciones y Lista */}
-                                                    <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
-                                                        {/* Barra de Acciones (Con Input de Búsqueda) */}
-                                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                                             <Input
-                                                                 placeholder={`Buscar en ${activeConfigTab}...`}
-                                                                 className="flex-grow"
-                                                                 value={
-                                                                     activeConfigTab === 'sedes' ? locationSearch :
-                                                                     activeConfigTab === 'departamentos' ? departmentSearch :
-                                                                     activeConfigTab === 'colaboradores' ? employeeSearch :
-                                                                     templateSearch
-                                                                 }
-                                                                 onChange={(e) => {
-                                                                     const value = e.target.value;
-                                                                     if (activeConfigTab === 'sedes') setLocationSearch(value);
-                                                                     else if (activeConfigTab === 'departamentos') setDepartmentSearch(value);
-                                                                     else if (activeConfigTab === 'colaboradores') setEmployeeSearch(value);
-                                                                     else if (activeConfigTab === 'templates') setTemplateSearch(value);
-                                                                 }}
-                                                             />
-                                                            <Button
-                                                                variant="outline"
-                                                                size="icon"
-                                                                onClick={() => {
-                                                                    const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
-                                                                        sedes: 'location',
-                                                                        departamentos: 'department',
-                                                                        colaboradores: 'employee',
-                                                                        templates: 'template',
-                                                                    };
-                                                                    const formType = typeMap[activeConfigTab];
-                                                                    if (formType && formType !== 'template') { // Only enable for non-template tabs
-                                                                        // Ensure selectedConfigItem is null when adding new
-                                                                        setSelectedConfigItem(null);
-                                                                        setLocationFormData({ name: '' }); // Clear location form
-                                                                         setDepartmentFormData({ name: '', locationId: selectedLocationId || '', iconName: undefined }); // Clear department form, set default location
-                                                                         setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] }); // Clear employee form, set default location
-                                                                        openConfigForm(formType, null);
-                                                                    } else if (formType === 'template') {
-                                                                        toast({title: "Info", description: "Los templates se crean desde el planificador.", variant: "default"})
-                                                                    }
-                                                                }}
-                                                                title={`Agregar ${activeConfigTab}`}
-                                                                disabled={activeConfigTab === 'templates'} // Disable adding templates manually here
-                                                            >
-                                                                <PlusCircle className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-
-                                                         {/* Contenido de la Lista según la Pestaña Activa */}
-                                                        <div className="flex-grow overflow-hidden"> {/* Make list area scrollable */}
-                                                            <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
-                                                            <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
-                                                            <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
-                                                             <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
-                                                        </div>
-                                                    </div>
-
-                                                     {/* Columna Derecha: Formulario de Detalle/Edición */}
-                                                    <div className="md:col-span-2 h-full overflow-hidden"> {/* Ensure form area uses available height */}
-                                                        {renderConfigDetailForm()}
-                                                    </div>
-                                                </div>
-                                            </Tabs>
+                                             <ConfigTabs
+                                                 locations={locations}
+                                                 departments={departments}
+                                                 employees={employees}
+                                                 templates={scheduleTemplates}
+                                                 selectedLocationId={selectedLocationId}
+                                                 iconMap={iconMap}
+                                                 openConfigForm={openConfigForm}
+                                                 selectedConfigItem={selectedConfigItem}
+                                                 confirmDeleteItem={confirmDeleteItem}
+                                                 handleCopyEmployeeId={handleCopyEmployeeId}
+                                                 handleLoadTemplate={handleLoadTemplate}
+                                                 configFormType={configFormType}
+                                                 locationFormData={locationFormData}
+                                                 setLocationFormData={setLocationFormData}
+                                                 departmentFormData={departmentFormData}
+                                                 setDepartmentFormData={setDepartmentFormData}
+                                                 employeeFormData={employeeFormData}
+                                                 setEmployeeFormData={setEmployeeFormData}
+                                                 handleSaveLocation={handleSaveLocation}
+                                                 handleSaveDepartment={handleSaveDepartment}
+                                                 handleSaveEmployee={handleSaveEmployee}
+                                                 setConfigFormType={setConfigFormType}
+                                                 setSelectedConfigItem={setSelectedConfigItem}
+                                                 handleToggleEmployeeLocation={handleToggleEmployeeLocation}
+                                                 handleToggleEmployeeDepartment={handleToggleEmployeeDepartment}
+                                                 availableDepartmentsForEmployee={availableDepartmentsForEmployee}
+                                                 activeTab={activeConfigTab}
+                                                 setActiveTab={setActiveTab}
+                                                 locationSearch={locationSearch}
+                                                 setLocationSearch={setLocationSearch}
+                                                 departmentSearch={departmentSearch}
+                                                 setDepartmentSearch={setDepartmentSearch}
+                                                 employeeSearch={employeeSearch}
+                                                 setEmployeeSearch={setEmployeeSearch}
+                                                 templateSearch={templateSearch}
+                                                 setTemplateSearch={setTemplateSearch}
+                                                 filteredLocationsData={filteredLocationsData}
+                                                 filteredDepartmentsData={filteredDepartmentsData}
+                                                 filteredEmployeesData={filteredEmployeesData}
+                                                 filteredTemplatesData={filteredTemplatesData}
+                                             />
                                        </div>
-                                         {/* Footer removed */}
+                                         {/* Dialog Footer Removed */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2719,45 +2530,17 @@ export default function SchedulePage() {
 
                          {/* Summary Sheet Trigger */}
                          <div className="flex items-center justify-center flex-shrink-0">
-                             <Sheet open={isSummarySheetOpen} onOpenChange={setIsSummarySheetOpen}>
-                                 <SheetTrigger asChild>
-                                     <Button variant="outline" title="Resumen de Horas Programadas">
-                                         <BarChartHorizontal className="h-5 w-5" />
-                                     </Button>
-                                 </SheetTrigger>
-                                 <SheetContent side="right" className="w-full sm:max-w-sm">
-                                     <SheetHeader>
-                                         <SheetTitle>Resumen de Horas</SheetTitle>
-                                         <SheetDescription>
-                                            Total de horas programadas para el período visible: <br/>
-                                            {viewMode === 'day'
-                                                ? format(targetDate, 'PPP', { locale: es })
-                                                : (weekDates.length > 0 ? `Semana del ${format(weekDates[0], 'dd MMM', { locale: es })} al ${format(weekDates[6], 'dd MMM yyyy', { locale: es })}` : 'Fecha inválida')}
-                                         </SheetDescription>
-                                     </SheetHeader>
-                                     <ScrollArea className="h-[calc(100vh-150px)] mt-4">
-                                         {employeeHoursSummary.length > 0 ? (
-                                             <ul className="space-y-2 pr-4">
-                                                 {employeeHoursSummary.map(summary => (
-                                                     <li key={summary.id} className="flex justify-between items-center border-b pb-1">
-                                                         <span className="font-medium text-sm">{summary.name}</span>
-                                                         <span className="text-sm text-primary font-semibold">{summary.totalHours.toFixed(2)} h</span>
-                                                     </li>
-                                                 ))}
-                                             </ul>
-                                         ) : (
-                                             <p className="text-center text-muted-foreground italic mt-10">No hay horas programadas para este período.</p>
-                                         )}
-                                     </ScrollArea>
-                                     <SheetClose asChild className="mt-4">
-                                         <Button type="button" variant="secondary" className="w-full">Cerrar</Button>
-                                     </SheetClose>
-                                 </SheetContent>
-                             </Sheet>
+                             <SummaryDashboard
+                                isOpen={isSummarySheetOpen}
+                                onOpenChange={setIsSummarySheetOpen}
+                                viewMode={viewMode}
+                                targetDate={targetDate}
+                                weekDates={weekDates}
+                                summaryData={employeeHoursSummary}
+                              />
                          </div>
 
                      </div>
-                 {/* Removed CardContent */}
              </div>
 
 
@@ -2830,6 +2613,33 @@ export default function SchedulePage() {
                          </DropdownMenuContent>
                      </DropdownMenu>
 
+                     {/* JSON Export/Import Dropdown */}
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="outline" className="hover:bg-green-600 hover:text-white">
+                                  <FileJson className="mr-2 h-4 w-4" /> JSON
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuLabel>Horario (JSON)</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={handleExportScheduleJson} disabled={!currentDate || weekDates.length === 0}>
+                                  <Download className="mr-2 h-4 w-4" /> Exportar Semana Actual
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => scheduleJsonInputRef.current?.click()}>
+                                  <Upload className="mr-2 h-4 w-4" /> Importar Horario
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                      <input
+                          type="file"
+                          accept=".json"
+                          ref={scheduleJsonInputRef}
+                          onChange={handleImportScheduleJson}
+                          className="hidden"
+                          id="import-schedule-json-input"
+                      />
+
                     {viewMode === 'week' && (
                         <Button
                             variant="outline"
@@ -2870,12 +2680,6 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
-                      {/* Template List Button - Removed/Commented Out */}
-                         {/*
-                         <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                              <Library className="mr-2 h-4 w-4" /> Templates Guardados
-                         </Button>
-                         */}
                 </div>
 
 
@@ -2911,9 +2715,8 @@ export default function SchedulePage() {
                  notes={scheduleNotes}
                  employees={employees} // Pass employees for the dropdown
                  onAddNote={addScheduleNote}
-                 onDeleteNote={setNoteToDeleteId} // Pass direct delete function
+                 onDeleteNote={(id) => setNoteToDeleteId(id)} // Trigger confirmation
                  initialDate={notesModalForDate || undefined} // Pass specific date if set
-                 // Pass context for filtering
                  viewMode={viewMode}
                  currentDate={currentDate || new Date()} // Pass a valid date
                  weekDates={weekDates}
@@ -2992,7 +2795,28 @@ export default function SchedulePage() {
                   </DialogContent>
               </Dialog>
 
-             {/* Template List Modal - Removed */}
+             {/* Template List Modal */}
+             <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Cargar Template ({viewMode === 'day' ? 'Diario' : 'Semanal'})</DialogTitle>
+                        <DialogDescription>Selecciona un template para aplicar al horario actual ({viewMode === 'day' ? format(targetDate, 'PPP', { locale: es }) : 'semana actual'}).</DialogDescription>
+                    </DialogHeader>
+                     <ScheduleTemplateList
+                        templates={filteredTemplates} // Show only relevant templates
+                        onLoadTemplate={handleLoadTemplate}
+                        onDeleteTemplate={(id) => {
+                            setIsTemplateListModalOpen(false); // Close this modal first
+                            setTemplateToDeleteId(id); // Then open delete confirmation
+                        }}
+                    />
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Employee Selection Modal */}
              <EmployeeSelectionModal
