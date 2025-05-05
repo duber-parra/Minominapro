@@ -1,11 +1,12 @@
 
+
 // src/components/saved-payroll-list.tsx
 'use client';
 
 import type { FC } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSearch, FileDown, Trash2, Users } from 'lucide-react'; // Removed FileSpreadsheet
+import { FileSearch, FileDown, Trash2, Users, Download, FolderUp, FileJson } from 'lucide-react'; // Removed FileSpreadsheet, Added Download, FolderUp, FileJson
 import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,7 +26,8 @@ interface SavedPayrollListProps {
   onLoad: (key: string) => void;
   onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog in parent
   onBulkExport: () => void; // For PDF
-  // Removed CSV props
+  onExportJson: () => void; // Function to trigger JSON export
+  onImportJsonClick: () => void; // Function to trigger the file input click for JSON import
 }
 
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({
@@ -33,7 +35,8 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     onLoad,
     onDelete, // Receives the function to initiate deletion (open dialog)
     onBulkExport,
-    // Removed CSV props
+    onExportJson, // Receive JSON export function
+    onImportJsonClick, // Receive JSON import click function
 }) => {
 
     // Helper function to calculate final net pay for display
@@ -44,7 +47,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
         const totalOtrosIngresos = (payroll.otrosIngresosLista || []).reduce((sum, item) => sum + item.monto, 0);
         const totalOtrasDeduccionesManuales = (payroll.otrasDeduccionesLista || []).reduce((sum, item) => sum + item.monto, 0);
         const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
-        const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+        const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos; // IBC excludes transport allowance
         const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
         const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
         const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
@@ -63,17 +66,35 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
             <CardDescription> Carga, elimina o exporta nóminas guardadas. </CardDescription>
         </div>
          <div className="absolute top-4 right-4 flex items-center gap-1">
-             {/* Bulk Export PDF Button */}
+             {/* Export/Import Buttons */}
+             <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={onImportJsonClick} // Trigger file input click
+                 className="px-2 py-1 h-auto hover:bg-blue-600 hover:text-white" // Blue hover
+                 title="Importar Nóminas (JSON)"
+             >
+                 <FolderUp className="mr-1 h-3 w-3" /> JSON
+             </Button>
+             <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={onExportJson} // Call JSON export handler
+                 disabled={payrolls.length === 0}
+                 className="px-2 py-1 h-auto hover:bg-green-600 hover:text-white" // Green hover
+                 title="Exportar Nóminas (JSON)"
+             >
+                 <Download className="mr-1 h-3 w-3" /> JSON
+             </Button>
              <Button
                  variant="outline"
                  size="sm"
                  onClick={onBulkExport}
                  disabled={payrolls.length === 0}
-                 className="px-2 py-1 h-auto"
+                 className="px-2 py-1 h-auto hover:bg-red-600 hover:text-white" // Red hover for PDF
              >
                  <FileDown className="mr-1 h-3 w-3" /> PDF
              </Button>
-             {/* Removed Bulk Export Dropdown */}
         </div>
       </CardHeader>
       <CardContent>
@@ -93,7 +114,6 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                         <p className="text-xs text-muted-foreground mt-1"> Guardado: {payroll.createdAt ? format(payroll.createdAt, 'dd/MM/yyyy HH:mm', { locale: es }) : 'Fecha no disponible'} </p>
                       </div>
                       <div className="absolute top-2 right-2 flex flex-col gap-1 flex-shrink-0"> {/* Changed to flex-col */}
-                         {/* Removed Export Single CSV Button */}
                         {/* Load Button */}
                         <Button variant="ghost" size="icon" onClick={() => onLoad(payroll.key)} title="Cargar y Editar Nómina" className="h-8 w-8">
                           <FileSearch className="h-4 w-4" />
@@ -102,7 +122,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                                  onClick={() => onDelete(payroll.key)} // Call parent's onDelete prop
+                                  // Removed direct onDelete call here, it's handled by parent's AlertDialogAction
                               >
                                   <Trash2 className="h-4 w-4" />
                               </Button>
@@ -121,3 +141,5 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     </Card>
   );
 };
+
+    

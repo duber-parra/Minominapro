@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import Image from 'next/image'; // Import next/image
-import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
+import { WorkdayForm } from '@/components/workday-form'; // Removed formSchema import as it's now local
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee } from '@/types'; // Added AdjustmentItem, SavedPayrollData, Employee
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp, Download, FolderUp, FileJson } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee, Download, FolderUp, FileJson
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -50,6 +50,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
+import { z } from 'zod'; // Import zod for form schema
 
 
 // Constants
@@ -99,16 +100,34 @@ const getStorageKey = (employeeId: string, periodStart: Date | undefined, period
     }
 };
 
+// --- Function to revive Date objects from JSON string representation ---
+function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
+    return data.map(item => ({
+        ...item,
+        periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
+        periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
+        createdAt: item.createdAt && typeof item.createdAt === 'string' ? parseISO(item.createdAt) : item.createdAt,
+        // Revive startDate within calculatedDays.inputData
+        summary: {
+             ...item.summary,
+             // Ensure nested calculatedDays have their startDate revived too
+              // This part is tricky as summary doesn't store days.
+              // We need to handle day revival in parseStoredData or when loading.
+        }
+    })).filter(item => item.periodStart && isValidDate(item.periodStart) && item.periodEnd && isValidDate(item.periodEnd)); // Filter out invalid entries
+}
+
 const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[], includeTransport: boolean } => {
     if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false };
     try {
         const storedObject = JSON.parse(jsonData) as {
-             calculatedDays: CalculationResults[],
+             calculatedDays: any[], // Expect dates as strings here initially
              otrosIngresosLista?: AdjustmentItem[],
              otrasDeduccionesLista?: AdjustmentItem[],
              incluyeAuxTransporte?: boolean
         };
 
+        // Revive dates within calculatedDays
         const revivedDays = (storedObject.calculatedDays || []).map(day => ({
             ...day,
             inputData: {
@@ -117,7 +136,7 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
                             ? parseISO(day.inputData.startDate)
                             : (day.inputData.startDate instanceof Date ? day.inputData.startDate : new Date()),
             }
-        }));
+        })).filter(day => day.inputData.startDate && isValidDate(day.inputData.startDate)) as CalculationResults[];
 
         const incomeList = Array.isArray(storedObject.otrosIngresosLista) ? storedObject.otrosIngresosLista : [];
         const deductionList = Array.isArray(storedObject.otrasDeduccionesLista) ? storedObject.otrasDeduccionesLista : [];
@@ -159,6 +178,12 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                     const storedData = localStorage.getItem(key);
                     const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport } = parseStoredData(storedData);
 
+                    // Determine createdAt - use the start date of the first calculated day if available, otherwise use periodStart
+                    let createdAtDate: Date | undefined = startDate; // Default to period start
+                    if (parsedDays.length > 0 && parsedDays[0].inputData.startDate instanceof Date && isValidDate(parsedDays[0].inputData.startDate)) {
+                         createdAtDate = parsedDays[0].inputData.startDate;
+                    }
+
                     if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport) {
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                          const savedPayrollItem: SavedPayrollData = {
@@ -179,9 +204,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                             otrosIngresosLista: parsedIncome,
                             otrasDeduccionesLista: parsedDeductions,
                             incluyeAuxTransporte: parsedIncludeTransport,
-                            createdAt: (parsedDays.length > 0 && parsedDays[0]?.inputData?.startDate)
-                                       ? new Date(parsedDays[0].inputData.startDate)
-                                       : startDate
+                            createdAt: createdAtDate // Use the determined date
                          };
                         savedPayrolls.push(savedPayrollItem);
                     }
@@ -192,7 +215,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
         console.error("Error cargando nóminas guardadas de localStorage:", error);
     }
     return savedPayrolls.sort((a, b) => {
-       const dateDiff = b.periodStart.getTime() - a.periodStart.getTime();
+       const dateDiff = (b.createdAt?.getTime() || b.periodStart.getTime()) - (a.createdAt?.getTime() || a.periodStart.getTime());
        if (dateDiff !== 0) return dateDiff;
        return a.employeeId.localeCompare(b.employeeId);
     });
@@ -229,6 +252,7 @@ export default function Home() {
     const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+    const importJsonInputRef = useRef<HTMLInputElement>(null); // Ref for JSON import
 
     const { toast } = useToast();
     const { setValue } = useForm<WorkdayFormValues>(); // Use useForm hook to get setValue
@@ -279,11 +303,21 @@ export default function Home() {
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) {
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+             // Only save if there's a valid key AND some data to save OR aux transport is enabled
             if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte)) {
                 try {
                      console.log(`Intentando guardar datos (incluye transporte: ${incluyeAuxTransporte}) en la clave: ${storageKey}`);
+                     // Prepare data for storage: Dates must be ISO strings
                      const dataToSave = {
-                         calculatedDays: calculatedDays,
+                         calculatedDays: calculatedDays.map(day => ({
+                             ...day,
+                             inputData: {
+                                 ...day.inputData,
+                                 startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
+                             },
+                              // Ensure summary related dates are strings if they exist
+                              summary: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate, // Just example, adapt based on actual summary structure if needed
+                         })),
                          otrosIngresosLista: otrosIngresos,
                          otrasDeduccionesLista: otrasDeducciones,
                          incluyeAuxTransporte: incluyeAuxTransporte,
@@ -301,6 +335,7 @@ export default function Home() {
                     });
                 }
             } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte) {
+                 // Remove item if all data is cleared and transport is off
                 if (localStorage.getItem(storageKey)) {
                     localStorage.removeItem(storageKey);
                     console.log(`Clave ${storageKey} eliminada porque no hay datos ni auxilio de transporte activo.`);
@@ -737,6 +772,131 @@ export default function Home() {
       }
     };
 
+     // --- Handlers for Export/Import JSON ---
+     const handleExportSavedPayrolls = () => {
+        try {
+            const allPayrolls = loadAllSavedPayrolls(employees);
+            if (allPayrolls.length === 0) {
+                toast({ title: "Nada que Exportar", description: "No hay nóminas guardadas para exportar.", variant: "default" });
+                return;
+            }
+            // Prepare data for export: Dates must be ISO strings
+            const dataToExport = allPayrolls.map(payroll => ({
+                ...payroll,
+                periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
+                periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
+                createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
+                // Revive dates within calculatedDays (needed for nested structures)
+                 summary: {
+                     ...payroll.summary,
+                    // Note: summary itself doesn't contain the full days array typically.
+                    // The data is loaded/parsed correctly via parseStoredData when loaded.
+                 }
+            }));
+
+            const jsonString = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nominas_guardadas_${format(new Date(), 'yyyyMMdd_HHmmss')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast({ title: "Exportación Exitosa", description: `Se exportaron ${allPayrolls.length} nóminas guardadas.` });
+        } catch (error) {
+            console.error("Error exportando nóminas guardadas:", error);
+            toast({ title: "Error al Exportar", description: "No se pudieron exportar las nóminas guardadas.", variant: "destructive" });
+        }
+    };
+
+    const handleImportSavedPayrolls = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const jsonString = e.target?.result as string;
+                const importedDataRaw = JSON.parse(jsonString);
+
+                if (!Array.isArray(importedDataRaw)) {
+                    throw new Error("El archivo JSON no contiene un array de nóminas válido.");
+                }
+
+                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw); // Revive dates
+
+                if (importedPayrolls.length === 0 && importedDataRaw.length > 0) {
+                     throw new Error("No se pudieron parsear nóminas válidas del archivo.");
+                }
+
+                let addedCount = 0;
+                let skippedCount = 0;
+
+                 // Merge imported data with existing data (overwrite based on key)
+                 const currentKeys = new Set(savedPayrolls.map(p => p.key));
+
+                importedPayrolls.forEach(payroll => {
+                    // Generate the key based on imported data to check for duplicates
+                    const storageKey = getStorageKey(payroll.employeeId, payroll.periodStart, payroll.periodEnd);
+                    if (!storageKey) {
+                        console.warn("Omitiendo nómina importada con datos inválidos:", payroll);
+                        skippedCount++;
+                        return;
+                    }
+                    payroll.key = storageKey; // Ensure key matches standard format
+
+                     // Prepare data for storage (stringify dates)
+                     const dataToStore = {
+                         ...payroll,
+                         periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
+                         periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
+                         createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
+                         // Ensure calculatedDays dates are also strings
+                         // Note: This assumes 'summary' might not contain the full days detail.
+                         // The revival happens correctly in parseStoredData. We need to store it stringified.
+                         // If the original export included stringified dates for calculatedDays, this is fine.
+                     };
+
+                    try {
+                        localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+                        if (!currentKeys.has(storageKey)) {
+                            addedCount++;
+                        } else {
+                            skippedCount++; // Count as skipped if key already existed (updated)
+                        }
+                    } catch (storageError) {
+                         console.error(`Error guardando nómina importada ${storageKey} en localStorage:`, storageError);
+                         skippedCount++;
+                         // Optionally show a specific error for this item
+                    }
+                });
+
+                 // Reload the state from localStorage to reflect changes
+                 const loadedEmployees = loadEmployeesFromLocalStorage([]);
+                 setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
+
+                toast({
+                     title: "Importación Completada",
+                     description: `${addedCount} nóminas nuevas importadas. ${skippedCount} nóminas actualizadas o ignoradas.`,
+                     variant: "default"
+                 });
+
+            } catch (error) {
+                console.error("Error importando nóminas:", error);
+                const message = error instanceof Error ? error.message : "No se pudo importar el archivo JSON.";
+                toast({ title: "Error al Importar", description: message, variant: "destructive" });
+            } finally {
+                // Reset file input
+                if (importJsonInputRef.current) {
+                    importJsonInputRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+
 
   return (
     <main
@@ -744,26 +904,26 @@ export default function Home() {
     >
 
         {/* Decorative Images */}
-         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Adjusted opacity for small screens */}
+        <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Adjusted opacity for small screens */}
+           <Image
+               src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
+               alt="Ilustración de taza de café"
+               width={120} // Adjust size as needed
+               height={120} // Adjust size as needed
+               className="object-contain transform -rotate-12" // Adjusted vertical position slightly
+               data-ai-hint="coffee cup illustration"
+           />
+        </div>
+        <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
             <Image
-                src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
-                alt="Ilustración de taza de café"
-                width={120} // Adjust size as needed
-                height={120} // Adjust size as needed
-                className="object-contain transform -rotate-12" // Adjusted vertical position slightly
-                data-ai-hint="coffee cup illustration"
+               src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
+               alt="Ilustración de elementos de oficina" // Updated alt text
+               width={150} // Adjust size as needed
+               height={150} // Adjust size as needed
+               className="object-contain transform rotate-12" // Removed relative positioning
+               data-ai-hint="office elements illustration" // Updated hint
             />
         </div>
-         <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
-             <Image
-                src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
-                alt="Ilustración de elementos de oficina" // Updated alt text
-                width={150} // Adjust size as needed
-                height={150} // Adjust size as needed
-                className="object-contain transform rotate-12" // Removed relative positioning
-                data-ai-hint="office elements illustration" // Updated hint
-             />
-         </div>
 
 
       <div className="text-center mb-8">
@@ -807,7 +967,7 @@ export default function Home() {
                   </Popover>
               </div>
 
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4"> {/* Changed to 3 columns */}
+                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> {/* Increased to 4 columns */}
                    {/* Import Schedule Button */}
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
@@ -825,146 +985,171 @@ export default function Home() {
                          <AlertDialogFooter> <AlertDialogCancel>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleClearPeriodData} className="bg-destructive hover:bg-destructive/90"> Limpiar Datos </AlertDialogAction> </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
-                   {/* Bulk Export PDF Button */}
+                    {/* Export Saved Payrolls Button */}
                     <Button
-                         onClick={handleBulkExportPDF}
+                         onClick={handleExportSavedPayrolls}
                          variant="outline"
-                         className="w-full hover:bg-red-600 hover:text-white" // Red hover for PDF
+                         className="w-full hover:bg-green-600 hover:text-white" // Green hover
                          disabled={savedPayrolls.length === 0}
+                         title="Exportar todas las nóminas guardadas (JSON)"
                     >
-                         <FileDown className="mr-2 h-4 w-4" /> Exportar Todo (PDF)
+                         <Download className="mr-2 h-4 w-4" /> Exportar Nóminas
+                    </Button>
+                    {/* Import Saved Payrolls Button */}
+                     <input
+                       type="file"
+                       accept=".json"
+                       ref={importJsonInputRef}
+                       onChange={handleImportSavedPayrolls}
+                       className="hidden"
+                       id="import-payrolls-input"
+                    />
+                    <Button
+                        variant="outline"
+                        className="w-full hover:bg-blue-600 hover:text-white" // Blue hover
+                        onClick={() => importJsonInputRef.current?.click()}
+                        title="Importar nóminas guardadas desde archivo JSON"
+                    >
+                        <FolderUp className="mr-2 h-4 w-4" /> Importar Nóminas
                     </Button>
                </div>
           </CardContent>
       </Card>
 
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8">
-          <div className="lg:col-span-2">
-              <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {editingDayId ? <Edit className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />} {editingDayId ? 'Editar Turno' : 'Agregar Turno'} </CardTitle>
-                  <CardDescription> {isFormDisabled ? 'Selecciona colaborador y período.' : editingDayId ? `Modifica fecha/horas.` : 'Ingresa detalles del turno.'} </CardDescription>
-                </CardHeader>
-                <CardContent>
-                   {isFormDisabled ? ( <div className="text-center text-muted-foreground italic py-4"> Selección pendiente. </div> ) : (
-                      <WorkdayForm
-                        key={editingDayId || 'new'}
-                        onCalculationStart={handleDayCalculationStart}
-                        onCalculationComplete={handleDayCalculationComplete}
-                        isLoading={isLoadingDay}
-                        initialData={editingDayData}
-                        existingId={editingDayId}
-                        isDateCalculated={isDateCalculated}
-                      /> )}
-                  {errorDay && ( <p className="text-sm font-medium text-destructive mt-4">{errorDay}</p> )}
-                </CardContent>
-              </Card>
-          </div>
 
-          <div className="lg:col-span-3 space-y-8">
-              {calculatedDays.length > 0 && (
-                <Card className="shadow-lg bg-card">
-                  <CardHeader>
-                     <CardTitle className="flex items-center gap-2 text-lg text-foreground"> <Clock className="h-4 w-4"/> Turnos Agregados ({calculatedDays.length}) </CardTitle>
-                    <CardDescription>Lista de turnos. Edita horas o elimina.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                      {calculatedDays.map((day, index) => (
-                        <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : 'bg-card'}`}>
-                           <div className="flex items-start justify-between mb-3">
-                             <div>
-                               <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
-                               <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1"> <CalendarIcon className="h-4 w-4" /> {format(day.inputData.startDate, 'PPPP', { locale: es })} </div>
-                               <div className="flex items-center text-sm text-muted-foreground gap-2"> <Clock className="h-4 w-4" /> {formatTo12Hour(day.inputData.startTime)} - {formatTo12Hour(day.inputData.endTime)} {day.inputData.endsNextDay ? ' (+1d)' : ''} </div>
-                                {day.inputData.includeBreak && day.inputData.breakStartTime && day.inputData.breakEndTime && (
-                                    <div className="flex items-center text-sm text-muted-foreground/80 gap-2 mt-1">
-                                        <Coffee className="h-4 w-4 text-blue-500" /> {/* Break icon */}
-                                        Descanso: {formatTo12Hour(day.inputData.breakStartTime)} - {formatTo12Hour(day.inputData.breakEndTime)}
-                                    </div>
-                                )}
-                             </div>
-                             <div className="text-right flex-shrink-0 ml-4">
-                                 <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
-                                 <div className="font-semibold text-primary text-lg flex items-center justify-end gap-1"> {formatCurrency(day.pagoTotalRecargosExtras)} </div>
-                                <div className="flex items-center justify-end gap-1 mt-2">
-                                   <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingResultsId === day.id}> <Edit className="h-4 w-4" /> </Button>
-                                   <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingDayId === day.id}> <PencilLine className="h-4 w-4" /> </Button>
-                                   <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => confirmDeleteDay(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button>
-                                      </AlertDialogTrigger>
-                                     <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar cálculo para turno iniciado el {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'}? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
-                                   </AlertDialog>
-                                 </div>
-                             </div>
-                          </div>
-                           <Separator className="my-3"/>
-                           {editingResultsId === day.id && editedHours ? (
-                               <div className="space-y-3">
-                                   <p className="text-sm font-medium text-foreground">Editando horas calculadas:</p>
-                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-                                       {displayOrder.map(key => (
-                                           <div key={key} className="space-y-1">
-                                               <Label htmlFor={`edit-hours-${day.id}-${key}`} className="text-xs text-muted-foreground"> {abbreviatedLabelMap[key] || key} </Label>
-                                               <Input id={`edit-hours-${day.id}-${key}`} type="number" step="0.01" min="0" value={editedHours[key] ?? 0} onChange={(e) => handleHourChange(e, key)} className="h-8 text-sm" placeholder="0.00" />
-                                           </div>
-                                       ))}
+         {/* Left Column: Add/Edit Turno */}
+         <div className="lg:col-span-2">
+            <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2 text-lg text-foreground"> {editingDayId ? <Edit className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />} {editingDayId ? 'Editar Turno' : 'Agregar Turno'} </CardTitle>
+                 <CardDescription> {isFormDisabled ? 'Selecciona colaborador y período.' : editingDayId ? `Modifica fecha/horas.` : 'Ingresa detalles del turno.'} </CardDescription>
+               </CardHeader>
+               <CardContent>
+                  {isFormDisabled ? ( <div className="text-center text-muted-foreground italic py-4"> Selección pendiente. </div> ) : (
+                     <WorkdayForm
+                       key={editingDayId || 'new'}
+                       onCalculationStart={handleDayCalculationStart}
+                       onCalculationComplete={handleDayCalculationComplete}
+                       isLoading={isLoadingDay}
+                       initialData={editingDayData}
+                       existingId={editingDayId}
+                       isDateCalculated={isDateCalculated}
+                     /> )}
+                 {errorDay && ( <p className="text-sm font-medium text-destructive mt-4">{errorDay}</p> )}
+               </CardContent>
+            </Card>
+         </div>
+
+         {/* Center Column: Calculated Days List */}
+         <div className="lg:col-span-3 space-y-8">
+            {calculatedDays.length > 0 && (
+               <Card className="shadow-lg bg-card">
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg text-foreground"> <Clock className="h-4 w-4"/> Turnos Agregados ({calculatedDays.length}) </CardTitle>
+                   <CardDescription>Lista de turnos. Edita horas o elimina.</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                     {calculatedDays.map((day, index) => (
+                       <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : 'bg-card'}`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
+                              <div className="flex items-center text-sm text-muted-foreground gap-2 mb-1"> <CalendarIcon className="h-4 w-4" /> {format(day.inputData.startDate, 'PPPP', { locale: es })} </div>
+                              <div className="flex items-center text-sm text-muted-foreground gap-2"> <Clock className="h-4 w-4" /> {formatTo12Hour(day.inputData.startTime)} - {formatTo12Hour(day.inputData.endTime)} {day.inputData.endsNextDay ? ' (+1d)' : ''} </div>
+                               {day.inputData.includeBreak && day.inputData.breakStartTime && day.inputData.breakEndTime && (
+                                   <div className="flex items-center text-sm text-muted-foreground/80 gap-2 mt-1">
+                                       <Coffee className="h-4 w-4 text-blue-500" /> {/* Break icon */}
+                                       Descanso: {formatTo12Hour(day.inputData.breakStartTime)} - {formatTo12Hour(day.inputData.breakEndTime)}
                                    </div>
-                                   <div className="flex justify-end gap-2 mt-3">
-                                       <Button variant="ghost" size="sm" onClick={handleCancelResults}> <X className="mr-1 h-4 w-4" /> Cancelar </Button>
-                                       <Button variant="default" size="sm" onClick={handleSaveResults}> <Save className="mr-1 h-4 w-4" /> Guardar Horas </Button>
-                                   </div>
-                               </div>
-                           ) : (
-                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                                   {displayOrder.map(key => {
-                                       const hours = day.horasDetalladas[key];
-                                       if (hours > 0) { return ( <div key={key} className="flex justify-between items-center space-x-1"> <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span> </div> ); }
-                                       return null;
-                                   })}
-                                   <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed"> <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span> <span className="font-semibold text-right text-foreground">{formatHours(day.duracionTotalTrabajadaHoras)}h</span> </div>
-                               </div>
-                           )}
-                        </li>
-                      ))}
-                    </ul>
-                     <Button variant="outline" onClick={handleDuplicateToNextDay} className="mt-6 w-full md:w-auto hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isLoadingDay || calculatedDays.length === 0}>
-                        {isLoadingDay ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />} Duplicar Turno Sig. Día
-                      </Button>
-                  </CardContent>
-                </Card>
-              )}
-              {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
-                 <Card className="text-center p-8 border-dashed mt-8 bg-card"> <CardHeader> <CardTitle className="text-lg text-foreground">Comienza a Calcular</CardTitle> <CardDescription>Agrega el primer turno para {employeeId} o importa.</CardDescription> </CardHeader> </Card>
-              )}
-               {isFormDisabled && calculatedDays.length === 0 && (
-                 <Card className="text-center p-8 border-dashed mt-8 bg-muted/50"> <CardHeader> <CardTitle className="text-lg text-foreground">Selección Pendiente</CardTitle> <CardDescription>Ingresa ID y período para empezar.</CardDescription> </CardHeader> </Card>
-              )}
-          </div>
+                               )}
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-4">
+                                <div className="text-sm text-muted-foreground mb-1">Recargos/Extras:</div>
+                                <div className="font-semibold text-primary text-lg flex items-center justify-end gap-1"> {formatCurrency(day.pagoTotalRecargosExtras)} </div>
+                               <div className="flex items-center justify-end gap-1 mt-2">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditDay(day.id)} title="Editar Fecha/Horas" className={`h-8 w-8 ${editingDayId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingResultsId === day.id}> <Edit className="h-4 w-4" /> </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditResults(day.id)} title="Editar Horas Calculadas" className={`h-8 w-8 ${editingResultsId === day.id ? 'text-primary bg-primary/10' : ''}`} disabled={editingDayId === day.id}> <PencilLine className="h-4 w-4" /> </Button>
+                                  <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => confirmDeleteDay(day.id)} title="Eliminar turno" disabled={editingDayId === day.id || editingResultsId === day.id}> <Trash2 className="h-4 w-4" /> </Button>
+                                     </AlertDialogTrigger>
+                                    <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar cálculo para turno iniciado el {calculatedDays.find(d => d.id === dayToDeleteId)?.inputData?.startDate ? format(calculatedDays.find(d => d.id === dayToDeleteId)!.inputData.startDate, 'PPP', { locale: es }) : 'seleccionado'}? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setDayToDeleteId(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteDay} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                            </div>
+                         </div>
+                          <Separator className="my-3"/>
+                          {editingResultsId === day.id && editedHours ? (
+                              <div className="space-y-3">
+                                  <p className="text-sm font-medium text-foreground">Editando horas calculadas:</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                                      {displayOrder.map(key => (
+                                          <div key={key} className="space-y-1">
+                                              <Label htmlFor={`edit-hours-${day.id}-${key}`} className="text-xs text-muted-foreground"> {abbreviatedLabelMap[key] || key} </Label>
+                                              <Input id={`edit-hours-${day.id}-${key}`} type="number" step="0.01" min="0" value={editedHours[key] ?? 0} onChange={(e) => handleHourChange(e, key)} className="h-8 text-sm" placeholder="0.00" />
+                                          </div>
+                                      ))}
+                                  </div>
+                                  <div className="flex justify-end gap-2 mt-3">
+                                      <Button variant="ghost" size="sm" onClick={handleCancelResults}> <X className="mr-1 h-4 w-4" /> Cancelar </Button>
+                                      <Button variant="default" size="sm" onClick={handleSaveResults}> <Save className="mr-1 h-4 w-4" /> Guardar Horas </Button>
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                  {displayOrder.map(key => {
+                                      const hours = day.horasDetalladas[key];
+                                      if (hours > 0) { return ( <div key={key} className="flex justify-between items-center space-x-1"> <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span> </div> ); }
+                                      return null;
+                                  })}
+                                  <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed"> <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span> <span className="font-semibold text-right text-foreground">{formatHours(day.duracionTotalTrabajadaHoras)}h</span> </div>
+                              </div>
+                          )}
+                       </li>
+                     ))}
+                   </ul>
+                    <Button variant="outline" onClick={handleDuplicateToNextDay} className="mt-6 w-full md:w-auto hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isLoadingDay || calculatedDays.length === 0}>
+                       {isLoadingDay ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />} Duplicar Turno Sig. Día
+                     </Button>
+                 </CardContent>
+               </Card>
+             )}
+             {calculatedDays.length === 0 && !editingDayId && !isFormDisabled && (
+                <Card className="text-center p-8 border-dashed mt-8 bg-card"> <CardHeader> <CardTitle className="text-lg text-foreground">Comienza a Calcular</CardTitle> <CardDescription>Agrega el primer turno para {employeeId} o importa.</CardDescription> </CardHeader> </Card>
+             )}
+              {isFormDisabled && calculatedDays.length === 0 && (
+                <Card className="text-center p-8 border-dashed mt-8 bg-muted/50"> <CardHeader> <CardTitle className="text-lg text-foreground">Selección Pendiente</CardTitle> <CardDescription>Ingresa ID y período para empezar.</CardDescription> </CardHeader> </Card>
+             )}
+         </div>
 
-          <div className="lg:col-span-2">
-               <SavedPayrollList
-                   payrolls={savedPayrolls}
-                   onLoad={handleLoadSavedPayroll}
-                   onDelete={(key) => setPayrollToDeleteKey(key)}
-                   onBulkExport={() => handleBulkExportPDF()} // Pass simple function call
-               />
-                <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
-                   <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeName || savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
-               </AlertDialog>
-          </div>
+         {/* Right Column: Saved Payroll List */}
+         <div className="lg:col-span-2">
+              <SavedPayrollList
+                  payrolls={savedPayrolls}
+                  onLoad={handleLoadSavedPayroll}
+                  onDelete={(key) => setPayrollToDeleteKey(key)}
+                  onBulkExport={() => handleBulkExportPDF()} // Pass simple function call for PDF
+                  // Removed CSV props
+              />
+               <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
+                  <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeName || savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
+              </AlertDialog>
+         </div>
 
-      </div>
+     </div>
 
-       {showSummary && (
-         <Card className="shadow-lg mt-8 bg-card">
+      {/* Summary Section */}
+      {showSummary && (
+         <Card className="shadow-lg mt-8 bg-card lg:col-span-7"> {/* Span full width on large screens */}
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados para {employees.find(emp => emp.id === employeeId)?.name || employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
-                {/* Single PDF Export Button */}
+                {/* PDF Export Dropdown */}
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -1003,9 +1188,12 @@ export default function Home() {
          </Card>
        )}
 
+      {/* Adjustment Modals */}
       <AdjustmentModal type="ingreso" isOpen={isIncomeModalOpen} onClose={() => setIsIncomeModalOpen(false)} onSave={handleAddIngreso} />
        <AdjustmentModal type="deduccion" isOpen={isDeductionModalOpen} onClose={() => setIsDeductionModalOpen(false)} onSave={handleAddDeduccion} />
 
     </main>
   );
 }
+
+    
