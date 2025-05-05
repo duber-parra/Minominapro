@@ -84,7 +84,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                  return (
                     <li key={payroll.key} className="relative p-4 border rounded-lg shadow-sm bg-secondary/30 flex flex-col justify-between gap-3">
                       <div className="flex-grow min-w-0 pr-16">
-                        <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeId}</p>
+                        <p className="font-semibold text-lg truncate text-foreground">{payroll.employeeName || payroll.employeeId}</p> {/* Display name or ID */}
                         <p className="text-sm text-muted-foreground"> Período: {format(payroll.periodStart, 'dd MMM', { locale: es })} - {format(payroll.periodEnd, 'dd MMM yyyy', { locale: es })} </p>
                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             <span className="text-muted-foreground">Dev. Bruto:</span><span className="font-medium text-foreground text-right">{formatCurrency(payroll.summary.pagoTotalConSalarioQuincena + (payroll.incluyeAuxTransporte ? 100000 : 0) + (payroll.otrosIngresosLista || []).reduce((s,i)=>s+i.monto, 0) )}</span>

@@ -2,6 +2,7 @@
 // src/types/index.ts
 
 import type { WorkdayFormValues } from '@/components/workday-form';
+import type { Employee } from './schedule'; // Import Employee type
 
  export interface CalculationResults {
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
@@ -57,6 +58,7 @@ import type { WorkdayFormValues } from '@/components/workday-form';
  export interface SavedPayrollData {
     key: string; // The localStorage key for this entry (e.g., payroll_123_2023-10-01_2023-10-15)
     employeeId: string;
+    employeeName?: string; // Optional: Employee's name for display
     periodStart: Date;
     periodEnd: Date;
     summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments and transport allowance
@@ -65,3 +67,6 @@ import type { WorkdayFormValues } from '@/components/workday-form';
     incluyeAuxTransporte: boolean; // Flag indicating if transport allowance was included for this saved period
     createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
  }
+
+ // Re-export Employee type if needed elsewhere
+ export type { Employee };

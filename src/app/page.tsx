@@ -6,7 +6,7 @@ import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, 
 import Image from 'next/image'; // Import next/image
 import { WorkdayForm, formSchema } from '@/components/workday-form'; // Import formSchema
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
-import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData, removed ScheduleTemplate
+import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee } from '@/types'; // Added AdjustmentItem, SavedPayrollData, Employee
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
 import { isCalculationError } from '@/types'; // Import the type guard
 import { Toaster } from '@/components/ui/toaster';
@@ -57,6 +57,33 @@ const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
 const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance
 const SCHEDULE_DATA_KEY = 'schedulePlannerData'; // LocalStorage key for schedule data
 
+// Define keys for local storage
+const EMPLOYEES_KEY = 'schedulePlannerEmployees'; // Key for employees in local storage
+
+// Helper function to load employees from localStorage safely
+const loadEmployeesFromLocalStorage = (defaultValue: Employee[]): Employee[] => {
+    if (typeof window === 'undefined') {
+        return defaultValue; // Return default during SSR
+    }
+    try {
+        const savedData = localStorage.getItem(EMPLOYEES_KEY);
+        if (!savedData) return defaultValue;
+        const parsed = JSON.parse(savedData);
+        if (Array.isArray(parsed)) {
+            return parsed.map((emp: any) => ({
+                ...emp,
+                locationIds: Array.isArray(emp.locationIds) ? emp.locationIds : [],
+                departmentIds: Array.isArray(emp.departmentIds) ? emp.departmentIds : [],
+            })) as Employee[];
+        }
+        return defaultValue;
+    } catch (error) {
+        console.error(`Error loading employees from localStorage:`, error);
+        return defaultValue;
+    }
+};
+
+
 // LocalStorage Key Generation
 const getStorageKey = (employeeId: string, periodStart: Date | undefined, periodEnd: Date | undefined): string | null => {
     if (!employeeId || !periodStart || !periodEnd) return null;
@@ -106,8 +133,10 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
 
 const storageKeyRegex = /^payroll_([a-zA-Z0-9_-]+)_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
 
-const loadAllSavedPayrolls = (): SavedPayrollData[] => {
+const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { // Accept employees list
     if (typeof window === 'undefined') return [];
+
+    const employeeMap = new Map(employees.map(emp => [emp.id, emp.name])); // Create a map for quick name lookup
 
     const savedPayrolls: SavedPayrollData[] = [];
     try {
@@ -135,6 +164,7 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
                          const savedPayrollItem: SavedPayrollData = {
                             key: key,
                             employeeId: employeeId,
+                            employeeName: employeeMap.get(employeeId), // Add employee name
                             periodStart: startDate,
                             periodEnd: endDate,
                             summary: summary || {
@@ -170,6 +200,7 @@ const loadAllSavedPayrolls = (): SavedPayrollData[] => {
 
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
+    const [employees, setEmployees] = useState<Employee[]>([]); // State for employees list
     const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
         const now = new Date();
         return now.getDate() <= 15 ? startOfMonth(now) : setDate(startOfMonth(now), 16);
@@ -202,10 +233,12 @@ export default function Home() {
     const { toast } = useToast();
     const { setValue } = useForm<WorkdayFormValues>(); // Use useForm hook to get setValue
 
-    // Load ALL saved payrolls on initial mount
+    // Load ALL saved payrolls and employees on initial mount
     useEffect(() => {
-        setSavedPayrolls(loadAllSavedPayrolls());
-    }, []);
+        const loadedEmployees = loadEmployeesFromLocalStorage([]);
+        setEmployees(loadedEmployees);
+        setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Pass employees to loader
+    }, []); // Only on mount
 
     // Load current employee/period data from localStorage when employee/period changes
     useEffect(() => {
@@ -239,7 +272,8 @@ export default function Home() {
              setIsIncomeModalOpen(false);
              setIsDeductionModalOpen(false);
         }
-    }, [employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]); // Added toast dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employeeId, payPeriodStart, payPeriodEnd]); // Removed toast, isDataLoaded dependencies
 
     // Save current employee/period data to localStorage
     useEffect(() => {
@@ -255,7 +289,9 @@ export default function Home() {
                          incluyeAuxTransporte: incluyeAuxTransporte,
                      };
                     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-                     setSavedPayrolls(loadAllSavedPayrolls());
+                    // Reload saved payrolls to update the list immediately
+                    const loadedEmployees = loadEmployeesFromLocalStorage([]); // Need employees for name mapping
+                    setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
                 } catch (error) {
                     console.error("Error guardando datos en localStorage:", error);
                     toast({
@@ -268,7 +304,8 @@ export default function Home() {
                 if (localStorage.getItem(storageKey)) {
                     localStorage.removeItem(storageKey);
                     console.log(`Clave ${storageKey} eliminada porque no hay datos ni auxilio de transporte activo.`);
-                    setSavedPayrolls(loadAllSavedPayrolls());
+                     const loadedEmployees = loadEmployeesFromLocalStorage([]); // Need employees for name mapping
+                     setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
                 }
             }
         }
@@ -383,7 +420,8 @@ export default function Home() {
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
-         setSavedPayrolls(loadAllSavedPayrolls());
+         const loadedEmployees = loadEmployeesFromLocalStorage([]); // Need employees for name mapping
+         setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
          toast({
             title: 'Datos del Período Eliminados',
             description: `Se han borrado los turnos, ajustes y estado de auxilio de transporte guardados localmente para ${employeeId} en este período.`,
@@ -433,7 +471,7 @@ export default function Home() {
             const isEditing = !!editingDayId; // Check if we were editing
             setEditingDayId(null);
 
-             // Only show success toast and advance date if ADDING, not editing
+             // Handle toast and date advance based on add/edit
              if (!isEditing) {
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
@@ -449,7 +487,6 @@ export default function Home() {
                      description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} actualizado.`,
                  });
              }
-
         }
     };
 
@@ -644,8 +681,9 @@ export default function Home() {
      }
      try {
           const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
-        exportPayrollToPDF(currentSummary, employeeId, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado);
-        toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${employeeId} generado.` });
+          const currentEmployee = employees.find(emp => emp.id === employeeId); // Find employee details
+        exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado); // Pass name
+        toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });
      } catch (error) {
         console.error("Error exportando PDF:", error);
          toast({ title: 'Error al Exportar PDF', description: 'No se pudo generar el archivo PDF.', variant: 'destructive' });
@@ -653,13 +691,13 @@ export default function Home() {
   };
 
   const handleBulkExportPDF = () => {
-    const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls();
+    const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls(employees); // Pass current employees list
     if (allPayrollDataToExport.length === 0) {
         toast({ title: 'No Hay Datos para Exportar', description: 'No se encontraron nóminas guardadas.', variant: 'default' });
         return;
     }
     try {
-        exportAllPayrollsToPDF(allPayrollDataToExport);
+        exportAllPayrollsToPDF(allPayrollDataToExport, employees); // Pass employees list
         toast({ title: 'Exportación Masiva Completa', description: `Se generó un PDF con ${allPayrollDataToExport.length} comprobantes.` });
     } catch (error) {
         console.error("Error durante la exportación masiva de PDF:", error);
@@ -674,7 +712,7 @@ export default function Home() {
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
      setIsDataLoaded(false);
-     toast({ title: 'Nómina Cargada', description: `Se cargaron los datos de ${payrollToLoad.employeeId} para ${format(payrollToLoad.periodStart, 'dd/MM/yy')} - ${format(payrollToLoad.periodEnd, 'dd/MM/yy')}.` });
+     toast({ title: 'Nómina Cargada', description: `Se cargaron los datos de ${payrollToLoad.employeeName || payrollToLoad.employeeId} para ${format(payrollToLoad.periodStart, 'dd/MM/yy')} - ${format(payrollToLoad.periodEnd, 'dd/MM/yy')}.` });
    };
 
     const handleDeleteSavedPayroll = () => {
@@ -682,13 +720,15 @@ export default function Home() {
       try {
          const payrollInfo = savedPayrolls.find(p => p.key === payrollToDeleteKey);
          localStorage.removeItem(payrollToDeleteKey);
-         setSavedPayrolls(prevPayrolls => prevPayrolls.filter(p => p.key !== payrollToDeleteKey));
+         const updatedSavedPayrolls = savedPayrolls.filter(p => p.key !== payrollToDeleteKey);
+         setSavedPayrolls(updatedSavedPayrolls);
          setPayrollToDeleteKey(null);
-         toast({ title: 'Nómina Guardada Eliminada', description: payrollInfo ? `La nómina de ${payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.` : 'Nómina eliminada.', variant: 'destructive' });
+         toast({ title: 'Nómina Guardada Eliminada', description: payrollInfo ? `La nómina de ${payrollInfo.employeeName || payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.` : 'Nómina eliminada.', variant: 'destructive' });
          const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
          if (currentKey === payrollToDeleteKey) {
              setCalculatedDays([]); setOtrosIngresos([]); setOtrasDeducciones([]); setIncluyeAuxTransporte(false);
-             setEmployeeId(''); setPayPeriodStart(undefined); setPayPeriodEnd(undefined);
+             // Optionally clear employee/period selection if the current one was deleted
+             // setEmployeeId(''); setPayPeriodStart(undefined); setPayPeriodEnd(undefined);
          }
       } catch (error) {
           console.error("Error deleting saved payroll:", error);
@@ -704,7 +744,7 @@ export default function Home() {
     >
 
         {/* Decorative Images */}
-         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
+         <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Adjusted opacity for small screens */}
             <Image
                 src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
                 alt="Ilustración de taza de café"
@@ -908,10 +948,10 @@ export default function Home() {
                    payrolls={savedPayrolls}
                    onLoad={handleLoadSavedPayroll}
                    onDelete={(key) => setPayrollToDeleteKey(key)}
-                   onBulkExport={handleBulkExportPDF} // Passed for PDF export
+                   onBulkExport={() => handleBulkExportPDF()} // Pass simple function call
                />
                 <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
-                   <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
+                   <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeName || savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                </AlertDialog>
           </div>
 
@@ -922,7 +962,7 @@ export default function Home() {
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
-                 <CardDescription>Resultados para {employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+                 <CardDescription>Resultados para {employees.find(emp => emp.id === employeeId)?.name || employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
                 {/* Single PDF Export Button */}
                  <DropdownMenu>
@@ -969,4 +1009,3 @@ export default function Home() {
     </main>
   );
 }
-

@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData } from '@/types'; // Added AdjustmentItem and SavedPayrollData
+import type { QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee } from '@/types'; // Added Employee type
 import { labelMap, displayOrder, formatCurrency, formatHours } from '@/components/results-display'; // Import helpers
 import { formatTo12Hour } from './time-utils'; // Import the helper
 
@@ -17,6 +17,7 @@ declare module 'jspdf' {
 // Interface representing all data needed for a single payroll page
 interface PayrollPageData {
     employeeId: string;
+    employeeName?: string; // Optional employee name
     periodStart: Date;
     periodEnd: Date;
     summary: QuincenalCalculationSummary;
@@ -36,10 +37,11 @@ function addWatermarkHeader(doc: jsPDF, initialY: number = 10): number {
     doc.setTextColor(150); // Set text color to light gray (opacity is harder)
     doc.text(watermarkText, pageWidth / 2, initialY, { align: 'center' });
     doc.setTextColor(0); // Reset text color to black for the rest of the content
-    return initialY + 5; // Return the Y position below the watermark
+    doc.setFont('helvetica', 'normal'); // Reset font style
+    return initialY + 8; // Return the Y position below the watermark, increased space
 }
 
-// Helper function to draw a single payroll report page (Kept for single export)
+// Helper function to draw a single payroll report page
 function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -58,8 +60,9 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    // TODO: Get Employee Name based on ID if possible
-    doc.text(`Colaborador: ${data.employeeId}`, leftMargin, currentY); // Using ID for now
+    // Use employee name if available, otherwise fallback to ID
+    const employeeIdentifier = data.employeeName || data.employeeId;
+    doc.text(`Colaborador: ${employeeIdentifier}`, leftMargin, currentY);
     currentY += 6;
     doc.text(`Período: ${format(data.periodStart, 'dd/MM/yyyy', { locale: es })} - ${format(data.periodEnd, 'dd/MM/yyyy', { locale: es })}`, leftMargin, currentY);
     currentY += 10;
@@ -133,7 +136,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
          }
     });
 
-    currentY += 5; // Add some space
+    currentY = doc.lastAutoTable.finalY + 5; // Use finalY from autotable
 
     // --- Otros Devengados Section ---
     doc.setFontSize(12);
@@ -183,16 +186,17 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
                  hookData.cell.styles.minCellHeight = 1;
                  hookData.cell.styles.cellPadding = 0;
                  // Draw a line instead of text for separator
-                 if (hookData.column.index === 0) {
+                 if (hookData.column.index === 0 && hookData.cell.width) { // Check width exists
+                    const lineY = hookData.cell.y + hookData.cell.height / 2;
                     doc.setDrawColor(200, 200, 200); // Light gray line
-                    doc.line(hookData.cell.x, hookData.cell.y + hookData.cell.height / 2, hookData.cell.x + hookData.cell.width, hookData.cell.y + hookData.cell.height / 2);
+                    doc.line(hookData.cell.x, lineY, hookData.cell.x + hookData.cell.width, lineY);
                  }
                  hookData.cell.text = ''; // Clear text
             }
         }
     });
 
-    currentY += 5; // Add space
+    currentY = doc.lastAutoTable.finalY + 5; // Use finalY from autotable
 
 
     // --- Deducciones Legales ---
@@ -223,7 +227,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
         },
     });
 
-    currentY += 5; // Add space
+    currentY = doc.lastAutoTable.finalY + 5; // Use finalY from autotable
 
     // --- Subtotal Neto Parcial ---
     const subtotalNetoParcial = totalDevengadoBruto - totalDeduccionesLegales;
@@ -254,6 +258,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
                  }
             },
         });
+        currentY = doc.lastAutoTable.finalY; // Use finalY from autotable
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Otras Deducciones:', leftMargin, currentY + 5);
@@ -309,6 +314,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
 export function exportPayrollToPDF(
     summary: QuincenalCalculationSummary,
     employeeId: string,
+    employeeName: string | undefined, // Add employeeName parameter
     periodStart: Date,
     periodEnd: Date,
     otrosIngresosLista: AdjustmentItem[], // Add income list parameter
@@ -319,6 +325,7 @@ export function exportPayrollToPDF(
     // Construct the full data object needed by drawPayrollPage
     const payrollData: PayrollPageData = {
         employeeId,
+        employeeName, // Pass the name
         periodStart,
         periodEnd,
         summary,
@@ -330,7 +337,7 @@ export function exportPayrollToPDF(
     drawPayrollPage(doc, payrollData);
 
     // --- Save the PDF ---
-    const filename = `Nomina_${employeeId}_${format(periodStart, 'yyyyMMdd')}-${format(periodEnd, 'yyyyMMdd')}.pdf`;
+    const filename = `Nomina_${employeeName || employeeId}_${format(periodStart, 'yyyyMMdd')}-${format(periodEnd, 'yyyyMMdd')}.pdf`;
     doc.save(filename);
 }
 
@@ -365,7 +372,10 @@ const calculateNetoYTotalDeducciones = (payroll: SavedPayrollData): { neto: numb
 
 
 // --- Bulk Payroll Export (List Format) ---
-export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void {
+export function exportAllPayrollsToPDF(
+    allPayrollData: SavedPayrollData[],
+    employees: Employee[] // Pass the full employee list
+): void {
     if (!allPayrollData || allPayrollData.length === 0) {
         console.warn("No payroll data provided for bulk export.");
         return;
@@ -381,12 +391,12 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     const firmaHeight = 15; // Height reserved for signature line/space
 
     // --- Watermark Header for first page ---
-    currentY = addWatermarkHeader(doc, 10);
+    currentY = addWatermarkHeader(doc, 10); // Adjusted starting position
 
     // --- Main Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' });
+    doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' }); // Lowered title
     currentY += 8;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -401,10 +411,12 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
     let totalDeduccionesGlobal = 0; // Total deductions
     let totalGeneral = 0; // Total net pay
 
+    const employeeMap = new Map(employees.map(emp => [emp.id, emp.name])); // Create a map for quick name lookup
+
     const body = allPayrollData.map(payroll => {
         const { neto: netoFinal, totalDeducciones } = calculateNetoYTotalDeducciones(payroll); // Use helper
-        // Placeholders - Need to fetch actual Employee Name
-        const employeeName = `Colab. ${payroll.employeeId}`; // Placeholder name
+        // Get employee name from the map, fallback to ID if not found
+        const employeeName = employeeMap.get(payroll.employeeId) || payroll.employeeId; // Use Name
 
         const periodoStr = `${format(payroll.periodStart, 'd')} - ${format(payroll.periodEnd, 'd MMM', { locale: es })}`; // Shortened period
 
@@ -423,7 +435,7 @@ export function exportAllPayrollsToPDF(allPayrollData: SavedPayrollData[]): void
         totalGeneral += totalRow;
 
         return [
-            employeeName,
+            employeeName, // Display Name
             periodoStr,
             formatHours(totalHoras), // Format total hours
             formatCurrency(base),
