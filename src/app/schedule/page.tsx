@@ -16,7 +16,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, Download, FileX2, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, FileJson, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,7 +79,7 @@ import { ScheduleView } from '@/components/schedule/ScheduleView';
 import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator';
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
+// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-import ScheduleTemplateList
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -162,7 +162,7 @@ const iconMap: { [key: string]: React.ElementType } = {
     ChefHat: ChefHat,   // Nuevo: Icono de Chef
     Utensils: Utensils, // Nuevo: Icono de Utensilios (para Salón/Meseros)
     Wine: Wine,         // Nuevo: Icono de Copa (para Barra)
-    Archive: Archive,   // Nuevo: Icono de Caja (para Caja o Bodega)
+    Archive: Archive,   // Nuevo: Icono de Caja (para Bodega)
 };
 const initialDepartments: Department[] = [
   { id: 'dep-1', name: 'Cocina', locationId: 'loc-1', icon: ChefHat }, // Usa ChefHat
@@ -263,10 +263,16 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                   }
                    // Handle Templates: Revive dates if needed
                    if (key === SCHEDULE_TEMPLATES_KEY) {
-                      return parsed.map((tpl: any) => ({
-                        ...tpl,
-                        createdAt: tpl.createdAt && typeof tpl.createdAt === 'string' ? parseISO(tpl.createdAt) : tpl.createdAt,
-                      })) as T;
+                       console.log("[loadFromLocalStorage] Processing templates:", parsed);
+                      return parsed.map((tpl: any) => {
+                          console.log("[loadFromLocalStorage] Reviving template:", tpl);
+                          const revived = {
+                              ...tpl,
+                              createdAt: tpl.createdAt && typeof tpl.createdAt === 'string' ? parseISO(tpl.createdAt) : (tpl.createdAt instanceof Date ? tpl.createdAt : undefined),
+                          };
+                          console.log("[loadFromLocalStorage] Revived template:", revived);
+                          return revived;
+                      }).filter(tpl => tpl.createdAt !== undefined) as T; // Filter out if createdAt is invalid
                    }
                  return parsed as T;
             } else {
@@ -462,6 +468,8 @@ export default function SchedulePage() {
     // Loading state for page transitions
     const [isLoadingPage, setIsLoadingPage] = useState(false); // Added state
 
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+
 
     const isMobile = useIsMobile();
     const { toast } = useToast();
@@ -606,26 +614,26 @@ export default function SchedulePage() {
 
       // --- Effect to save Schedule Templates ---
       useEffect(() => {
-        if (isClient) {
-            try {
-                 // Ensure dates are stringified correctly
-                 const templatesToSave = scheduleTemplates.map(tpl => ({
-                    ...tpl,
-                    createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : tpl.createdAt,
-                 }));
-                 console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
-                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
-            } catch (error) {
-                 console.error("Error saving templates to localStorage:", error);
-                 toast({
-                     title: 'Error al Guardar Templates',
-                     description: 'No se pudieron guardar los templates localmente.',
-                     variant: 'destructive',
-                 });
-            }
-        }
-     }, [scheduleTemplates, isClient, toast]); // Added isClient and toast
+          if (isClient) {
+              try {
+                   // Ensure dates are stringified correctly
+                   const templatesToSave = scheduleTemplates.map(tpl => ({
+                      ...tpl,
+                      createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : tpl.createdAt,
+                   }));
+                   console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
+                   localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
+                  console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
+              } catch (error) {
+                   console.error("Error saving templates to localStorage:", error);
+                   toast({
+                       title: 'Error al Guardar Templates',
+                       description: 'No se pudieron guardar los templates localmente.',
+                       variant: 'destructive',
+                   });
+              }
+          }
+      }, [scheduleTemplates, isClient, toast]); // Added isClient and toast
 
 
     // ---- End LocalStorage Effects ---
@@ -1718,6 +1726,88 @@ export default function SchedulePage() {
         setNotes(event.target.value);
     };
 
+    // --- Handlers for Export/Import Configuration ---
+    const handleExportConfig = () => {
+        try {
+            const configData = {
+                locations,
+                departments: departments.map(({ icon, ...rest }) => ({ // Remove icon component before saving
+                    ...rest,
+                    iconName: Object.keys(iconMap).find(key => iconMap[key] === icon)
+                })),
+                employees,
+                 // Optionally include scheduleTemplates, scheduleNotes, notes, etc.
+                // scheduleTemplates,
+                // scheduleNotes,
+                // notes,
+            };
+            const jsonString = JSON.stringify(configData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `configuracion_horarios_${format(new Date(), 'yyyyMMdd_HHmmss')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast({ title: "Configuración Exportada", description: "Los datos de sedes, departamentos y colaboradores han sido exportados a un archivo JSON." });
+        } catch (error) {
+             console.error("Error exporting configuration:", error);
+             toast({ title: "Error al Exportar", description: "No se pudo exportar la configuración.", variant: "destructive" });
+        }
+    };
+
+    const handleImportConfig = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const jsonString = e.target?.result as string;
+                const configData = JSON.parse(jsonString);
+
+                // Basic validation (add more checks as needed)
+                if (!configData || !Array.isArray(configData.locations) || !Array.isArray(configData.departments) || !Array.isArray(configData.employees)) {
+                    throw new Error("El archivo JSON no tiene la estructura esperada (locations, departments, employees).");
+                }
+
+                // Restore icons for departments
+                const loadedDepartments = configData.departments.map((dep: any) => ({
+                    ...dep,
+                    icon: dep.iconName ? iconMap[dep.iconName] : Building,
+                }));
+
+                // Update state with imported data
+                setLocations(configData.locations);
+                setDepartments(loadedDepartments);
+                setEmployees(configData.employees);
+
+                 // Also update form defaults based on potentially new first location
+                 const firstLocId = configData.locations.length > 0 ? configData.locations[0].id : '';
+                 setSelectedLocationId(firstLocId);
+                 setDepartmentFormData(prev => ({ ...prev, locationId: firstLocId }));
+                 setEmployeeFormData(prev => ({ ...prev, locationIds: firstLocId ? [firstLocId] : [] }));
+
+                toast({ title: "Configuración Importada", description: "Se cargaron los datos de sedes, departamentos y colaboradores desde el archivo." });
+                setIsConfigModalOpen(false); // Close config modal after import
+                setActiveConfigTab('sedes'); // Reset tab
+
+            } catch (error) {
+                console.error("Error importing configuration:", error);
+                const message = error instanceof Error ? error.message : "No se pudo importar el archivo JSON.";
+                toast({ title: "Error al Importar", description: message, variant: "destructive" });
+            } finally {
+                // Reset file input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+
      const DndWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
          // Render DndContext only on client-side
          if (!isClient) {
@@ -2250,7 +2340,7 @@ export default function SchedulePage() {
             )}
 
              {/* Decorative Image */}
-              <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 sm:opacity-70 pointer-events-none" aria-hidden="true"> {/* Increased opacity */}
+              <div className="absolute top-[-10px] left-8 -z-10 opacity-70 dark:opacity-30 sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70 pointer-events-none" aria-hidden="true"> {/* Increased opacity */}
                 <Image
                     src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Left image source
                     alt="Ilustración teclado"
@@ -2289,10 +2379,40 @@ export default function SchedulePage() {
                                        </Button>
                                    </DialogTrigger>
                                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Adjusted padding */}
-                                      <DialogHeader className="p-4 border-b flex-shrink-0"> {/* Ensure header doesn't shrink */}
+                                      <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between"> {/* Header with title and buttons */}
+                                        <div> {/* Left side */}
                                           <DialogTitle>Configuración General</DialogTitle>
                                           <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
-                                      </DialogHeader>
+                                        </div>
+                                        <div className="flex items-center gap-2"> {/* Right side buttons */}
+                                            {/* Import Button */}
+                                             <input
+                                                 type="file"
+                                                 accept=".json"
+                                                 ref={fileInputRef}
+                                                 onChange={handleImportConfig}
+                                                 className="hidden"
+                                                 id="import-config-input"
+                                             />
+                                             <Button
+                                                 variant="outline"
+                                                 size="sm"
+                                                 onClick={() => fileInputRef.current?.click()}
+                                                 title="Importar configuración (JSON)"
+                                             >
+                                                 <UploadCloud className="mr-2 h-4 w-4" /> Importar
+                                             </Button>
+                                            {/* Export Button */}
+                                             <Button
+                                                 variant="outline"
+                                                 size="sm"
+                                                 onClick={handleExportConfig}
+                                                 title="Exportar configuración (JSON)"
+                                             >
+                                                 <Download className="mr-2 h-4 w-4" /> Exportar
+                                             </Button>
+                                        </div>
+                                       </DialogHeader>
                                         <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
                                             <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeConfigTab} onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
                                               <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0"> {/* Ensure TabsList doesn't shrink */}
@@ -2579,6 +2699,7 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
+                      {/* Removed Template List Button */}
                 </div>
 
 
