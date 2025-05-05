@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive, FileJson } from 'lucide-react'; // Added NotebookPen, CalendarX, FolderSync, BarChartHorizontal, ChefHat, Utensils, Wine, Archive, Download, Upload, List, FileJson
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive, Download } from 'lucide-react'; // Added Download icon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,7 +79,7 @@ import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import W
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import Notes modal
 import { SummaryDashboard } from '@/components/schedule/SummaryDashboard'; // Import the dashboard
 import { ConfigTabs } from '@/components/schedule/ConfigTabs'; // Import ConfigTabs
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
+// Removed ScheduleTemplateList import as requested
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -249,9 +249,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                   if (key === EMPLOYEES_KEY) {
                       return parsed.map((emp: any) => ({
                           ...emp,
-                          locationIds: Array.isArray(emp.locationIds)
-                              ? emp.locationIds
-                              : (emp.primaryLocationId ? [emp.primaryLocationId] : []), // Convert old primaryLocationId
+                          locationIds: Array.isArray(emp.locationIds) ? emp.locationIds : [],
                           departmentIds: Array.isArray(emp.departmentIds) ? emp.departmentIds : [] // Ensure departmentIds is an array or empty array
                       })) as T;
                   }
@@ -511,12 +509,19 @@ export default function SchedulePage() {
         setIsLoadingPage(true); // Start loading indicator
         // Initial load is now handled by useState initializers
         // Need to update employeeFormData and departmentFormData based on initial selectedLocationId
-        setDepartmentFormData(prev => ({ ...prev, locationId: selectedLocationId }));
-        setEmployeeFormData(prev => ({ ...prev, locationIds: selectedLocationId ? [selectedLocationId] : [] }));
+        const loadedLocations = loadFromLocalStorage<Location[]>(LOCATIONS_KEY, initialLocations);
+        const loadedDepartments = loadDepartmentsFromLocalStorage(initialDepartments);
+        const loadedEmployees = loadFromLocalStorage<Employee[]>(EMPLOYEES_KEY, initialEmployees);
+        const initialLocId = loadedLocations.length > 0 ? loadedLocations[0].id : '';
+        setLocations(loadedLocations);
+        setDepartments(loadedDepartments);
+        setEmployees(loadedEmployees);
+        setSelectedLocationId(initialLocId);
+        setDepartmentFormData(prev => ({ ...prev, locationId: initialLocId }));
+        setEmployeeFormData(prev => ({ ...prev, locationIds: initialLocId ? [initialLocId] : [] }));
          // Load templates explicitly on mount if not already loaded by useState initializer
          setSavedTemplates(loadScheduleTemplates());
         setIsLoadingPage(false); // Stop loading indicator
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Empty dependency array ensures this runs only once on mount
 
       // Memoize weekDates to prevent unnecessary recalculations
@@ -657,7 +662,7 @@ export default function SchedulePage() {
                    });
               }
           }
-      }, [savedTemplates, isClient, toast]); // Added isClient and toast
+      }, [savedTemplates, isClient, toast]);
 
 
     // ---- End LocalStorage Effects ---
@@ -806,8 +811,9 @@ export default function SchedulePage() {
         if (isEmployeeSelectionModalOpen && deptForFiltering) {
              const deptExists = departments.some(d => d.id === deptForFiltering);
              if (deptExists) {
+                 // Only show employees assigned to this department OR employees without any department assigned
                 potentiallyAvailable = potentiallyAvailable.filter(emp =>
-                    emp.departmentIds?.includes(deptForFiltering)
+                    !emp.departmentIds || emp.departmentIds.length === 0 || emp.departmentIds.includes(deptForFiltering)
                 );
              } else {
                  console.warn(`Department ID ${deptForFiltering} not found, showing all available employees.`);
@@ -2329,11 +2335,10 @@ export default function SchedulePage() {
                                                  handleSaveEmployee={handleSaveEmployee}
                                                  setConfigFormType={setConfigFormType}
                                                  setSelectedConfigItem={setSelectedConfigItem}
-                                                 handleToggleEmployeeLocation={handleToggleEmployeeLocation}
-                                                 handleToggleEmployeeDepartment={handleToggleEmployeeDepartment}
+                                                 handleToggleEmployeeLocation={handleToggleEmployeeDepartment}
                                                  availableDepartmentsForEmployee={availableDepartmentsForEmployee}
                                                  activeTab={activeConfigTab}
-                                                 setActiveTab={setActiveConfigTab} // Pass state setter directly
+                                                 setActiveTab={setActiveTabFn} // Pass state setter directly
                                                  locationSearch={locationSearch}
                                                  setLocationSearch={setLocationSearch}
                                                  departmentSearch={departmentSearch}
@@ -2346,9 +2351,11 @@ export default function SchedulePage() {
                                                  filteredDepartmentsData={filteredDepartmentsData}
                                                  filteredEmployeesData={filteredEmployeesData}
                                                  filteredTemplatesData={filteredTemplatesData}
+                                                 handleExportConfig={handleExportConfig} // Pass export handler prop
+                                                 handleImportConfig={handleImportConfig} // Pass import handler prop
+                                                 fileInputRef={fileInputRef}      // Pass ref prop
                                              />
                                        </div>
-                                         {/* Dialog Footer Removed */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2539,10 +2546,6 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
-                      {/* Template List Button */}
-                       <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                            <Library className="mr-2 h-4 w-4" /> Ver Templates
-                       </Button>
                 </div>
 
 
@@ -2655,30 +2658,6 @@ export default function SchedulePage() {
                            </DialogClose>
                            <Button type="submit" form="save-template-form">Guardar Template</Button>
                        </DialogFooter>
-                  </DialogContent>
-              </Dialog>
-
-             {/* Template List Modal */}
-              <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                  <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                           <DialogTitle>Cargar Template ({viewMode === 'day' ? 'Diario' : 'Semanal'})</DialogTitle>
-                           <DialogDescription>Selecciona un template para aplicar al {viewMode === 'day' ? `día ${format(targetDate, 'dd/MM')}` : `la semana actual`}. Las asignaciones existentes se reemplazarán.</DialogDescription>
-                      </DialogHeader>
-                       {filteredTemplates.length > 0 ? (
-                           <ScheduleTemplateList
-                                templates={filteredTemplates}
-                                onLoadTemplate={handleLoadTemplate}
-                                onDeleteTemplate={handleDeleteTemplate} // Pass delete handler
-                            />
-                       ) : (
-                           <p className="text-center text-muted-foreground italic py-4">No hay templates guardados para esta sede y vista.</p>
-                       )}
-                       <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button" variant="secondary">Cerrar</Button>
-                            </DialogClose>
-                        </DialogFooter>
                   </DialogContent>
               </Dialog>
 
