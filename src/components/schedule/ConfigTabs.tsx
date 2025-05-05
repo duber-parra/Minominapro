@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2, Copy, Upload, Download, FileJson, FolderUp } from 'lucide-react'; // Added Upload, Download, FileJson, FolderUp
+import { PlusCircle, Edit, Trash2, Copy, Upload, Download } from 'lucide-react'; // Removed JSON icons
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
 
@@ -76,11 +76,7 @@ interface ConfigTabsProps {
   filteredDepartmentsData: Department[];
   filteredEmployeesData: Employee[];
   filteredTemplatesData: ScheduleTemplate[];
-   // Add JSON import/export handlers for templates
-   handleExportTemplatesJson: () => void;
-   handleImportTemplatesJsonClick: () => void;
-   templateJsonInputRef: React.RefObject<HTMLInputElement>;
-   handleImportTemplatesJson: (event: React.ChangeEvent<HTMLInputElement>) => void;
+   // Removed JSON import/export handlers for templates
 }
 
 export function ConfigTabs({
@@ -124,10 +120,7 @@ export function ConfigTabs({
     filteredDepartmentsData,
     filteredEmployeesData,
     filteredTemplatesData,
-    handleExportTemplatesJson, // Receive template JSON export handler
-    handleImportTemplatesJsonClick, // Receive template JSON import click handler
-    templateJsonInputRef, // Receive template JSON input ref
-    handleImportTemplatesJson, // Receive template JSON import handler
+    // Removed JSON handlers
 }: ConfigTabsProps) {
 
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
@@ -434,36 +427,7 @@ export function ConfigTabs({
                     >
                         <PlusCircle className="h-4 w-4" />
                     </Button>
-                     {/* JSON Import/Export for Templates */}
-                     {activeTab === 'templates' && (
-                        <div className="flex gap-1">
-                             <input
-                                 type="file"
-                                 accept=".json"
-                                 ref={templateJsonInputRef}
-                                 onChange={handleImportTemplatesJson}
-                                 className="hidden"
-                                 id="import-templates-json-input"
-                             />
-                             <Button
-                                 variant="outline"
-                                 size="icon"
-                                 onClick={handleImportTemplatesJsonClick}
-                                 title="Importar Templates (JSON)"
-                             >
-                                 <FolderUp className="h-4 w-4" />
-                             </Button>
-                             <Button
-                                 variant="outline"
-                                 size="icon"
-                                 onClick={handleExportTemplatesJson}
-                                 disabled={templates.length === 0}
-                                 title="Exportar Templates (JSON)"
-                             >
-                                 <FileJson className="h-4 w-4" />
-                             </Button>
-                         </div>
-                      )}
+                     {/* Removed JSON Import/Export for Templates */}
                  </div>
 
                  <div className="flex-grow overflow-hidden"> {/* Make list area scrollable */}
