@@ -14,7 +14,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive, Download } from 'lucide-react'; // Added Download icon
+import { Plus, Trash2, Edit, ChevronsLeft, ChevronsRight, Calendar as CalendarModernIcon, Users, Building, Building2, MinusCircle, ChevronsUpDown, Settings, Save, CopyPlus, Eraser, FileDown, PencilLine, Share2, Loader2, Check, Copy, Upload, FolderUp, List, UploadCloud, FileText, NotebookPen, CalendarX, FolderSync, BarChartHorizontal, Library, X, Notebook, User, ImportIcon, ListCollapse, PlusCircle, ChefHat, Utensils, Wine, Archive, Download, FileJson, NotebookText } from 'lucide-react'; // Added NotebookText icon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Import Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,7 +79,7 @@ import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import W
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import Notes modal
 import { SummaryDashboard } from '@/components/schedule/SummaryDashboard'; // Import the dashboard
 import { ConfigTabs } from '@/components/schedule/ConfigTabs'; // Import ConfigTabs
-// Removed ScheduleTemplateList import as requested
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -261,7 +261,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                   }
                    // Handle Templates: Revive dates if needed
                    if (key === SCHEDULE_TEMPLATES_KEY) {
-                       console.log("[loadFromLocalStorage] Processing templates:", parsed);
+                       // console.log("[loadFromLocalStorage] Processing templates:", parsed);
                        try {
                            return parsed.map((tpl: any) => {
                                // console.log("[loadFromLocalStorage] Raw template:", tpl);
@@ -271,15 +271,25 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                                }
                                // Ensure assignments is an object (can be empty)
                                const assignments = (tpl.assignments && typeof tpl.assignments === 'object' && !Array.isArray(tpl.assignments)) ? tpl.assignments : {};
+                               // Revive createdAt date
+                                let createdAtDate: Date | undefined = undefined;
+                                if (tpl.createdAt) {
+                                    if (typeof tpl.createdAt === 'string') {
+                                        createdAtDate = parseISO(tpl.createdAt);
+                                    } else if (tpl.createdAt instanceof Date) {
+                                        createdAtDate = tpl.createdAt;
+                                    }
+                                    if (createdAtDate && !isValid(createdAtDate)) {
+                                        console.warn(`[loadFromLocalStorage] Invalid createdAt date for template ${tpl.id}: ${tpl.createdAt}. Setting to undefined.`);
+                                        createdAtDate = undefined; // Set to undefined if parsing failed
+                                    }
+                                }
+
                                const revived = {
                                    ...tpl,
                                    assignments: assignments, // Use validated/defaulted assignments
-                                   createdAt: tpl.createdAt && typeof tpl.createdAt === 'string' ? parseISO(tpl.createdAt) : (tpl.createdAt instanceof Date ? tpl.createdAt : undefined),
+                                   createdAt: createdAtDate, // Assign the revived date
                                };
-                                if (revived.createdAt && !isValid(revived.createdAt)) {
-                                    console.warn(`[loadFromLocalStorage] Invalid createdAt date for template ${tpl.id}: ${tpl.createdAt}. Setting to undefined.`);
-                                    revived.createdAt = undefined; // Set to undefined if parsing failed
-                                }
                                // console.log("[loadFromLocalStorage] Revived template:", revived);
                                return revived;
                            }).filter(tpl => tpl !== null) as T; // Filter out null (invalid) templates
@@ -314,7 +324,11 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
         }
     } catch (error) {
         // Handle JSON parsing errors or other potential issues
-         if (error instanceof SyntaxError) {
+         if (error instanceof SyntaxError && key === SCHEDULE_NOTES_KEY) {
+            // If parsing fails for notes, return the raw string (could be initial default)
+            console.warn(`[loadFromLocalStorage] Failed to parse JSON for key ${key} (expected for notes string). Returning raw data.`);
+            return (localStorage.getItem(key) ?? defaultValue) as T;
+         } else if (error instanceof SyntaxError) {
              console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
               // Remove corrupted data for keys other than SCHEDULE_NOTES_KEY and SCHEDULE_TEMPLATES_KEY
              if (key !== SCHEDULE_NOTES_KEY && key !== SCHEDULE_TEMPLATES_KEY ) {
@@ -436,6 +450,8 @@ export default function SchedulePage() {
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
     const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Initialize empty, load in useEffect
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // State for template saving modal
+    const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false); // State for template list modal
+
     const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for confirming template deletion
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
     const [notesModalForDate, setNotesModalForDate] = useState<Date | null>(null); // State to open notes modal for a specific date
@@ -444,7 +460,6 @@ export default function SchedulePage() {
         targetDepartment: Department;
         date: Date;
     } | null>(null); // State for department mismatch warning
-    const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false); // State for template list modal
 
     // New state for the Summary Sheet
     const [isSummarySheetOpen, setIsSummarySheetOpen] = useState(false);
@@ -641,27 +656,27 @@ export default function SchedulePage() {
 
       // --- Effect to save Schedule Templates ---
       useEffect(() => {
-          if (isClient) {
-              try {
-                   // Ensure dates are stringified correctly and assignments is valid
-                   const templatesToSave = savedTemplates.map(tpl => ({
-                      ...tpl,
-                      // Ensure assignments is always an object before stringifying
-                      assignments: (tpl.assignments && typeof tpl.assignments === 'object' && !Array.isArray(tpl.assignments)) ? tpl.assignments : {},
-                      createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : tpl.createdAt,
-                   }));
-                   console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
-                   localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
-                   console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
-              } catch (error) {
-                   console.error("Error saving templates to localStorage:", error);
-                   toast({
-                       title: 'Error al Guardar Templates',
-                       description: 'No se pudieron guardar los templates localmente.',
-                       variant: 'destructive',
-                   });
-              }
-          }
+        if (isClient) {
+            try {
+                 // Ensure dates are stringified correctly and assignments is valid
+                 const templatesToSave = savedTemplates.map(tpl => ({
+                    ...tpl,
+                    // Ensure assignments is always an object before stringifying
+                    assignments: (tpl.assignments && typeof tpl.assignments === 'object' && !Array.isArray(tpl.assignments)) ? tpl.assignments : {},
+                    createdAt: tpl.createdAt instanceof Date ? tpl.createdAt.toISOString() : (typeof tpl.createdAt === 'string' ? tpl.createdAt : undefined), // Handle string or Date
+                 }));
+                 console.log("[Save Effect] Saving templates to localStorage:", templatesToSave); // Log before saving
+                 localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templatesToSave));
+                 console.log("[Save Effect] Templates saved successfully."); // Log if saving succeeds
+            } catch (error) {
+                 console.error("Error saving templates to localStorage:", error);
+                 toast({
+                     title: 'Error al Guardar Templates',
+                     description: 'No se pudieron guardar los templates localmente.',
+                     variant: 'destructive',
+                 });
+            }
+        }
       }, [savedTemplates, isClient, toast]);
 
 
@@ -735,7 +750,7 @@ export default function SchedulePage() {
 
      // Filter templates by selected location and current view mode
      const filteredTemplates = useMemo(() => {
-        console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates
+        // console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
@@ -744,10 +759,10 @@ export default function SchedulePage() {
              // Check if temp.type matches viewMode ('day' or 'week')
             const typeMatch = temp.type === viewMode;
              // Log details for debugging
-             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
+             // console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
             return typeMatch && locationMatch;
         });
-        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log filtered templates
+        // console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log filtered templates
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -1666,7 +1681,7 @@ export default function SchedulePage() {
      };
 
      const handleLoadTemplate = useCallback((templateId: string) => {
-          console.log("[handleLoadTemplate] Attempting to load template ID:", templateId);
+          // console.log("[handleLoadTemplate] Attempting to load template ID:", templateId);
           const templateToLoad = savedTemplates.find(t => t.id === templateId);
 
           if (!templateToLoad) {
@@ -1685,7 +1700,7 @@ export default function SchedulePage() {
                });
                return;
           }
-           console.log(`[handleLoadTemplate] Loading ${templateToLoad.type} template:`, templateToLoad);
+           // console.log(`[handleLoadTemplate] Loading ${templateToLoad.type} template:`, templateToLoad);
 
           setScheduleData(prevSchedule => {
                const updatedSchedule = { ...prevSchedule };
@@ -1739,7 +1754,7 @@ export default function SchedulePage() {
                    });
 
                    updatedSchedule[dateKey].assignments = newDayAssignments;
-                   console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
+                   // console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
 
                } else { // Weekly template
                    const templateAssignments = templateToLoad.assignments as WeeklyAssignments;
@@ -1803,18 +1818,18 @@ export default function SchedulePage() {
                             console.warn(`[handleLoadTemplate] Template has fewer days (${templateDates.length}) than the target week (${weekDates.length}). Skipping day index ${weekDayIndex}.`);
                        }
                    });
-                   console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
+                   // console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
                }
 
-               console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
+               // console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
                return updatedSchedule;
            });
 
           toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
           // Optionally close modal if open
           setIsTemplateListModalOpen(false);
-          setConfigFormType(null); // Close detail view in config modal
-          setSelectedConfigItem(null);
+          // setConfigFormType(null); // Close detail view in config modal
+          // setSelectedConfigItem(null);
        }, [savedTemplates, viewMode, targetDate, setScheduleData, toast, employees, currentDate, weekDates, departments, selectedLocationId]); // Added dependencies
 
 
@@ -2211,6 +2226,40 @@ export default function SchedulePage() {
         [savedTemplates, templateSearch]
      );
 
+    // Function to handle saving the current schedule
+    const handleSaveSchedule = () => {
+        // This function currently just saves the existing `scheduleData` state
+        // to localStorage. If you implement a backend, this is where you'd
+        // send the data to the server.
+        if (isClient) {
+            try {
+                const dataToSave = JSON.parse(JSON.stringify(scheduleData));
+                 Object.keys(dataToSave).forEach(key => {
+                     if (dataToSave[key] && dataToSave[key].date instanceof Date) {
+                         dataToSave[key].date = dataToSave[key].date.toISOString();
+                     }
+                     if (dataToSave[key] && dataToSave[key].assignments) {
+                         Object.keys(dataToSave[key].assignments).forEach(deptId => {
+                             (dataToSave[key].assignments[deptId] || []).forEach((assign: any) => {
+                                 if (assign.employee && typeof assign.employee === 'object') {
+                                     assign.employee = { id: assign.employee.id };
+                                 }
+                             });
+                         });
+                     }
+                 });
+                localStorage.setItem(SCHEDULE_DATA_KEY, JSON.stringify(dataToSave));
+                toast({ title: 'Horario Guardado', description: 'El horario actual ha sido guardado localmente.' });
+            } catch (error) {
+                console.error("Error saving schedule data to localStorage:", error);
+                 toast({
+                     title: "Error al Guardar Horario",
+                     description: "No se pudo guardar el horario en el almacenamiento local.",
+                     variant: "destructive",
+                 });
+            }
+        }
+    };
 
 
     // Render null or a loader during initial server render and hydration phase
@@ -2254,8 +2303,8 @@ export default function SchedulePage() {
              </div>
 
 
-             {/* Controls Section - Top Bar */}
-              <div className="bg-transparent border-none p-0 mb-6 md:mb-8">
+             {/* Controls Section - Top Bar - Removed Card wrapper */}
+              <div className="bg-transparent p-0 mb-6 md:mb-8">
                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                          {/* Location Selector & Config Button */}
                          <div className="flex items-center gap-2 flex-shrink-0">
@@ -2277,7 +2326,7 @@ export default function SchedulePage() {
                                            <DialogTitle>Configuración General</DialogTitle>
                                            <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
                                          </div>
-                                          <div className="flex items-center gap-2 pr-8"> {/* Right side buttons - Adjusted position, added padding-right */}
+                                          <div className="flex items-center gap-2"> {/* Right side buttons - Adjusted position */}
                                               {/* Config Import Button */}
                                               <input
                                                   type="file"
@@ -2335,7 +2384,8 @@ export default function SchedulePage() {
                                                  handleSaveEmployee={handleSaveEmployee}
                                                  setConfigFormType={setConfigFormType}
                                                  setSelectedConfigItem={setSelectedConfigItem}
-                                                 handleToggleEmployeeLocation={handleToggleEmployeeDepartment}
+                                                 handleToggleEmployeeLocation={handleToggleEmployeeLocation} // Pass the correct function
+                                                 handleToggleEmployeeDepartment={handleToggleEmployeeDepartment} // Pass the correct function
                                                  availableDepartmentsForEmployee={availableDepartmentsForEmployee}
                                                  activeTab={activeConfigTab}
                                                  setActiveTab={setActiveTabFn} // Pass state setter directly
@@ -2480,7 +2530,11 @@ export default function SchedulePage() {
                   <div className="flex flex-wrap justify-end gap-2 mt-6">
                      {/* Notes Button */}
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                         <NotebookPen className="mr-2 h-4 w-4" /> Anotaciones
+                         <NotebookText className="mr-2 h-4 w-4" /> Anotaciones {/* Changed Icon */}
+                     </Button>
+                    {/* Templates Button */}
+                     <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                         <Library className="mr-2 h-4 w-4" /> Templates
                      </Button>
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
@@ -2546,6 +2600,10 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
+                     {/* Save Schedule Button */}
+                      <Button onClick={handleSaveSchedule} variant="default" className="hover:bg-primary/90">
+                          <Save className="mr-2 h-4 w-4" /> Guardar Horario
+                      </Button>
                 </div>
 
 
@@ -2608,6 +2666,28 @@ export default function SchedulePage() {
                       </AlertDialogFooter>
                   </AlertDialogContent>
               </AlertDialog>
+
+             {/* Template List Modal */}
+             <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
+                 <DialogContent className="sm:max-w-md">
+                     <DialogHeader>
+                         <DialogTitle className="flex items-center gap-2"><Library className="h-5 w-5"/> Templates Guardados ({viewMode === 'day' ? 'Diarios' : 'Semanales'})</DialogTitle>
+                         <DialogDescription>Carga o elimina templates para la sede "{locations.find(l => l.id === selectedLocationId)?.name}" en vista {viewMode === 'day' ? 'diaria' : 'semanal'}.</DialogDescription>
+                     </DialogHeader>
+                     <div className="py-4">
+                        <ScheduleTemplateList
+                            templates={filteredTemplates} // Pass filtered templates
+                            onLoadTemplate={handleLoadTemplate}
+                            onDeleteTemplate={handleDeleteTemplate}
+                         />
+                     </div>
+                     <DialogFooter>
+                         <DialogClose asChild>
+                             <Button type="button" variant="secondary">Cerrar</Button>
+                         </DialogClose>
+                     </DialogFooter>
+                 </DialogContent>
+             </Dialog>
 
               {/* Template Delete Confirmation Dialog */}
               <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>

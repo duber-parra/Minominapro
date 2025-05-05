@@ -30,9 +30,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud } from 'lucide-react'; // Added UploadCloud
+import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library } from 'lucide-react'; // Added Library icon
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns'; // Import format
+import { es } from 'date-fns/locale'; // Import Spanish locale
 
 // Interface for props passed to ConfigTabs
 interface ConfigTabsProps {
@@ -60,10 +62,10 @@ interface ConfigTabsProps {
   setConfigFormType: React.Dispatch<React.SetStateAction<'location' | 'department' | 'employee' | 'template' | null>>;
   setSelectedConfigItem: React.Dispatch<React.SetStateAction<any | null>>;
   handleToggleEmployeeLocation: (locationId: string) => void;
-  handleToggleEmployeeDepartment: (departmentId: string) => void;
+  handleToggleEmployeeDepartment: (departmentId: string) => void; // Added this prop
   availableDepartmentsForEmployee: Department[];
   activeTab: string;
-  setActiveTab: (tab: string) => void; // Changed from setActiveTab to match prop name
+  setActiveTab: (tab: string) => void;
   locationSearch: string;
   setLocationSearch: (search: string) => void;
   departmentSearch: string;
@@ -106,10 +108,10 @@ export function ConfigTabs({
     setConfigFormType,
     setSelectedConfigItem,
     handleToggleEmployeeLocation,
-    handleToggleEmployeeDepartment,
+    handleToggleEmployeeDepartment, // Destructure the passed prop
     availableDepartmentsForEmployee,
     activeTab,
-    setActiveTab, // Use the passed prop directly
+    setActiveTab,
     locationSearch,
     setLocationSearch,
     departmentSearch,
@@ -161,26 +163,21 @@ export function ConfigTabs({
                                 <Upload className="h-4 w-4" />
                               </Button>
                            )}
-                          {type !== 'template' ? ( // Show delete button for all except templates initially
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
-                                         <Trash2 className="h-4 w-4" />
-                                     </Button>
-                                </AlertDialogTrigger>
-                               <AlertDialogContent>
-                                   <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
-                                   <AlertDialogFooter>
-                                       <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                                       <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
-                                   </AlertDialogFooter>
-                               </AlertDialogContent>
-                             </AlertDialog>
-                          ) : ( // For templates, show delete in detail view
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} title={`Eliminar ${type}`}>
-                                    <Trash2 className="h-4 w-4" />
-                              </Button>
-                          )}
+                          {/* Delete Button - Now uses AlertDialog for all types */}
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
+                                     <Trash2 className="h-4 w-4" />
+                                 </Button>
+                            </AlertDialogTrigger>
+                           <AlertDialogContent>
+                               <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                   <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
+                               </AlertDialogFooter>
+                           </AlertDialogContent>
+                         </AlertDialog>
                      </div>
                 </div>
             ))}
@@ -366,14 +363,49 @@ export function ConfigTabs({
                                      <div><Label>Nombre:</Label> <p>{selectedConfigItem.name}</p></div>
                                      <div><Label>Tipo:</Label> <p>{selectedConfigItem.type === 'week' ? 'Semanal' : 'Diario'}</p></div>
                                      <div><Label>Sede:</Label> <p>{locations.find(l => l.id === selectedConfigItem.locationId)?.name || 'N/A'}</p></div>
+                                     <div><Label>Creado:</Label> <p>{selectedConfigItem.createdAt instanceof Date ? format(selectedConfigItem.createdAt, 'dd MMM yyyy, HH:mm', { locale: es }) : (typeof selectedConfigItem.createdAt === 'string' ? format(parseISO(selectedConfigItem.createdAt), 'dd MMM yyyy, HH:mm', { locale: es }) : 'N/A')}</p></div>
                                       <Textarea readOnly value={JSON.stringify(selectedConfigItem.assignments, null, 2)} rows={10} />
                                  </>
                              ) : (
                                  <p className="text-muted-foreground">La creación manual de templates no está implementada. Guarda templates desde el planificador.</p>
                              )}
                          </CardContent>
-                         <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                             <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cerrar</Button>
+                         <CardFooter className="flex justify-between gap-2 border-t pt-4">
+                             {selectedConfigItem && ( // Show delete button only when viewing details
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Template
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Eliminar este Template?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                "{selectedConfigItem.name}"
+                                                <br/>
+                                                Esta acción no se puede deshacer.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={() => confirmDeleteItem('template', selectedConfigItem.id, selectedConfigItem.name)}
+                                                className="bg-destructive hover:bg-destructive/90">
+                                                Eliminar Template
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                             )}
+                              <div className="flex gap-2 ml-auto">
+                                <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cerrar</Button>
+                                {selectedConfigItem && ( // Show Load button only when viewing details
+                                     <Button onClick={() => handleLoadTemplate(selectedConfigItem.id)}>
+                                        <Upload className="mr-2 h-4 w-4" /> Cargar Template
+                                     </Button>
+                                )}
+                             </div>
                          </CardFooter>
                      </Card>
                  );
