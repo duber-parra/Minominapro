@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"; // Added CardFooter
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2, Copy, Upload, Download } from 'lucide-react'; // Removed JSON icons
+import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud } from 'lucide-react'; // Added UploadCloud
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
 
@@ -63,7 +63,7 @@ interface ConfigTabsProps {
   handleToggleEmployeeDepartment: (departmentId: string) => void;
   availableDepartmentsForEmployee: Department[];
   activeTab: string;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string) => void; // Changed from setActiveTab to match prop name
   locationSearch: string;
   setLocationSearch: (search: string) => void;
   departmentSearch: string;
@@ -76,7 +76,9 @@ interface ConfigTabsProps {
   filteredDepartmentsData: Department[];
   filteredEmployeesData: Employee[];
   filteredTemplatesData: ScheduleTemplate[];
-   // Removed JSON import/export handlers for templates
+  handleExportConfig: () => void; // Add export handler prop
+  handleImportConfig: (event: React.ChangeEvent<HTMLInputElement>) => void; // Add import handler prop
+  fileInputRef: React.RefObject<HTMLInputElement>; // Add ref prop
 }
 
 export function ConfigTabs({
@@ -107,7 +109,7 @@ export function ConfigTabs({
     handleToggleEmployeeDepartment,
     availableDepartmentsForEmployee,
     activeTab,
-    setActiveTab,
+    setActiveTab, // Use the passed prop directly
     locationSearch,
     setLocationSearch,
     departmentSearch,
@@ -120,7 +122,9 @@ export function ConfigTabs({
     filteredDepartmentsData,
     filteredEmployeesData,
     filteredTemplatesData,
-    // Removed JSON handlers
+    handleExportConfig, // Destructure export handler
+    handleImportConfig, // Destructure import handler
+    fileInputRef,      // Destructure ref
 }: ConfigTabsProps) {
 
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
@@ -157,20 +161,26 @@ export function ConfigTabs({
                                 <Upload className="h-4 w-4" />
                               </Button>
                            )}
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
-                                     <Trash2 className="h-4 w-4" />
-                                 </Button>
-                            </AlertDialogTrigger>
-                           <AlertDialogContent>
-                               <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                   <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                                   <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
-                               </AlertDialogFooter>
-                           </AlertDialogContent>
-                         </AlertDialog>
+                          {type !== 'template' ? ( // Show delete button for all except templates initially
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
+                                         <Trash2 className="h-4 w-4" />
+                                     </Button>
+                                </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                   <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
+                                   <AlertDialogFooter>
+                                       <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                                       <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
+                                   </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
+                          ) : ( // For templates, show delete in detail view
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} title={`Eliminar ${type}`}>
+                                    <Trash2 className="h-4 w-4" />
+                              </Button>
+                          )}
                      </div>
                 </div>
             ))}
@@ -427,7 +437,32 @@ export function ConfigTabs({
                     >
                         <PlusCircle className="h-4 w-4" />
                     </Button>
-                     {/* Removed JSON Import/Export for Templates */}
+                    {/* Configuration Import/Export Buttons */}
+                    <input
+                         type="file"
+                         accept=".json"
+                         ref={fileInputRef}
+                         onChange={handleImportConfig}
+                         className="hidden"
+                         id="import-config-input"
+                     />
+                      <Button
+                         variant="outline"
+                         size="icon"
+                         onClick={() => fileInputRef?.current?.click()}
+                         title="Importar configuración (JSON)"
+                     >
+                         <UploadCloud className="h-4 w-4" />
+                     </Button>
+                      <Button
+                         variant="outline"
+                         size="icon"
+                         onClick={handleExportConfig}
+                         title="Exportar configuración (JSON)"
+                     >
+                         <Download className="h-4 w-4" />
+                     </Button>
+
                  </div>
 
                  <div className="flex-grow overflow-hidden"> {/* Make list area scrollable */}
