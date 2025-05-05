@@ -65,7 +65,7 @@ interface ConfigTabsProps {
   handleToggleEmployeeDepartment: (departmentId: string) => void; // Added this prop
   availableDepartmentsForEmployee: Department[];
   activeTab: string;
-  setActiveTab: (tab: string) => void; // Changed prop name for clarity
+  setActiveTab: (tab: string) => void;
   locationSearch: string;
   setLocationSearch: (search: string) => void;
   departmentSearch: string;
@@ -163,21 +163,19 @@ export function ConfigTabs({
                                 <Upload className="h-4 w-4" />
                               </Button>
                            )}
-                          {/* Delete Button - Now uses AlertDialog for all types */}
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()} title={`Eliminar ${type}`}>
-                                     <Trash2 className="h-4 w-4" />
-                                 </Button>
-                            </AlertDialogTrigger>
-                           <AlertDialogContent>
-                               <AlertDialogHeader> <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle> <AlertDialogDescription> Eliminar {type} "{item.name}"? Esta acción no se puede deshacer. </AlertDialogDescription> </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                   <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                                   <AlertDialogAction onClick={(e) => { e.stopPropagation(); confirmDeleteItem(type, item.id, item.name); }} className="bg-destructive hover:bg-destructive/90"> Eliminar </AlertDialogAction>
-                               </AlertDialogFooter>
-                           </AlertDialogContent>
-                         </AlertDialog>
+                          {/* Delete Button Trigger - uses confirmDeleteItem */}
+                          <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                  e.stopPropagation(); // Prevent item selection when clicking delete
+                                  confirmDeleteItem(type, item.id, item.name);
+                              }}
+                              title={`Eliminar ${type}`}
+                          >
+                              <Trash2 className="h-4 w-4" />
+                          </Button>
                      </div>
                 </div>
             ))}
@@ -187,7 +185,7 @@ export function ConfigTabs({
 
     const renderConfigDetailForm = () => {
         if (!configFormType) {
-            return <div className="p-4 text-center text-muted-foreground">Selecciona un elemento de la lista para ver/editar detalles o presiona '+' para crear uno nuevo.</div>;
+            return <div className="p-4 text-center text-muted-foreground h-full flex items-center justify-center">Selecciona un elemento de la lista para ver/editar detalles o presiona '+' para crear uno nuevo.</div>;
         }
 
         switch (configFormType) {
@@ -319,30 +317,12 @@ export function ConfigTabs({
                         </CardContent>
                          <CardFooter className="flex justify-between gap-2 border-t pt-4"> {/* Changed justify-end to justify-between */}
                             {selectedConfigItem && ( // Show delete button only when editing
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" > {/* Keep destructive variant */}
-                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Colaborador
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Eliminar Colaborador?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Eliminar a "{selectedConfigItem.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name)}
-                                                className="bg-destructive hover:bg-destructive/90"
-                                            >
-                                                Eliminar
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                <Button
+                                     variant="destructive"
+                                     onClick={() => confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name)} // Trigger confirmation
+                                >
+                                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar Colaborador
+                                </Button>
                             )}
                             <div className="flex gap-2 ml-auto"> {/* Group Cancel and Save */}
                                 <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
@@ -372,31 +352,12 @@ export function ConfigTabs({
                          </CardContent>
                          <CardFooter className="flex justify-between gap-2 border-t pt-4">
                              {selectedConfigItem && ( // Show delete button only when viewing details
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive">
-                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Template
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Eliminar este Template?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                "{selectedConfigItem.name}"
-                                                <br/>
-                                                Esta acción no se puede deshacer.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => confirmDeleteItem('template', selectedConfigItem.id, selectedConfigItem.name)}
-                                                className="bg-destructive hover:bg-destructive/90">
-                                                Eliminar Template
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => confirmDeleteItem('template', selectedConfigItem.id, selectedConfigItem.name)} // Trigger confirmation
+                                >
+                                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar Template
+                                </Button>
                              )}
                               <div className="flex gap-2 ml-auto">
                                 <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cerrar</Button>
@@ -470,31 +431,6 @@ export function ConfigTabs({
                     >
                         <PlusCircle className="h-4 w-4" />
                     </Button>
-                    {/* Configuration Import/Export Buttons */}
-                    <input
-                         type="file"
-                         accept=".json"
-                         ref={fileInputRef}
-                         onChange={handleImportConfig}
-                         className="hidden"
-                         id="import-config-input"
-                     />
-                      <Button
-                         variant="outline"
-                         size="icon"
-                         onClick={() => fileInputRef?.current?.click()}
-                         title="Importar configuración (JSON)"
-                     >
-                         <UploadCloud className="h-4 w-4" />
-                     </Button>
-                      <Button
-                         variant="outline"
-                         size="icon"
-                         onClick={handleExportConfig}
-                         title="Exportar configuración (JSON)"
-                     >
-                         <Download className="h-4 w-4" />
-                     </Button>
 
                  </div>
 

@@ -262,10 +262,10 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                   }
                    // Handle Templates: Revive dates if needed
                    if (key === SCHEDULE_TEMPLATES_KEY) {
-                       // console.log("[loadFromLocalStorage] Processing templates:", parsed);
+                       console.log("[loadFromLocalStorage] Processing templates:", parsed);
                        try {
                            return parsed.map((tpl: any) => {
-                               // console.log("[loadFromLocalStorage] Raw template:", tpl);
+                               console.log("[loadFromLocalStorage] Raw template:", tpl);
                                if (!tpl || typeof tpl !== 'object' || !tpl.id || !tpl.name) {
                                    console.warn("[loadFromLocalStorage] Skipping invalid template object:", tpl);
                                    return null; // Skip invalid templates
@@ -291,7 +291,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                                    assignments: assignments, // Use validated/defaulted assignments
                                    createdAt: createdAtDate, // Assign the revived date
                                };
-                               // console.log("[loadFromLocalStorage] Revived template:", revived);
+                               console.log("[loadFromLocalStorage] Revived template:", revived);
                                return revived;
                            }).filter(tpl => tpl !== null) as T; // Filter out null (invalid) templates
                        } catch (templateError) {
@@ -420,7 +420,7 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
 
     // Log the structure of loaded templates for debugging
     loadedTemplates.forEach((tpl, index) => {
-        // console.log(`[loadScheduleTemplates] Template ${index}:`, tpl);
+        console.log(`[loadScheduleTemplates] Template ${index}:`, tpl);
         // Ensure assignments is an object, not potentially undefined or other type
         if (tpl.assignments === null || typeof tpl.assignments !== 'object' || Array.isArray(tpl.assignments)) {
             console.warn(`[loadScheduleTemplates] Template ${tpl.id} has invalid assignments structure. Resetting.`);
@@ -457,7 +457,7 @@ interface EmployeeHoursSummary {
 
 export default function SchedulePage() {
     // --- State Initialization ---
-    const [currentDate, setCurrentDate] = useState<Date>(new Date()); // Initialize as new Date()
+    const [currentDate, setCurrentDate] = useState<Date>(() => new Date()); // Initialize immediately
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
     const [locations, setLocations] = useState<Location[]>(() => loadFromLocalStorage(LOCATIONS_KEY, initialLocations));
     const [departments, setDepartments] = useState<Department[]>(() => loadDepartmentsFromLocalStorage(initialDepartments));
@@ -467,7 +467,7 @@ export default function SchedulePage() {
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false); // State for the notes modal
     const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]); // Initialize empty, load in useEffect
     const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false); // State for template saving modal
-    const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false); // State for template list modal
+    // const [isTemplateListModalOpen, setIsTemplateListModalOpen] = useState(false); // State for template list modal
 
     const [templateToDeleteId, setTemplateToDeleteId] = useState<string | null>(null); // State for confirming template deletion
     const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null); // State for confirming note deletion
@@ -494,14 +494,14 @@ export default function SchedulePage() {
     const [shiftRequestContext, setShiftRequestContext] = useState<{ departmentId: string; date: Date } | null>(null);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [editingShift, setEditingShift] = useState<{ assignment: ShiftAssignment; date: Date; departmentId: string } | null>(null);
-    const [targetDate, setTargetDate] = useState<Date>(new Date()); // Used for day view and template application context
+    const [targetDate, setTargetDate] = useState<Date>(() => new Date()); // Used for day view and template application context
 
     // --- Config Modal State ---
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [configFormType, setConfigFormType] = useState<'location' | 'department' | 'employee' | 'template' | null>(null); // Re-added 'template'
     const [selectedConfigItem, setSelectedConfigItem] = useState<any | null>(null); // State for the item selected in the new config modal list
     const [activeConfigTab, setActiveConfigTab] = useState<string>("sedes"); // Define setActiveTab using useState
-    const setActiveTabFn = (tab: string) => setActiveConfigTab(tab);
+    const setActiveTabFn = (tab: string) => setActiveConfigTab(tab); // Renamed for clarity
 
     const [locationFormData, setLocationFormData] = useState({ name: '' });
 
@@ -528,7 +528,7 @@ export default function SchedulePage() {
     // Loading state for page transitions
     const [isLoadingPage, setIsLoadingPage] = useState(false); // Added state
 
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for config file import
 
 
     const isMobile = useIsMobile();
@@ -539,20 +539,35 @@ export default function SchedulePage() {
     useEffect(() => {
         setIsClient(true); // Mark as client-side after mount
         setIsLoadingPage(true); // Start loading indicator
-        // Initial load is now handled by useState initializers
-        // Need to update employeeFormData and departmentFormData based on initial selectedLocationId
+
         const loadedLocations = loadFromLocalStorage<Location[]>(LOCATIONS_KEY, initialLocations);
         const loadedDepartments = loadDepartmentsFromLocalStorage(initialDepartments);
         const loadedEmployees = loadFromLocalStorage<Employee[]>(EMPLOYEES_KEY, initialEmployees);
+        const loadedNotes = loadFromLocalStorage<string>(SCHEDULE_NOTES_KEY, defaultNotesText, false);
+        const loadedEvents = loadFromLocalStorage<ScheduleNote[]>(SCHEDULE_EVENTS_KEY, []);
+        const loadedTemplates = loadScheduleTemplates(); // Use dedicated loader
+        const loadedSchedule = loadScheduleDataFromLocalStorage(loadedEmployees, {}); // Load schedule AFTER employees
+
         const initialLocId = loadedLocations.length > 0 ? loadedLocations[0].id : '';
+
         setLocations(loadedLocations);
         setDepartments(loadedDepartments);
         setEmployees(loadedEmployees);
+        setScheduleData(loadedSchedule);
+        setScheduleNotes(loadedEvents);
+        setNotes(loadedNotes);
+        setSavedTemplates(loadedTemplates); // Set templates state
+
         setSelectedLocationId(initialLocId);
+        // Update form defaults based on initial selectedLocationId
         setDepartmentFormData(prev => ({ ...prev, locationId: initialLocId }));
-        setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: initialLocId ? [initialLocId] : [], departmentIds: [] })); // Reset form data on mount/location change
-         // Load templates explicitly on mount if not already loaded by useState initializer
-         setSavedTemplates(loadScheduleTemplates());
+        setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: initialLocId ? [initialLocId] : [], departmentIds: [] }));
+
+        // Set initial targetDate and currentDate (can be the same initially)
+        const now = new Date();
+        setCurrentDate(now);
+        setTargetDate(now);
+
         setIsLoadingPage(false); // Stop loading indicator
     }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -767,7 +782,7 @@ export default function SchedulePage() {
 
      // Filter templates by selected location and current view mode
      const filteredTemplates = useMemo(() => {
-        // console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates
+        console.log("[Filter Memo] All templates in state:", savedTemplates); // Log all templates
         // Ensure savedTemplates is always an array before filtering
         const templatesArray = Array.isArray(savedTemplates) ? savedTemplates : [];
         const filtered = templatesArray.filter(temp => {
@@ -776,10 +791,10 @@ export default function SchedulePage() {
              // Check if temp.type matches viewMode ('day' or 'week')
             const typeMatch = temp.type === viewMode;
              // Log details for debugging
-             // console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
+             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
             return typeMatch && locationMatch;
         });
-        // console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log filtered templates
+        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log filtered templates
         return filtered;
     }, [savedTemplates, selectedLocationId, viewMode]);
 
@@ -1130,7 +1145,7 @@ export default function SchedulePage() {
                 });
                 break;
             case 'template':
-                 // console.warn("Template viewing/editing form.");
+                 console.log("Template viewing/editing form.");
                  break;
         }
     };
@@ -1232,7 +1247,8 @@ export default function SchedulePage() {
                 Object.keys(updatedSchedule).forEach(dateKey => {
                     if (updatedSchedule[dateKey] && updatedSchedule[dateKey].assignments) { // Check if assignments exist
                         Object.keys(updatedSchedule[dateKey].assignments).forEach(deptId => {
-                            updatedSchedule[dateKey].assignments = updatedSchedule[dateKey].assignments.map(assignment => {
+                             const currentAssignments = updatedSchedule[dateKey].assignments[deptId] || [];
+                            updatedSchedule[dateKey].assignments[deptId] = currentAssignments.map(assignment => {
                                 if (assignment.employee.id === id) {
                                     return { ...assignment, employee: updatedEmployeeData };
                                 }
@@ -1771,7 +1787,7 @@ export default function SchedulePage() {
                     });
 
                     updatedSchedule[dateKey].assignments = newDayAssignments;
-                    // console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
+                    console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
 
                 } else { // Weekly template
                     const templateAssignments = templateToLoad.assignments as WeeklyAssignments;
@@ -1835,18 +1851,18 @@ export default function SchedulePage() {
                              console.warn(`[handleLoadTemplate] Template has fewer days (${templateDates.length}) than the target week (${weekDates.length}). Skipping day index ${weekDayIndex}.`);
                         }
                     });
-                    // console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
+                    console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
                 }
 
-                // console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
+                console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
                 return updatedSchedule;
             });
 
            toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
            // Optionally close modal if open
-           setIsTemplateListModalOpen(false);
-           // setConfigFormType(null); // Close detail view in config modal
-           // setSelectedConfigItem(null);
+           // setIsTemplateListModalOpen(false);
+           setConfigFormType(null); // Close detail view in config modal
+           setSelectedConfigItem(null);
         }, [savedTemplates, viewMode, targetDate, setScheduleData, toast, employees, currentDate, weekDates, departments, selectedLocationId]); // Added dependencies
 
 
@@ -1893,6 +1909,7 @@ export default function SchedulePage() {
                 employees,
                  scheduleNotes, // Include calendar notes/events
                  notes, // Include general notes
+                 // Exclude templates from config export as they are handled separately
             };
             const jsonString = JSON.stringify(configData, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
@@ -2345,11 +2362,11 @@ export default function SchedulePage() {
                                    </DialogTrigger>
                                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Adjusted padding */}
                                        <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4"> {/* Added space-x */}
-                                         <div> {/* Left side */}
+                                         <div className="flex-1"> {/* Take available space */}
                                            <DialogTitle>Configuración General</DialogTitle>
                                            <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
                                          </div>
-                                          <div className="flex items-center gap-2"> {/* Right side buttons - Adjusted position */}
+                                          <div className="flex items-center gap-2 flex-shrink-0"> {/* Buttons container */}
                                               {/* Config Import Button */}
                                               <input
                                                   type="file"
@@ -2365,7 +2382,7 @@ export default function SchedulePage() {
                                                   onClick={() => fileInputRef.current?.click()}
                                                   title="Importar configuración (JSON)"
                                               >
-                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar Conf.
+                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar
                                               </Button>
                                              {/* Config Export Button */}
                                               <Button
@@ -2374,7 +2391,7 @@ export default function SchedulePage() {
                                                   onClick={handleExportConfig}
                                                   title="Exportar configuración (JSON)"
                                               >
-                                                  <Download className="mr-2 h-4 w-4" /> Exportar Conf.
+                                                  <Download className="mr-2 h-4 w-4" /> Exportar
                                               </Button>
                                          </div>
                                          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -2555,10 +2572,7 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookText className="mr-2 h-4 w-4" /> Anotaciones {/* Changed Icon */}
                      </Button>
-                    {/* Templates Button - Moved to Config */}
-                    {/* <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                        <Library className="mr-2 h-4 w-4" /> Templates
-                    </Button> */}
+                    {/* Removed Templates Button */}
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2690,11 +2704,7 @@ export default function SchedulePage() {
                   </AlertDialogContent>
               </AlertDialog>
 
-             {/* Template List Modal - Removed as it's now in ConfigTabs */}
-             {/* <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}> ... </Dialog> */}
-
-              {/* Template Delete Confirmation Dialog - Moved to ConfigTabs */}
-              {/* <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}> ... </AlertDialog> */}
+             {/* Template Delete Confirmation Dialog - Moved to ConfigTabs */}
 
              {/* Save Template Dialog */}
               <Dialog open={isSavingTemplate} onOpenChange={setIsSavingTemplate}>
@@ -2753,8 +2763,25 @@ export default function SchedulePage() {
                  isEditing={!!editingShift}
              />
 
-             {/* Universal Delete Confirmation - Handled within ConfigTabs now */}
-              {/* <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}> ... </AlertDialog> */}
+             {/* Main Delete Confirmation Dialog */}
+             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+                 <AlertDialogContent>
+                     <AlertDialogHeader>
+                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                             Eliminar {itemToDelete?.type} "{itemToDelete?.name}"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.
+                         </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                         <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction
+                             onClick={handleDeleteItem}
+                             className="bg-destructive hover:bg-destructive/90">
+                             Eliminar
+                         </AlertDialogAction>
+                     </AlertDialogFooter>
+                 </AlertDialogContent>
+             </AlertDialog>
 
 
             {/* Clear Day Confirmation */}
