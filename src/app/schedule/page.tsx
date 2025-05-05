@@ -78,7 +78,7 @@ import { ShiftDetailModal } from '@/components/schedule/ShiftDetailModal';
 import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import WeekNavigator
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal';
 // Removed template list import as functionality was removed/moved
-// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList';
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -262,10 +262,10 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                   }
                    // Handle Templates: Revive dates if needed
                    if (key === SCHEDULE_TEMPLATES_KEY) {
-                       // console.log("[loadFromLocalStorage] Processing templates:", parsed);
+                       console.log("[loadFromLocalStorage] Processing templates:", parsed);
                        try {
                            return parsed.map((tpl: any) => {
-                               // console.log("[loadFromLocalStorage] Raw template:", tpl);
+                               console.log("[loadFromLocalStorage] Raw template:", tpl);
                                if (!tpl || typeof tpl !== 'object' || !tpl.id || !tpl.name) {
                                    console.warn("[loadFromLocalStorage] Skipping invalid template object:", tpl);
                                    return null; // Skip invalid templates
@@ -281,7 +281,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
                                     console.warn(`[loadFromLocalStorage] Invalid createdAt date for template ${tpl.id}: ${tpl.createdAt}. Setting to undefined.`);
                                     revived.createdAt = undefined; // Set to undefined if parsing failed
                                 }
-                               // console.log("[loadFromLocalStorage] Revived template:", revived);
+                               console.log("[loadFromLocalStorage] Revived template:", revived);
                                return revived;
                            }).filter(tpl => tpl !== null) as T; // Filter out null (invalid) templates
                        } catch (templateError) {
@@ -452,7 +452,7 @@ export default function SchedulePage() {
     const [employeeHoursSummary, setEmployeeHoursSummary] = useState<EmployeeHoursSummary[]>([]);
 
 
-    const [notes, setNotes] = useState<string>(''); // Initialize notes string state
+    const [notes, setNotes] = useState<string>(defaultNotesText); // Initialize notes string state
     const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -739,7 +739,8 @@ export default function SchedulePage() {
 
      // Filter templates by selected location and current view mode
      const filteredTemplates = useMemo(() => {
-        // console.log("[Filter Memo] All templates in state:", scheduleTemplates);
+        console.log("[Filter Memo] All templates in state:", scheduleTemplates); // Log all templates
+        // Ensure scheduleTemplates is always an array before filtering
         const templatesArray = Array.isArray(scheduleTemplates) ? scheduleTemplates : [];
         const filtered = templatesArray.filter(temp => {
              // Check if temp.type matches viewMode ('day' or 'week')
@@ -747,10 +748,10 @@ export default function SchedulePage() {
              // Check if temp.locationId matches selectedLocationId
              const locationMatch = temp.locationId === selectedLocationId;
              // Log details for debugging
-             // console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
+             console.log(`[Filter Memo] Template ${temp.id} (${temp.name}): Type Match=${typeMatch} (template type: ${temp.type}, view mode: ${viewMode}), Loc Match=${locationMatch} (template loc: ${temp.locationId}, selected loc: ${selectedLocationId})`);
             return typeMatch && locationMatch;
         });
-        // console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered);
+        console.log(`[Filter Memo] Filtered templates for loc ${selectedLocationId}, view ${viewMode}:`, filtered); // Log filtered templates
         return filtered;
     }, [scheduleTemplates, selectedLocationId, viewMode]);
 
@@ -1091,8 +1092,8 @@ export default function SchedulePage() {
                 break;
             case 'template':
                  // If editing a template, load its data (or handle adding new)
-                 console.warn("Template editing/adding form not fully implemented.");
-                 // You might pre-fill a name or leave it blank for adding
+                 console.warn("Template viewing/editing form.");
+                 // No form data needed just for viewing details
                  break;
         }
     };
@@ -1799,7 +1800,7 @@ export default function SchedulePage() {
 
         toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
         // Optionally close modal if open
-        // setIsTemplateListModalOpen(false);
+        setIsTemplateListModalOpen(false);
         setConfigFormType(null); // Close detail view in config modal
         setSelectedConfigItem(null);
      }, [scheduleTemplates, viewMode, targetDate, setScheduleData, toast, employees, currentDate, weekDates, departments, selectedLocationId]); // Added dependencies
@@ -1823,6 +1824,19 @@ export default function SchedulePage() {
     const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setNotes(event.target.value);
     };
+
+    // Function to save notes to localStorage
+     const handleSaveNotes = () => {
+        if (isClient) {
+            try {
+                localStorage.setItem(SCHEDULE_NOTES_KEY, notes);
+                toast({ title: 'Notas Guardadas', description: 'Tus notas generales han sido guardadas localmente.' });
+            } catch (error) {
+                console.error("Error saving general notes:", error);
+                toast({ title: 'Error', description: 'No se pudieron guardar las notas.', variant: 'destructive' });
+            }
+        }
+     };
 
     // --- Handlers for Export/Import Configuration ---
     const handleExportConfig = () => {
@@ -1962,7 +1976,7 @@ export default function SchedulePage() {
             locationName,
             weekDates,
             departments: filteredDepartments, // Use filtered departments for the current location
-            employees: employees.filter(emp => emp.locationIds.includes(selectedLocationId)), // Pass ONLY employees for the CURRENT location
+            employees: employees.filter(emp => Array.isArray(emp.locationIds) && emp.locationIds.includes(selectedLocationId)), // Ensure locationIds exists and filter
             scheduleData,
             getScheduleForDate: (date: Date) => getScheduleForDate(date),
             calculateShiftDuration, // Pass the calculation function
@@ -1983,7 +1997,7 @@ export default function SchedulePage() {
 
         const allLocationData: ScheduleExportData[] = locations.map(location => {
             const locDepartments = departments.filter(dept => dept.locationId === location.id);
-            const locEmployees = employees.filter(emp => emp.locationIds.includes(location.id));
+            const locEmployees = employees.filter(emp => Array.isArray(emp.locationIds) && emp.locationIds.includes(location.id)); // Ensure locationIds exists
             // Filter scheduleData relevant to this location and week
             const locScheduleData: { [dateKey: string]: ScheduleData } = {};
              weekDates.forEach(date => {
@@ -2487,12 +2501,12 @@ export default function SchedulePage() {
             )}
 
              {/* Decorative Image */}
-             <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
+              <div className="absolute top-[-60px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Adjust vertical position */}
                 <Image
                     src="https://i.postimg.cc/PJVW7XZG/teclado.png" // Left image source
                     alt="Ilustración teclado"
-                    width={255} // Adjusted size
-                    height={255} // Adjusted size
+                    width={255 * 1.7} // Scaled width
+                    height={255 * 1.7} // Scaled height
                     className="object-contain transform -rotate-12"
                     data-ai-hint="keyboard illustration"
                 />
@@ -2500,7 +2514,7 @@ export default function SchedulePage() {
 
 
              {/* Title */}
-              <div className="text-center mb-6 md:mb-8">
+               <div className="text-center mb-6 md:mb-8">
                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-foreground/80 to-primary">
                     Planificador de Horarios
                  </h1>
@@ -2510,7 +2524,7 @@ export default function SchedulePage() {
 
              {/* Controls Section - Top Bar */}
              {/* Removed Card wrapper and styling */}
-             <div className="p-0 mb-6 md:mb-8">
+              <div className="bg-transparent border-none p-0 mb-6 md:mb-8">
                  {/* Removed CardHeader */}
                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 flex-wrap p-0">
                          {/* Location Selector & Config Button */}
@@ -2528,40 +2542,40 @@ export default function SchedulePage() {
                                        </Button>
                                    </DialogTrigger>
                                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Adjusted padding */}
-                                      <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between"> {/* Header with title and buttons */}
-                                        <div> {/* Left side */}
-                                          <DialogTitle>Configuración General</DialogTitle>
-                                          <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
-                                        </div>
-                                        <div className="flex items-center gap-2"> {/* Right side buttons */}
-                                            {/* Import Button */}
-                                             <input
-                                                 type="file"
-                                                 accept=".json"
-                                                 ref={fileInputRef}
-                                                 onChange={handleImportConfig}
-                                                 className="hidden"
-                                                 id="import-config-input"
-                                             />
-                                             <Button
-                                                 variant="outline"
-                                                 size="sm"
-                                                 onClick={() => fileInputRef.current?.click()}
-                                                 title="Importar configuración (JSON)"
-                                             >
-                                                 <UploadCloud className="mr-2 h-4 w-4" /> Importar
-                                             </Button>
-                                            {/* Export Button */}
-                                             <Button
-                                                 variant="outline"
-                                                 size="sm"
-                                                 onClick={handleExportConfig}
-                                                 title="Exportar configuración (JSON)"
-                                             >
-                                                 <Download className="mr-2 h-4 w-4" /> Exportar
-                                             </Button>
-                                        </div>
-                                       </DialogHeader>
+                                       <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4"> {/* Added space-x */}
+                                         <div> {/* Left side */}
+                                           <DialogTitle>Configuración General</DialogTitle>
+                                           <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
+                                         </div>
+                                         <div className="flex items-center gap-2 pr-8"> {/* Right side buttons - Added padding-right */}
+                                             {/* Import Button */}
+                                              <input
+                                                  type="file"
+                                                  accept=".json"
+                                                  ref={fileInputRef}
+                                                  onChange={handleImportConfig}
+                                                  className="hidden"
+                                                  id="import-config-input"
+                                              />
+                                              <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => fileInputRef.current?.click()}
+                                                  title="Importar configuración (JSON)"
+                                              >
+                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar
+                                              </Button>
+                                             {/* Export Button */}
+                                              <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={handleExportConfig}
+                                                  title="Exportar configuración (JSON)"
+                                              >
+                                                  <Download className="mr-2 h-4 w-4" /> Exportar
+                                              </Button>
+                                         </div>
+                                        </DialogHeader>
                                         <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
                                             <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeConfigTab} onValueChange={ tabValue => { setActiveConfigTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
                                               <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0"> {/* Ensure TabsList doesn't shrink */}
@@ -2604,17 +2618,19 @@ export default function SchedulePage() {
                                                                         templates: 'template',
                                                                     };
                                                                     const formType = typeMap[activeConfigTab];
-                                                                    if (formType) {
+                                                                    if (formType && formType !== 'template') { // Only enable for non-template tabs
                                                                         // Ensure selectedConfigItem is null when adding new
                                                                         setSelectedConfigItem(null);
                                                                         setLocationFormData({ name: '' }); // Clear location form
                                                                          setDepartmentFormData({ name: '', locationId: selectedLocationId || '', iconName: undefined }); // Clear department form, set default location
                                                                          setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] }); // Clear employee form, set default location
                                                                         openConfigForm(formType, null);
+                                                                    } else if (formType === 'template') {
+                                                                        toast({title: "Info", description: "Los templates se crean desde el planificador.", variant: "default"})
                                                                     }
                                                                 }}
                                                                 title={`Agregar ${activeConfigTab}`}
-                                                                disabled={activeConfigTab === 'templates'} // Disable adding templates manually
+                                                                disabled={activeConfigTab === 'templates'} // Disable adding templates manually here
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
@@ -2636,7 +2652,7 @@ export default function SchedulePage() {
                                                 </div>
                                             </Tabs>
                                        </div>
-                                         {/* Removed Footer and Close button */}
+                                         {/* Footer removed */}
                                    </DialogContent>
                                </Dialog>
                          </div>
@@ -2854,7 +2870,12 @@ export default function SchedulePage() {
                       <Button onClick={handleOpenSaveTemplate} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <Save className="mr-2 h-4 w-4" /> Guardar Template
                       </Button>
-                      {/* Removed Template List Button */}
+                      {/* Template List Button - Removed/Commented Out */}
+                         {/*
+                         <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                              <Library className="mr-2 h-4 w-4" /> Templates Guardados
+                         </Button>
+                         */}
                 </div>
 
 
@@ -2876,8 +2897,8 @@ export default function SchedulePage() {
                         className="w-full bg-card border border-border rounded-md shadow-sm" // Added card-like styling to textarea
                     />
                  </CardContent>
-                 <CardFooter className="flex justify-end mt-4 px-0 pb-0">
-                     <Button onClick={() => toast({ title: 'Notas Guardadas', description: 'Tus notas generales han sido guardadas localmente.' })}>Guardar Notas</Button> {/* Simplified save */}
+                  <CardFooter className="flex justify-end mt-4 px-0 pb-0">
+                     <Button onClick={handleSaveNotes}>Guardar Notas</Button> {/* Simplified save */}
                  </CardFooter>
              </Card>
 
@@ -2971,6 +2992,7 @@ export default function SchedulePage() {
                   </DialogContent>
               </Dialog>
 
+             {/* Template List Modal - Removed */}
 
             {/* Employee Selection Modal */}
              <EmployeeSelectionModal
