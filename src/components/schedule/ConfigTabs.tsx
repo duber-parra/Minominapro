@@ -481,5 +481,3 @@ export function ConfigTabs({
      </Tabs>
   );
 }
-
-```
