@@ -33,7 +33,7 @@ import {
 import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library } from 'lucide-react'; // Added Library icon
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns'; // Import format
+import { format, parseISO } from 'date-fns'; // Import format and parseISO
 import { es } from 'date-fns/locale'; // Import Spanish locale
 
 // Interface for props passed to ConfigTabs
@@ -65,7 +65,7 @@ interface ConfigTabsProps {
   handleToggleEmployeeDepartment: (departmentId: string) => void; // Added this prop
   availableDepartmentsForEmployee: Department[];
   activeTab: string;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string) => void; // Changed prop name for clarity
   locationSearch: string;
   setLocationSearch: (search: string) => void;
   departmentSearch: string;
@@ -111,7 +111,7 @@ export function ConfigTabs({
     handleToggleEmployeeDepartment, // Destructure the passed prop
     availableDepartmentsForEmployee,
     activeTab,
-    setActiveTab,
+    setActiveTab, // Use the changed prop name
     locationSearch,
     setLocationSearch,
     departmentSearch,
@@ -452,16 +452,17 @@ export function ConfigTabs({
                                 templates: 'template',
                             };
                             const formType = typeMap[activeTab];
-                            // Ensure selectedConfigItem is null when adding new
-                            setSelectedConfigItem(null);
-                             if (formType) {
-                                 if (formType === 'location') setLocationFormData({ name: '' });
-                                 else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || '', iconName: undefined });
-                                 else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] });
-                                 // Don't clear form for template, as we're disabling the '+' button
-                             }
+                            // Reset form data for the active tab type when adding new
+                            setSelectedConfigItem(null); // Ensure no item is selected
+                            if (formType === 'location') setLocationFormData({ name: '' });
+                            else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
+                            else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] });
+                            // No need to reset form for template as adding manually is disabled
+
                             if (formType && formType !== 'template') { // Only open form if not template
                                 openConfigForm(formType, null);
+                            } else if (formType === 'template') {
+                                 toast({ title: "Info", description: "La creación manual de templates no está habilitada. Guarda desde el planificador.", variant: "default" });
                             }
                         }}
                         title={`Agregar ${activeTab}`}

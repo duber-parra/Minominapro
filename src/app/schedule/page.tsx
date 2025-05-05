@@ -1,6 +1,7 @@
 // src/app/schedule/page.tsx
 'use client'; // Ensure this directive is present
 
+// Correct import order and usage
 import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent, DragEvent } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -79,7 +80,7 @@ import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import W
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import Notes modal
 import { SummaryDashboard } from '@/components/schedule/SummaryDashboard'; // Import the dashboard
 import { ConfigTabs } from '@/components/schedule/ConfigTabs'; // Import ConfigTabs
-import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
+// Removed import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Import ScheduleTemplateList
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -317,7 +318,8 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
             return parsed as T;
         } else if (key === SCHEDULE_NOTES_KEY) {
              // Schedule notes are stored as a string, no parsing needed
-             return (savedData ?? defaultValue) as T;
+             // Ensure we handle the default value correctly if savedData is null
+             return (savedData !== null ? savedData : defaultValue) as T;
         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
             return parsed as T;
@@ -327,7 +329,9 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
          if (error instanceof SyntaxError && key === SCHEDULE_NOTES_KEY) {
             // If parsing fails for notes, return the raw string (could be initial default)
             console.warn(`[loadFromLocalStorage] Failed to parse JSON for key ${key} (expected for notes string). Returning raw data.`);
-            return (localStorage.getItem(key) ?? defaultValue) as T;
+            // Return the raw data or default if getItem fails
+            const rawData = localStorage.getItem(key);
+            return (rawData !== null ? rawData : defaultValue) as T;
          } else if (error instanceof SyntaxError) {
              console.error(`Error parsing JSON from localStorage for key ${key}:`, error.message, "Saved data:", localStorage.getItem(key));
               // Remove corrupted data for keys other than SCHEDULE_NOTES_KEY and SCHEDULE_TEMPLATES_KEY
@@ -422,6 +426,19 @@ const loadScheduleTemplates = (): ScheduleTemplate[] => {
             console.warn(`[loadScheduleTemplates] Template ${tpl.id} has invalid assignments structure. Resetting.`);
             tpl.assignments = {}; // Reset to empty object if invalid
         }
+         // Ensure createdAt is a Date object if it exists
+         if (tpl.createdAt && typeof tpl.createdAt === 'string') {
+             const parsedDate = parseISO(tpl.createdAt);
+             if (isValid(parsedDate)) {
+                 tpl.createdAt = parsedDate;
+             } else {
+                 console.warn(`[loadScheduleTemplates] Invalid createdAt string for template ${tpl.id}. Removing.`);
+                 delete tpl.createdAt;
+             }
+         } else if (tpl.createdAt && !(tpl.createdAt instanceof Date)) {
+             console.warn(`[loadScheduleTemplates] Unexpected createdAt type for template ${tpl.id}. Removing.`);
+             delete tpl.createdAt;
+         }
     });
 
     // Sort alphabetically by name
@@ -533,7 +550,7 @@ export default function SchedulePage() {
         setEmployees(loadedEmployees);
         setSelectedLocationId(initialLocId);
         setDepartmentFormData(prev => ({ ...prev, locationId: initialLocId }));
-        setEmployeeFormData(prev => ({ ...prev, locationIds: initialLocId ? [initialLocId] : [] }));
+        setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: initialLocId ? [initialLocId] : [], departmentIds: [] })); // Reset form data on mount/location change
          // Load templates explicitly on mount if not already loaded by useState initializer
          setSavedTemplates(loadScheduleTemplates());
         setIsLoadingPage(false); // Stop loading indicator
@@ -1215,7 +1232,7 @@ export default function SchedulePage() {
                 Object.keys(updatedSchedule).forEach(dateKey => {
                     if (updatedSchedule[dateKey] && updatedSchedule[dateKey].assignments) { // Check if assignments exist
                         Object.keys(updatedSchedule[dateKey].assignments).forEach(deptId => {
-                            updatedSchedule[dateKey].assignments[deptId] = updatedSchedule[dateKey].assignments[deptId].map(assignment => {
+                            updatedSchedule[dateKey].assignments = updatedSchedule[dateKey].assignments.map(assignment => {
                                 if (assignment.employee.id === id) {
                                     return { ...assignment, employee: updatedEmployeeData };
                                 }
@@ -1680,157 +1697,157 @@ export default function SchedulePage() {
          setIsSavingTemplate(false);
      };
 
-     const handleLoadTemplate = useCallback((templateId: string) => {
-          // console.log("[handleLoadTemplate] Attempting to load template ID:", templateId);
-          const templateToLoad = savedTemplates.find(t => t.id === templateId);
+      const handleLoadTemplate = useCallback((templateId: string) => {
+           console.log("[handleLoadTemplate] Attempting to load template ID:", templateId);
+           const templateToLoad = savedTemplates.find(t => t.id === templateId);
 
-          if (!templateToLoad) {
-               console.error("[handleLoadTemplate] Template not found in state:", templateId);
-               toast({ title: "Error", description: "Template no encontrado.", variant: "destructive" });
-               return;
-          }
+           if (!templateToLoad) {
+                console.error("[handleLoadTemplate] Template not found in state:", templateId);
+                toast({ title: "Error", description: "Template no encontrado.", variant: "destructive" });
+                return;
+           }
 
-           // Ensure the template type matches the current view mode
-          if (templateToLoad.type !== viewMode) {
-               toast({
-                    title: "Tipo Incorrecto",
-                    description: `El template "${templateToLoad.name}" es ${templateToLoad.type === 'day' ? 'diario' : 'semanal'}. Cambia a la vista ${templateToLoad.type === 'day' ? 'diaria' : 'semanal'} para cargarlo.`,
-                    variant: "destructive",
-                    duration: 5000
-               });
-               return;
-          }
-           // console.log(`[handleLoadTemplate] Loading ${templateToLoad.type} template:`, templateToLoad);
+            // Ensure the template type matches the current view mode
+           if (templateToLoad.type !== viewMode) {
+                toast({
+                     title: "Tipo Incorrecto",
+                     description: `El template "${templateToLoad.name}" es ${templateToLoad.type === 'day' ? 'diario' : 'semanal'}. Cambia a la vista ${templateToLoad.type === 'day' ? 'diaria' : 'semanal'} para cargarlo.`,
+                     variant: "destructive",
+                     duration: 5000
+                });
+                return;
+           }
+            console.log(`[handleLoadTemplate] Loading ${templateToLoad.type} template:`, templateToLoad);
 
-          setScheduleData(prevSchedule => {
-               const updatedSchedule = { ...prevSchedule };
-                // Validate template.assignments structure
-               if (!templateToLoad.assignments || typeof templateToLoad.assignments !== 'object' || Array.isArray(templateToLoad.assignments)) {
-                  console.error("[handleLoadTemplate] Invalid assignments structure in template:", templateToLoad.assignments);
-                  toast({ title: "Error", description: "El formato de asignaciones del template es inválido.", variant: "destructive" });
-                  return prevSchedule; // Return previous state without changes
-               }
+           setScheduleData(prevSchedule => {
+                const updatedSchedule = { ...prevSchedule };
+                 // Validate template.assignments structure
+                if (!templateToLoad.assignments || typeof templateToLoad.assignments !== 'object' || Array.isArray(templateToLoad.assignments)) {
+                   console.error("[handleLoadTemplate] Invalid assignments structure in template:", templateToLoad.assignments);
+                   toast({ title: "Error", description: "El formato de asignaciones del template es inválido.", variant: "destructive" });
+                   return prevSchedule; // Return previous state without changes
+                }
 
 
-               if (templateToLoad.type === 'day') {
-                    if (!targetDate || !isValid(targetDate)) {
-                       console.error("[handleLoadTemplate] Cannot apply daily template, targetDate is invalid.");
-                       toast({ title: "Error", description: "Fecha objetivo inválida para cargar template diario.", variant: "destructive" });
-                       return prevSchedule;
+                if (templateToLoad.type === 'day') {
+                     if (!targetDate || !isValid(targetDate)) {
+                        console.error("[handleLoadTemplate] Cannot apply daily template, targetDate is invalid.");
+                        toast({ title: "Error", description: "Fecha objetivo inválida para cargar template diario.", variant: "destructive" });
+                        return prevSchedule;
+                     }
+                    const dateKey = format(targetDate, 'yyyy-MM-dd');
+                    const newDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
+                    const dailyTemplateAssignments = templateToLoad.assignments as DailyAssignments;
+
+                    // Clear existing assignments for the target day first
+                    updatedSchedule[dateKey] = { date: targetDate, assignments: {} };
+
+                    Object.keys(dailyTemplateAssignments).forEach(deptId => {
+                        const deptAssignments = dailyTemplateAssignments[deptId];
+                         // Validate department exists for the location
+                         if (!departments.some(d => d.id === deptId && d.locationId === selectedLocationId)) {
+                            console.warn(`[handleLoadTemplate] Departamento ID ${deptId} del template no corresponde a la sede actual.`);
+                            return; // Skip this department if it doesn't belong to the location
+                         }
+                        newDayAssignments[deptId] = deptAssignments.map((tplAssign, index) => {
+                            const fullEmployee = employees.find(emp => emp.id === tplAssign.employee.id);
+                            if (!fullEmployee) {
+                                 console.warn(`[handleLoadTemplate] Empleado ID ${tplAssign.employee.id} del template no encontrado.`);
+                                 return null; // Skip this assignment
+                            }
+                            // Check if employee already assigned on this day (prevent duplicates)
+                            const isAlreadyAssigned = Object.values(newDayAssignments).flat().some(existing => existing.employee.id === fullEmployee.id);
+                            if (isAlreadyAssigned) {
+                                console.warn(`[handleLoadTemplate] Empleado ${fullEmployee.name} ya tiene un turno asignado en este día del template. Omitiendo duplicado.`);
+                                return null;
+                            }
+
+                            return {
+                                ...tplAssign,
+                                id: `shift_${fullEmployee.id}_${dateKey}_${deptId}_${index}_${Date.now()}`,
+                                employee: fullEmployee,
+                            };
+                        }).filter((a): a is ShiftAssignment => a !== null); // Filter out nulls and assert type
+                    });
+
+                    updatedSchedule[dateKey].assignments = newDayAssignments;
+                    // console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
+
+                } else { // Weekly template
+                    const templateAssignments = templateToLoad.assignments as WeeklyAssignments;
+                    if (!currentDate || !weekDates || weekDates.length !== 7) { // Ensure currentDate and weekDates are valid
+                         console.error("[handleLoadTemplate] Cannot apply weekly template, currentDate or weekDates are invalid.");
+                         toast({ title: "Error", description: "No se pudo aplicar el template semanal (fechas inválidas).", variant: "destructive" });
+                         return prevSchedule; // Return previous state if date is invalid
                     }
-                   const dateKey = format(targetDate, 'yyyy-MM-dd');
-                   const newDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
-                   const dailyTemplateAssignments = templateToLoad.assignments as DailyAssignments;
+                    const targetWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+                    const templateDates = Object.keys(templateAssignments).sort(); // Get dates defined in the template
 
-                   // Clear existing assignments for the target day first
-                   updatedSchedule[dateKey] = { date: targetDate, assignments: {} };
+                    // Clear assignments for the entire target week first
+                    weekDates.forEach(targetWeekDate => {
+                        const targetDateKey = format(targetWeekDate, 'yyyy-MM-dd');
+                        updatedSchedule[targetDateKey] = { date: targetWeekDate, assignments: {} };
+                    });
 
-                   Object.keys(dailyTemplateAssignments).forEach(deptId => {
-                       const deptAssignments = dailyTemplateAssignments[deptId];
-                        // Validate department exists for the location
-                        if (!departments.some(d => d.id === deptId && d.locationId === selectedLocationId)) {
-                           console.warn(`[handleLoadTemplate] Departamento ID ${deptId} del template no corresponde a la sede actual.`);
-                           return; // Skip this department if it doesn't belong to the location
+                    // Apply template assignments day by day based on order (Mon->Sun)
+                    weekDates.forEach((targetWeekDate, weekDayIndex) => {
+                         // Ensure the template has data for this day index
+                        if (weekDayIndex < templateDates.length) {
+                            const templateDateKey = templateDates[weekDayIndex]; // Match based on position in the week
+                            const templateDailyAssignments = templateAssignments[templateDateKey];
+                            const targetDateKey = format(targetWeekDate, 'yyyy-MM-dd');
+                            const newWeekDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
+
+                            if (templateDailyAssignments) {
+                                Object.keys(templateDailyAssignments).forEach(deptId => {
+                                    const deptAssignments = templateDailyAssignments[deptId];
+                                    // Validate department exists for the location
+                                    if (!departments.some(d => d.id === deptId && d.locationId === selectedLocationId)) {
+                                        console.warn(`[handleLoadTemplate] Departamento ID ${deptId} del template no corresponde a la sede actual.`);
+                                        return; // Skip this department for this day
+                                    }
+                                    newWeekDayAssignments[deptId] = deptAssignments.map((tplAssign, assignIndex) => {
+                                        const fullEmployee = employees.find(emp => emp.id === tplAssign.employee.id);
+                                        if (!fullEmployee) {
+                                            console.warn(`[handleLoadTemplate] Empleado ID ${tplAssign.employee.id} del template no encontrado.`);
+                                            return null; // Skip
+                                        }
+                                         // Check if employee already assigned on this day (prevent duplicates)
+                                        const isAlreadyAssigned = Object.values(newWeekDayAssignments).flat().some(existing => existing.employee.id === fullEmployee.id);
+                                        if (isAlreadyAssigned) {
+                                            console.warn(`[handleLoadTemplate] Empleado ${fullEmployee.name} ya tiene un turno asignado en este día del template ${targetDateKey}. Omitiendo duplicado.`);
+                                            return null;
+                                        }
+
+                                        return {
+                                            ...tplAssign,
+                                            id: `shift_${fullEmployee.id}_${targetDateKey}_${deptId}_${assignIndex}_${Date.now()}`,
+                                            employee: fullEmployee,
+                                        };
+                                    }).filter((a): a is ShiftAssignment => a !== null); // Filter out nulls
+                                });
+
+                                updatedSchedule[targetDateKey].assignments = newWeekDayAssignments;
+                            } else {
+                                console.warn(`[handleLoadTemplate] No template assignments found for template key ${templateDateKey} at index ${weekDayIndex}`);
+                            }
+                        } else {
+                             console.warn(`[handleLoadTemplate] Template has fewer days (${templateDates.length}) than the target week (${weekDates.length}). Skipping day index ${weekDayIndex}.`);
                         }
-                       newDayAssignments[deptId] = deptAssignments.map((tplAssign, index) => {
-                           const fullEmployee = employees.find(emp => emp.id === tplAssign.employee.id);
-                           if (!fullEmployee) {
-                                console.warn(`[handleLoadTemplate] Empleado ID ${tplAssign.employee.id} del template no encontrado.`);
-                                return null; // Skip this assignment
-                           }
-                           // Check if employee already assigned on this day (prevent duplicates)
-                           const isAlreadyAssigned = Object.values(newDayAssignments).flat().some(existing => existing.employee.id === fullEmployee.id);
-                           if (isAlreadyAssigned) {
-                               console.warn(`[handleLoadTemplate] Empleado ${fullEmployee.name} ya tiene un turno asignado en este día del template. Omitiendo duplicado.`);
-                               return null;
-                           }
+                    });
+                    // console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
+                }
 
-                           return {
-                               ...tplAssign,
-                               id: `shift_${fullEmployee.id}_${dateKey}_${deptId}_${index}_${Date.now()}`,
-                               employee: fullEmployee,
-                           };
-                       }).filter((a): a is ShiftAssignment => a !== null); // Filter out nulls and assert type
-                   });
+                // console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
+                return updatedSchedule;
+            });
 
-                   updatedSchedule[dateKey].assignments = newDayAssignments;
-                   // console.log(`[handleLoadTemplate] Applied DAY template ${templateToLoad.name} to ${dateKey}`);
-
-               } else { // Weekly template
-                   const templateAssignments = templateToLoad.assignments as WeeklyAssignments;
-                   if (!currentDate || !weekDates || weekDates.length !== 7) { // Ensure currentDate and weekDates are valid
-                        console.error("[handleLoadTemplate] Cannot apply weekly template, currentDate or weekDates are invalid.");
-                        toast({ title: "Error", description: "No se pudo aplicar el template semanal (fechas inválidas).", variant: "destructive" });
-                        return prevSchedule; // Return previous state if date is invalid
-                   }
-                   const targetWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-                   const templateDates = Object.keys(templateAssignments).sort(); // Get dates defined in the template
-
-                   // Clear assignments for the entire target week first
-                   weekDates.forEach(targetWeekDate => {
-                       const targetDateKey = format(targetWeekDate, 'yyyy-MM-dd');
-                       updatedSchedule[targetDateKey] = { date: targetWeekDate, assignments: {} };
-                   });
-
-                   // Apply template assignments day by day based on order (Mon->Sun)
-                   weekDates.forEach((targetWeekDate, weekDayIndex) => {
-                        // Ensure the template has data for this day index
-                       if (weekDayIndex < templateDates.length) {
-                           const templateDateKey = templateDates[weekDayIndex]; // Match based on position in the week
-                           const templateDailyAssignments = templateAssignments[templateDateKey];
-                           const targetDateKey = format(targetWeekDate, 'yyyy-MM-dd');
-                           const newWeekDayAssignments: { [deptId: string]: ShiftAssignment[] } = {};
-
-                           if (templateDailyAssignments) {
-                               Object.keys(templateDailyAssignments).forEach(deptId => {
-                                   const deptAssignments = templateDailyAssignments[deptId];
-                                   // Validate department exists for the location
-                                   if (!departments.some(d => d.id === deptId && d.locationId === selectedLocationId)) {
-                                       console.warn(`[handleLoadTemplate] Departamento ID ${deptId} del template no corresponde a la sede actual.`);
-                                       return; // Skip this department for this day
-                                   }
-                                   newWeekDayAssignments[deptId] = deptAssignments.map((tplAssign, assignIndex) => {
-                                       const fullEmployee = employees.find(emp => emp.id === tplAssign.employee.id);
-                                       if (!fullEmployee) {
-                                           console.warn(`[handleLoadTemplate] Empleado ID ${tplAssign.employee.id} del template no encontrado.`);
-                                           return null; // Skip
-                                       }
-                                        // Check if employee already assigned on this day (prevent duplicates)
-                                       const isAlreadyAssigned = Object.values(newWeekDayAssignments).flat().some(existing => existing.employee.id === fullEmployee.id);
-                                       if (isAlreadyAssigned) {
-                                           console.warn(`[handleLoadTemplate] Empleado ${fullEmployee.name} ya tiene un turno asignado en este día del template ${targetDateKey}. Omitiendo duplicado.`);
-                                           return null;
-                                       }
-
-                                       return {
-                                           ...tplAssign,
-                                           id: `shift_${fullEmployee.id}_${targetDateKey}_${deptId}_${assignIndex}_${Date.now()}`,
-                                           employee: fullEmployee,
-                                       };
-                                   }).filter((a): a is ShiftAssignment => a !== null); // Filter out nulls
-                               });
-
-                               updatedSchedule[targetDateKey].assignments = newWeekDayAssignments;
-                           } else {
-                               console.warn(`[handleLoadTemplate] No template assignments found for template key ${templateDateKey} at index ${weekDayIndex}`);
-                           }
-                       } else {
-                            console.warn(`[handleLoadTemplate] Template has fewer days (${templateDates.length}) than the target week (${weekDates.length}). Skipping day index ${weekDayIndex}.`);
-                       }
-                   });
-                   // console.log(`[handleLoadTemplate] Applied WEEK template ${templateToLoad.name} to week starting ${format(targetWeekStart, 'yyyy-MM-dd')}`);
-               }
-
-               // console.log("[handleLoadTemplate] Applied template, updated schedule data:", updatedSchedule);
-               return updatedSchedule;
-           });
-
-          toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
-          // Optionally close modal if open
-          setIsTemplateListModalOpen(false);
-          // setConfigFormType(null); // Close detail view in config modal
-          // setSelectedConfigItem(null);
-       }, [savedTemplates, viewMode, targetDate, setScheduleData, toast, employees, currentDate, weekDates, departments, selectedLocationId]); // Added dependencies
+           toast({ title: "Template Aplicado", description: `Horario del template "${templateToLoad.name}" aplicado.` });
+           // Optionally close modal if open
+           setIsTemplateListModalOpen(false);
+           // setConfigFormType(null); // Close detail view in config modal
+           // setSelectedConfigItem(null);
+        }, [savedTemplates, viewMode, targetDate, setScheduleData, toast, employees, currentDate, weekDates, departments, selectedLocationId]); // Added dependencies
 
 
     const handleDeleteTemplate = (templateId: string) => {
@@ -1890,7 +1907,7 @@ export default function SchedulePage() {
             toast({ title: "Configuración Exportada", description: "Los datos de configuración, notas y eventos han sido exportados." });
         } catch (error) {
              console.error("Error exporting configuration:", error);
-             toast({ title: "Error al Exportar", description: "No se pudo exportar la configuración.", variant: "destructive" });
+             toast({ title: "Error al Exportar", description: "No se pudo exportar la configuración.", variant: 'destructive' });
         }
     };
 
@@ -1935,8 +1952,8 @@ export default function SchedulePage() {
                  // Also update form defaults based on potentially new first location
                  const firstLocId = configData.locations.length > 0 ? configData.locations[0].id : '';
                  setSelectedLocationId(firstLocId);
-                 setDepartmentFormData(prev => ({ ...prev, locationId: firstLocId }));
-                 setEmployeeFormData(prev => ({ ...prev, locationIds: firstLocId ? [firstLocId] : [] }));
+                 setDepartmentFormData(prev => ({ ...prev, name: '', locationId: firstLocId, iconName: undefined }));
+                 setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: firstLocId ? [firstLocId] : [], departmentIds: [] }));
 
                 toast({ title: "Configuración Importada", description: "Se cargaron los datos desde el archivo." });
                 setIsConfigModalOpen(false); // Close config modal after import
@@ -2261,6 +2278,12 @@ export default function SchedulePage() {
         }
     };
 
+     // Helper function to open the config modal and set the active tab
+     const openConfigModalWithTab = (tabValue: string) => {
+         setActiveConfigTab(tabValue);
+         setIsConfigModalOpen(true);
+     };
+
 
     // Render null or a loader during initial server render and hydration phase
      if (!isClient) {
@@ -2356,7 +2379,7 @@ export default function SchedulePage() {
                                          </div>
                                          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
                                             <X className="h-4 w-4" />
-                                            <span className="sr-only">Close</span>
+                                            <span className="sr-only">Cerrar</span>
                                          </DialogClose>
                                         </DialogHeader>
                                         <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
@@ -2532,10 +2555,10 @@ export default function SchedulePage() {
                      <Button onClick={() => { setNotesModalForDate(null); setIsNotesModalOpen(true); }} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                          <NotebookText className="mr-2 h-4 w-4" /> Anotaciones {/* Changed Icon */}
                      </Button>
-                    {/* Templates Button */}
-                     <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-                         <Library className="mr-2 h-4 w-4" /> Templates
-                     </Button>
+                    {/* Templates Button - Moved to Config */}
+                    {/* <Button onClick={() => setIsTemplateListModalOpen(true)} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+                        <Library className="mr-2 h-4 w-4" /> Templates
+                    </Button> */}
 
                     <Button onClick={handleShareSchedule} variant="outline" className="hover:bg-primary hover:text-primary-foreground">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir (Texto)
@@ -2667,49 +2690,11 @@ export default function SchedulePage() {
                   </AlertDialogContent>
               </AlertDialog>
 
-             {/* Template List Modal */}
-             <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}>
-                 <DialogContent className="sm:max-w-md">
-                     <DialogHeader>
-                         <DialogTitle className="flex items-center gap-2"><Library className="h-5 w-5"/> Templates Guardados ({viewMode === 'day' ? 'Diarios' : 'Semanales'})</DialogTitle>
-                         <DialogDescription>Carga o elimina templates para la sede "{locations.find(l => l.id === selectedLocationId)?.name}" en vista {viewMode === 'day' ? 'diaria' : 'semanal'}.</DialogDescription>
-                     </DialogHeader>
-                     <div className="py-4">
-                        <ScheduleTemplateList
-                            templates={filteredTemplates} // Pass filtered templates
-                            onLoadTemplate={handleLoadTemplate}
-                            onDeleteTemplate={handleDeleteTemplate}
-                         />
-                     </div>
-                     <DialogFooter>
-                         <DialogClose asChild>
-                             <Button type="button" variant="secondary">Cerrar</Button>
-                         </DialogClose>
-                     </DialogFooter>
-                 </DialogContent>
-             </Dialog>
+             {/* Template List Modal - Removed as it's now in ConfigTabs */}
+             {/* <Dialog open={isTemplateListModalOpen} onOpenChange={setIsTemplateListModalOpen}> ... </Dialog> */}
 
-              {/* Template Delete Confirmation Dialog */}
-              <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}>
-                  <AlertDialogContent>
-                      <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar este Template?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              "{savedTemplates.find(tpl => tpl.id === templateToDeleteId)?.name || ''}"
-                              <br/>
-                              Esta acción no se puede deshacer.
-                          </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setTemplateToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                               onClick={() => templateToDeleteId && handleDeleteTemplate(templateToDeleteId)}
-                               className="bg-destructive hover:bg-destructive/90">
-                              Eliminar Template
-                          </AlertDialogAction>
-                      </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
+              {/* Template Delete Confirmation Dialog - Moved to ConfigTabs */}
+              {/* <AlertDialog open={!!templateToDeleteId} onOpenChange={(open) => !open && setTemplateToDeleteId(null)}> ... </AlertDialog> */}
 
              {/* Save Template Dialog */}
               <Dialog open={isSavingTemplate} onOpenChange={setIsSavingTemplate}>
@@ -2768,25 +2753,8 @@ export default function SchedulePage() {
                  isEditing={!!editingShift}
              />
 
-             {/* Universal Delete Confirmation */}
-              <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-                  <AlertDialogContent>
-                      <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              {itemToDelete?.type === 'location' && `Eliminar Sede "${itemToDelete?.name}"? Se eliminarán sus departamentos, los colaboradores asociados se desvincularán (si no tienen más sedes) y se borrarán turnos relacionados. Esta acción no se puede deshacer.`}
-                              {itemToDelete?.type === 'department' && `Eliminar Departamento "${itemToDelete?.name}"? Se eliminarán los turnos asociados en horarios. Esta acción no se puede deshacer.`}
-                              {itemToDelete?.type === 'employee' && `Eliminar Colaborador "${itemToDelete?.name}"? Se eliminarán sus turnos asociados en horarios. Esta acción no se puede deshacer.`}
-                               {itemToDelete?.type === 'template' && `Eliminar Template "${itemToDelete?.name}"? Esta acción no se puede deshacer.`} {/* Added template message */}
-                          </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                           {/* Pass item details to handleDeleteItem when action is confirmed */}
-                           <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteItem}>Eliminar</AlertDialogAction>
-                      </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
+             {/* Universal Delete Confirmation - Handled within ConfigTabs now */}
+              {/* <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}> ... </AlertDialog> */}
 
 
             {/* Clear Day Confirmation */}
