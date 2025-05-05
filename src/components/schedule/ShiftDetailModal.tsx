@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -245,7 +246,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">
-              <X className="mr-2 h-4 w-4" /> Cancelar
+                {/* Icon removed */} Cancelar
             </Button>
           </DialogClose>
           <Button type="button" onClick={handleSaveClick} variant="default">

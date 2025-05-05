@@ -1,3 +1,4 @@
+
 // src/components/schedule/ScheduleNotesModal.tsx
 'use client';
 
@@ -264,37 +265,37 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
                          </span>
                        </div>
                         {/* Delete Button Trigger */}
-                         <AlertDialog>
-                             <AlertDialogTrigger asChild>
-                                <Button
-                                   variant="ghost"
-                                   size="icon"
-                                   className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
-                                   title="Eliminar anotación"
-                                   onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click
-                                >
-                                   <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                             <AlertDialogContent>
-                               <AlertDialogHeader>
-                                 <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
-                                 <AlertDialogDescription>
-                                    "{note.note}"
-                                    <br />
-                                    Esta acción no se puede deshacer.
-                                 </AlertDialogDescription>
-                               </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                 <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
-                                 <AlertDialogAction
-                                    onClick={confirmDeleteNote} // Call the delete function on confirm
-                                    className="bg-destructive hover:bg-destructive/90">
-                                    Eliminar Anotación
-                                 </AlertDialogAction>
-                               </AlertDialogFooter>
-                            </AlertDialogContent>
-                         </AlertDialog>
+                        <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                              <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
+                                 title="Eliminar anotación"
+                                 // onClick={() => setNoteToDeleteId(note.id)} // Set ID to delete on click - MOVED TO AlertDialogTrigger
+                              >
+                                 <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>¿Eliminar esta anotación?</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                  "{note.note}"
+                                  <br />
+                                  Esta acción no se puede deshacer.
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel onClick={() => setNoteToDeleteId(null)}>Cancelar</AlertDialogCancel>
+                               <AlertDialogAction
+                                  onClick={() => confirmDeleteNote()} // Call the delete function on confirm
+                                  className="bg-destructive hover:bg-destructive/90">
+                                  Eliminar Anotación
+                               </AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                        </AlertDialog>
                      </li>
                   );
                  })}
@@ -310,7 +311,7 @@ export const ScheduleNotesModal: React.FC<ScheduleNotesModalProps> = ({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="secondary">
-              <X className="mr-2 h-4 w-4" /> Cerrar
+                {/* Icon removed */} Cerrar
             </Button>
           </DialogClose>
         </DialogFooter>

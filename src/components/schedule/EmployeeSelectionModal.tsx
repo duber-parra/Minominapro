@@ -1,3 +1,4 @@
+
 // src/components/schedule/EmployeeSelectionModal.tsx
 'use client';
 
@@ -70,7 +71,7 @@ export const EmployeeSelectionModal: React.FC<EmployeeSelectionModalProps> = ({
          <DialogFooter>
              <DialogClose asChild>
                  <Button type="button" variant="outline">
-                    <X className="mr-2 h-4 w-4" /> Cancelar
+                     {/* Icon removed */} Cancelar
                  </Button>
              </DialogClose>
          </DialogFooter>

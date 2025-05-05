@@ -1,3 +1,4 @@
+
 // src/components/adjustment-modal.tsx
 'use client';
 
@@ -155,7 +156,7 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                  <DialogClose asChild>
                      {/* Cancel button: outline variant, red on hover */}
                     <Button type="button" variant="outline" > {/* Removed custom hover */}
-                      <X className="mr-2 h-4 w-4" /> Cancelar
+                        {/* Icon removed */} Cancelar
                     </Button>
                   </DialogClose>
                  {/* Save button: default variant, gradient on hover */}
@@ -167,6 +168,7 @@ export const AdjustmentModal: React.FC<AdjustmentModalProps> = ({
                     className={cn(
                         // Optionally add text color if needed, but variants should handle it
                         // type === 'deduccion' ? "text-destructive-foreground" : "text-primary-foreground"
+                        type === 'deduccion' && 'hover:bg-green-600', // Apply green hover only to deduction save button
                     )}
                  >
                   <Save className="mr-2 h-4 w-4" /> Guardar {type === 'ingreso' ? 'Ingreso' : 'Deducción'}
