@@ -1,30 +1,20 @@
-
-
 // src/components/saved-payroll-list.tsx
 'use client';
 
 import type { FC } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSearch, FileDown, Trash2, Users, Download, FolderUp, FileJson } from 'lucide-react'; // Removed FileSpreadsheet, Added Download, FolderUp, FileJson
-import type { SavedPayrollData } from '@/types'; // Ensure this type is correctly defined
+import { FileSearch, FileDown, Trash2, Users, Download, FolderUp, FileJson } from 'lucide-react';
+import type { SavedPayrollData } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from './results-display'; // Assuming formatCurrency is exported and correct
-import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog'; // Import for delete confirmation
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
+import { formatCurrency } from './results-display';
+import { AlertDialog, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface SavedPayrollListProps {
   payrolls: SavedPayrollData[];
   onLoad: (key: string) => void;
-  onDelete: (key: string) => void; // Prop to trigger the delete confirmation dialog in parent
+  onDelete: (key: string) => void;
   onBulkExport: () => void; // For PDF
   onExportJson: () => void; // Function to trigger JSON export
   onImportJsonClick: () => void; // Function to trigger the file input click for JSON import
@@ -33,7 +23,7 @@ interface SavedPayrollListProps {
 export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     payrolls,
     onLoad,
-    onDelete, // Receives the function to initiate deletion (open dialog)
+    onDelete,
     onBulkExport,
     onExportJson, // Receive JSON export function
     onImportJsonClick, // Receive JSON import click function
@@ -58,15 +48,10 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
 
   return (
     <Card className="shadow-lg bg-card">
-      <CardHeader className="relative flex flex-row items-start justify-between pb-4">
-        <div className="flex-1 pr-24"> {/* Adjusted padding-right for buttons */}
-            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-              <Users className="h-4 w-4" /> Nóminas Guardadas ({payrolls.length})
-            </CardTitle>
-            <CardDescription> Carga, elimina o exporta nóminas guardadas. </CardDescription>
-        </div>
+      <CardHeader className="relative flex flex-col items-start justify-between pb-4"> {/* Changed to flex-col */}
+         {/* Buttons first */}
          <div className="absolute top-4 right-4 flex items-center gap-1">
-             {/* Export/Import Buttons */}
+             {/* JSON Import Button */}
              <Button
                  variant="outline"
                  size="sm"
@@ -76,6 +61,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
              >
                  <FolderUp className="mr-1 h-3 w-3" /> JSON
              </Button>
+             {/* JSON Export Button */}
              <Button
                  variant="outline"
                  size="sm"
@@ -86,15 +72,24 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
              >
                  <Download className="mr-1 h-3 w-3" /> JSON
              </Button>
-             <Button
+              {/* PDF Export Button */}
+              <Button
                  variant="outline"
                  size="sm"
                  onClick={onBulkExport}
                  disabled={payrolls.length === 0}
                  className="px-2 py-1 h-auto hover:bg-red-600 hover:text-white" // Red hover for PDF
-             >
+                 title="Exportar Lista Nóminas (PDF)"
+              >
                  <FileDown className="mr-1 h-3 w-3" /> PDF
-             </Button>
+              </Button>
+        </div>
+         {/* Title and Description below buttons */}
+        <div className="flex-1 pr-24 pt-12"> {/* Added padding-top to make space for buttons */}
+            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+              <Users className="h-4 w-4" /> Nóminas Guardadas ({payrolls.length})
+            </CardTitle>
+            <CardDescription> Carga, elimina o exporta nóminas guardadas. </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
@@ -122,7 +117,7 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" title="Eliminar Nómina Guardada" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                                  // Removed direct onDelete call here, it's handled by parent's AlertDialogAction
+                                   onClick={() => onDelete(payroll.key)} // Trigger delete confirmation
                               >
                                   <Trash2 className="h-4 w-4" />
                               </Button>
@@ -141,5 +136,3 @@ export const SavedPayrollList: FC<SavedPayrollListProps> = ({
     </Card>
   );
 };
-
-    

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
@@ -848,19 +846,44 @@ export default function Home() {
                     payroll.key = storageKey; // Ensure key matches standard format
 
                      // Prepare data for storage (stringify dates)
-                     const dataToStore = {
-                         ...payroll,
+                     // Extract the calculatedDays from the corresponding stored item if it exists, otherwise use empty array.
+                     // The logic to parse the *full* stored data including days happens later when loading.
+                     // This import function should only focus on storing the main payroll metadata.
+                      const dataToStore = {
+                          // We only store the metadata and adjustments here.
+                          // calculatedDays are part of the individual storage item, not the bulk import directly.
+                         employeeId: payroll.employeeId,
+                         employeeName: payroll.employeeName,
                          periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
                          periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
                          createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
-                         // Ensure calculatedDays dates are also strings
-                         // Note: This assumes 'summary' might not contain the full days detail.
-                         // The revival happens correctly in parseStoredData. We need to store it stringified.
-                         // If the original export included stringified dates for calculatedDays, this is fine.
+                         otrosIngresosLista: payroll.otrosIngresosLista,
+                         otrasDeduccionesLista: payroll.otrasDeduccionesLista,
+                         incluyeAuxTransporte: payroll.incluyeAuxTransporte,
+                          // Summary is recalculated on load, so we don't strictly need to store it here
+                          // unless the JSON format *requires* it.
+                          // If the JSON source includes calculatedDays, we'd need to handle that.
+                           calculatedDays: [], // Assuming bulk JSON doesn't include daily details for simplicity here.
                      };
 
+
                     try {
-                        localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+                        // Retrieve existing data to potentially merge calculatedDays if needed
+                        const existingDataRaw = localStorage.getItem(storageKey);
+                        const { days: existingDays } = parseStoredData(existingDataRaw);
+
+                        // Save the imported metadata along with existing or empty calculatedDays
+                         localStorage.setItem(storageKey, JSON.stringify({
+                             ...dataToStore,
+                             calculatedDays: existingDays.map(d => ({ // Re-stringify dates for storage
+                                 ...d,
+                                 inputData: {
+                                    ...d.inputData,
+                                     startDate: d.inputData.startDate instanceof Date ? d.inputData.startDate.toISOString() : d.inputData.startDate
+                                 }
+                             }))
+                         }));
+
                         if (!currentKeys.has(storageKey)) {
                             addedCount++;
                         } else {
@@ -1132,7 +1155,8 @@ export default function Home() {
                   onLoad={handleLoadSavedPayroll}
                   onDelete={(key) => setPayrollToDeleteKey(key)}
                   onBulkExport={() => handleBulkExportPDF()} // Pass simple function call for PDF
-                  // Removed CSV props
+                   onExportJson={handleExportSavedPayrolls} // Pass JSON export handler
+                   onImportJsonClick={() => importJsonInputRef.current?.click()} // Pass function to trigger input click
               />
                <AlertDialog open={!!payrollToDeleteKey} onOpenChange={(open) => !open && setPayrollToDeleteKey(null)}>
                   <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>¿Eliminar Nómina Guardada?</AlertDialogTitle> <AlertDialogDescription> Eliminar nómina de <strong>{savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeName || savedPayrolls.find(p => p.key === payrollToDeleteKey)?.employeeId}</strong> ({savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodStart ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodStart, 'dd/MM/yy') : '?'} - {savedPayrolls.find(p => p.key === payrollToDeleteKey)?.periodEnd ? format(savedPayrolls.find(p => p.key === payrollToDeleteKey)!.periodEnd, 'dd/MM/yy') : '?'})? No se puede deshacer. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel onClick={() => setPayrollToDeleteKey(null)}>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleDeleteSavedPayroll} className="bg-destructive hover:bg-destructive/90"> Eliminar Nómina </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
@@ -1195,5 +1219,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
