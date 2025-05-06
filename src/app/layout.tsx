@@ -1,5 +1,3 @@
-
-
 'use client'; // Add 'use client' because we need hooks for loading state
 
 import type { Metadata } from 'next';
@@ -8,13 +6,48 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { useState, useEffect, ReactNode } from 'react'; // Import hooks
-import { usePathname } from 'next/navigation'; // Import usePathname
-import { Loader2, LogIn } from 'lucide-react'; // Import Loader icon and LogIn icon
+import { usePathname, useRouter } from 'next/navigation'; // Import usePathname and useRouter
+import { Loader2, LogIn, User as UserIcon, LogOut } from 'lucide-react'; // Import Loader icon, LogIn icon, UserIcon, LogOut
 import { Separator } from '@/components/ui/separator'; // Import Separator
 import CalculadoraLaboral from '@/components/labor-calculator'; // Import the new component
 import { Button } from '@/components/ui/button'; // Import Button
+import {
+  getAuth,
+  onAuthStateChanged,
+  User, // Import User type
+  signOut, // Import signOut
+} from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+
+// Initialize Firebase (ensure this is consistent with your login page)
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+function ensureFirebaseInitialized() {
+    if (!getApps().length) {
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
+          // Avoid throwing error here directly in layout, log it instead or handle gracefully
+          console.error('Firebase API Key is missing or invalid in RootLayout.');
+          return null; // Indicate that initialization failed
+      }
+        try {
+            return initializeApp(firebaseConfig);
+        } catch (error) {
+            console.error("Firebase initialization error in RootLayout:", error);
+            return null;
+        }
+    }
+    return getApp();
+}
+
 
 // Separate component for the loading overlay
 function LoadingIndicator() {
@@ -34,7 +67,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [isLoading, setIsLoading] = useState(false);
-  const pathname = usePathname(); // Get current path
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // State for current user
+  const pathname = usePathname();
+  const router = useRouter(); // For navigation
+
+  useEffect(() => {
+    const app = ensureFirebaseInitialized();
+    if (!app) return; // Don't proceed if Firebase init failed
+
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
 
   // Reset loading state when path changes
   useEffect(() => {
@@ -43,7 +90,7 @@ export default function RootLayout({
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     // Prevent navigation if already on the target page or a login/register page
-    if (pathname === href || pathname === '/login' || pathname === '/register') {
+    if (pathname === href || (href === '/login' && (pathname === '/login' || pathname === '/register'))) {
         e.preventDefault();
         return;
     }
@@ -51,8 +98,26 @@ export default function RootLayout({
     // Let the default Link behavior handle navigation after setting loading state
   };
 
-  // Hide main navigation and footer on login/register pages
-  const hideLayoutForAuth = pathname === '/login' || pathname === '/register';
+  const handleSignOut = async () => {
+    const app = ensureFirebaseInitialized();
+    if (!app) return;
+    const auth = getAuth(app);
+    setIsLoading(true);
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      router.push('/login'); // Redirect to login after sign out
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Handle sign-out error (e.g., show a toast)
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  // Hide main navigation and footer on login/register/profile-setup pages
+  const hideLayoutForAuth = pathname === '/login' || pathname === '/register' || pathname === '/profile-setup';
 
   return (
     // Ensure no whitespace or comments directly inside the <html> tag
@@ -82,12 +147,26 @@ export default function RootLayout({
                             Planificador Horarios
                         </Link>
                     </div>
-                    {/* Login Button */}
-                    <Link href="/login" passHref>
-                        <Button variant="outline" size="sm" onClick={(e) => handleNavClick(e, '/login')}>
-                            <LogIn className="mr-2 h-4 w-4" /> Ingresar
-                        </Button>
-                    </Link>
+                    {/* Login/Profile Button */}
+                    {currentUser ? (
+                        <div className="flex items-center gap-2">
+                            <Link href="/profile-setup" passHref>
+                                <Button variant="ghost" size="sm" onClick={(e) => handleNavClick(e, '/profile-setup')}>
+                                    <UserIcon className="mr-2 h-4 w-4" />
+                                    {currentUser.displayName || currentUser.email}
+                                </Button>
+                            </Link>
+                            <Button variant="outline" size="sm" onClick={handleSignOut}>
+                                <LogOut className="mr-2 h-4 w-4" /> Salir
+                            </Button>
+                        </div>
+                    ) : (
+                        <Link href="/login" passHref>
+                            <Button variant="outline" size="sm" onClick={(e) => handleNavClick(e, '/login')}>
+                                <LogIn className="mr-2 h-4 w-4" /> Ingresar
+                            </Button>
+                        </Link>
+                    )}
                 </div>
              </nav>
          )}
@@ -115,4 +194,3 @@ export default function RootLayout({
     </html>
   );
 }
-

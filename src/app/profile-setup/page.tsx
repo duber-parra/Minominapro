@@ -10,6 +10,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, Save, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Firebase imports (if needed for profile update, e.g., storing logo URL)
+// import { getAuth, User } from "firebase/auth";
+// import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+// import { doc, setDoc, getFirestore } from "firebase/firestore";
+// import { ensureFirebaseInitialized } from '@/app/login/page'; // Assuming this helper exists
+
 export default function ProfileSetupPage() {
   const [name, setName] = useState('');
   const [logo, setLogo] = useState<File | null>(null);
@@ -68,12 +74,17 @@ export default function ProfileSetupPage() {
     // 1. Upload the 'logo' file to Firebase Storage or another service. Get the URL.
     // 2. Update the user's profile (e.g., in Firestore or Firebase Auth) with the 'name' and logo URL.
     console.log('Saving profile:', { name, logoName: logo?.name });
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
 
-    // Example: Handle potential saving error
-    // setError('Hubo un error al guardar el perfil.');
-    // setIsLoading(false);
-    // return;
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Example: Store in localStorage (for demo purposes, replace with backend)
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('companyName', name);
+        if (logoPreview) { // Save logo as data URL (not ideal for production)
+            localStorage.setItem('companyLogo', logoPreview);
+        }
+    }
     // --- End Placeholder ---
 
     setIsLoading(false);

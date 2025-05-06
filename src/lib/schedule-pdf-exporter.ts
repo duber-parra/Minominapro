@@ -14,7 +14,7 @@ declare module 'jspdf' {
 }
 
 // Interface for single location data
-interface ScheduleExportData {
+export interface ScheduleExportData {
     locationName: string;
     weekDates: Date[];
     departments: Department[];
@@ -24,18 +24,48 @@ interface ScheduleExportData {
     calculateShiftDuration: (assignment: ShiftAssignment, shiftDate: Date) => number;
 }
 
-// Helper to add the watermark header
-function addWatermarkHeader(doc: jsPDF, initialY: number = 10): number {
+// Helper to add the watermark header and company logo/name
+function addHeaderAndWatermark(doc: jsPDF, initialY: number = 10): number {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const watermarkText = "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos";
+    const leftMargin = 40; // Consistent with table margin
+    let currentYPos = initialY;
 
+    // --- Company Logo and Name (if available) ---
+    if (typeof window !== 'undefined') {
+        const companyLogoDataUrl = localStorage.getItem('companyLogo');
+        const companyName = localStorage.getItem('companyName');
+
+        if (companyLogoDataUrl) {
+            try {
+                const logoSize = 15; // Adjust size as needed
+                doc.addImage(companyLogoDataUrl, 'PNG', leftMargin, currentYPos, logoSize, logoSize);
+                if (companyName) {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(companyName, leftMargin + logoSize + 3, currentYPos + logoSize / 2 + 3);
+                }
+                currentYPos += logoSize + 5; // Space after logo/name
+            } catch (e) {
+                console.error("Error adding company logo to PDF:", e);
+            }
+        } else if (companyName) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(companyName, leftMargin, currentYPos + 5);
+            currentYPos += 10; // Space after name
+        }
+    }
+
+    // --- Watermark ---
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.setTextColor(150); // Set text color to light gray (opacity is harder)
-    doc.text(watermarkText, pageWidth / 2, initialY, { align: 'center' });
-    doc.setTextColor(0); // Reset text color to black for the rest of the content
-    return initialY + 5; // Return the Y position below the watermark
+    doc.setTextColor(150);
+    doc.text(watermarkText, pageWidth / 2, currentYPos, { align: 'center' });
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    return currentYPos + 5; // Return the Y position below the watermark
 }
 
 
@@ -49,13 +79,13 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
 
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15; // Start position for content (with margin)
+    let currentY = 10;
     const leftMargin = 40;
     const rightMargin = 40;
     const tableWidth = pageWidth - leftMargin - rightMargin;
 
-     // --- Watermark Header ---
-     currentY = addWatermarkHeader(doc, 10);
+     // --- Header with Watermark, Logo, Name ---
+     currentY = addHeaderAndWatermark(doc, 10);
 
     // --- Header ---
     doc.setFontSize(16);
@@ -154,7 +184,7 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
         didDrawPage: (hookData) => {
              currentY = hookData.cursor?.y ?? currentY;
              const pageNum = doc.internal.getNumberOfPages();
-             addWatermarkHeader(doc, 10); // Add watermark near top
+             addHeaderAndWatermark(doc, 10); // Add watermark near top
              doc.setFontSize(8);
              doc.setTextColor(150); // Keep footer text gray
              doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
@@ -179,12 +209,12 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
 
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15; // Start position
+    let currentY = 10;
     const leftMargin = 40;
     const rightMargin = 40;
 
-    // --- Watermark Header for first page ---
-    currentY = addWatermarkHeader(doc, 10);
+    // --- Header with Watermark, Logo, Name ---
+    currentY = addHeaderAndWatermark(doc, 10);
 
     // --- Main Header ---
     doc.setFontSize(16);
@@ -194,10 +224,19 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
+     // Add Company Name if available
+     if (typeof window !== 'undefined') {
+        const companyName = localStorage.getItem('companyName');
+        if (companyName) {
+            doc.text(companyName, pageWidth / 2, currentY, { align: 'center' });
+            currentY += 15; // Add space after company name
+        }
+    }
     const weekStartFormatted = format(allLocationData[0].weekDates[0], 'dd MMMM', { locale: es });
     const weekEndFormatted = format(allLocationData[0].weekDates[6], 'dd MMMM yyyy', { locale: es });
     doc.text(`Semana: ${weekStartFormatted} - ${weekEndFormatted}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 30;
+
 
     // --- Table Setup ---
     const head: any[] = [
@@ -337,7 +376,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         didDrawPage: (hookData) => {
             currentY = hookData.cursor?.y ?? currentY;
              const pageNum = doc.internal.getNumberOfPages();
-             addWatermarkHeader(doc, 10); // Add watermark near top
+             addHeaderAndWatermark(doc, 10); // Add watermark near top
              doc.setFontSize(8);
              doc.setTextColor(150);
              doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });

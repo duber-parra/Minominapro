@@ -26,31 +26,63 @@ interface PayrollPageData {
     auxTransporteAplicado: number; // Amount of transport allowance applied
 }
 
-// Helper to add the watermark header
-function addWatermarkHeader(doc: jsPDF, initialY: number = 10): number {
+// Helper to add the watermark header and company logo/name
+function addHeaderAndWatermark(doc: jsPDF, initialY: number = 10): number {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const watermarkText = "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos";
+    const leftMargin = 14;
+    let currentYPos = initialY;
 
+    // --- Company Logo and Name (if available) ---
+    if (typeof window !== 'undefined') {
+        const companyLogoDataUrl = localStorage.getItem('companyLogo');
+        const companyName = localStorage.getItem('companyName');
+
+        if (companyLogoDataUrl) {
+            try {
+                // Assuming logo is square, adjust dimensions as needed
+                const logoSize = 15; // Adjust size as needed
+                doc.addImage(companyLogoDataUrl, 'PNG', leftMargin, currentYPos, logoSize, logoSize);
+                if (companyName) {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(companyName, leftMargin + logoSize + 3, currentYPos + logoSize / 2 + 3);
+                }
+                currentYPos += logoSize + 5; // Space after logo/name
+            } catch (e) {
+                console.error("Error adding company logo to PDF:", e);
+                // Proceed without logo if it fails
+            }
+        } else if (companyName) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(companyName, leftMargin, currentYPos + 5);
+            currentYPos += 10; // Space after name
+        }
+    }
+
+
+    // --- Watermark ---
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.setTextColor(150); // Set text color to light gray (opacity is harder)
-    doc.text(watermarkText, pageWidth / 2, initialY, { align: 'center' });
-    doc.setTextColor(0); // Reset text color to black for the rest of the content
-    doc.setFont('helvetica', 'normal'); // Reset font style
-    return initialY + 8; // Return the Y position below the watermark, increased space
+    doc.setTextColor(150);
+    doc.text(watermarkText, pageWidth / 2, currentYPos, { align: 'center' });
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    return currentYPos + 8; // Return the Y position below the watermark
 }
 
 // Helper function to draw a single payroll report page
 function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the new combined interface
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15; // Start position for content
+    let currentY = 10; // Start position for content
     const leftMargin = 14;
     const rightMargin = 14;
 
-    // --- Watermark Header ---
-    currentY = addWatermarkHeader(doc, 10); // Add watermark header at the top
+    // --- Header with Watermark, Logo, Name ---
+    currentY = addHeaderAndWatermark(doc, 10);
 
     // --- Main Header ---
     doc.setFontSize(16);
@@ -122,7 +154,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
             currentY = hookData.cursor?.y ?? currentY;
              // Add watermark to subsequent pages
              if (hookData.pageNumber > 1) {
-                addWatermarkHeader(doc, 10);
+                addHeaderAndWatermark(doc, 10);
              }
         },
         didParseCell: (hookData) => {
@@ -176,7 +208,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
             currentY = hookData.cursor?.y ?? currentY;
              // Add watermark to subsequent pages
              if (hookData.pageNumber > 1) {
-                 addWatermarkHeader(doc, 10);
+                 addHeaderAndWatermark(doc, 10);
              }
          },
         didParseCell: (hookData) => {
@@ -222,9 +254,9 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
             currentY = hookData.cursor?.y ?? currentY;
              // Add watermark to subsequent pages
              if (hookData.pageNumber > 1) {
-                 addWatermarkHeader(doc, 10);
+                 addHeaderAndWatermark(doc, 10);
              }
-        },
+         },
     });
 
     currentY = doc.lastAutoTable.finalY + 5; // Use finalY from autotable
@@ -254,7 +286,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
                 currentY = hookData.cursor?.y ?? currentY;
                  // Add watermark to subsequent pages
                  if (hookData.pageNumber > 1) {
-                     addWatermarkHeader(doc, 10);
+                     addHeaderAndWatermark(doc, 10);
                  }
             },
         });
@@ -279,7 +311,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     // Check if signature area fits on the current page, add new page if necessary
     if (signatureY > pageHeight - 35) {
         doc.addPage();
-        addWatermarkHeader(doc, 10); // Add watermark to new page
+        addHeaderAndWatermark(doc, 10); // Add watermark to new page
         signatureY = 25; // Reset Y for new page, below watermark
     }
     const signatureXMargin = 30;
@@ -297,7 +329,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number { // Use the
     // Check if footer note fits, add new page if necessary BEFORE drawing
      if (currentY > pageHeight - 10) {
         doc.addPage();
-        addWatermarkHeader(doc, 10); // Add watermark to new page
+        addHeaderAndWatermark(doc, 10); // Add watermark to new page
         currentY = pageHeight - 10; // Position at bottom of new page
      } else {
          currentY = pageHeight - 10; // Position at bottom of current page
@@ -382,7 +414,7 @@ export function exportAllPayrollsToPDF(
     }
 
     const doc = new jsPDF();
-    let currentY = 15; // Start position
+    let currentY = 10; // Start position
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     const leftMargin = 14;
@@ -390,16 +422,24 @@ export function exportAllPayrollsToPDF(
     const signatureColumnWidth = 35; // Reduced signature column width
     const firmaHeight = 15; // Height reserved for signature line/space
 
-    // --- Watermark Header for first page ---
-    currentY = addWatermarkHeader(doc, 10); // Adjusted starting position
+    // --- Header with Watermark, Logo, Name ---
+    currentY = addHeaderAndWatermark(doc, 10);
 
     // --- Main Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' }); // Lowered title
+    doc.text('Lista de Pago de Nómina', pageWidth / 2, currentY, { align: 'center' });
     currentY += 8;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    // Add Company Name if available
+    if (typeof window !== 'undefined') {
+        const companyName = localStorage.getItem('companyName');
+        if (companyName) {
+            doc.text(companyName, pageWidth / 2, currentY, { align: 'center' });
+            currentY += 6;
+        }
+    }
     doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 15;
 
@@ -485,7 +525,7 @@ export function exportAllPayrollsToPDF(
             currentY = hookData.cursor?.y ?? currentY;
             // Add page numbers and watermark to all pages (including subsequent ones)
             const pageNum = doc.internal.getNumberOfPages();
-            addWatermarkHeader(doc, 10); // Add watermark near top
+            addHeaderAndWatermark(doc, 10); // Add watermark near top
             doc.setFontSize(8);
             doc.setTextColor(150); // Keep footer text gray
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });

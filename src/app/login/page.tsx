@@ -27,22 +27,23 @@ import { useRouter } from 'next/navigation';
 // NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
 // NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
 // NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
-// Make sure to prefix them with NEXT_PUBLIC_ so they are available on the client-side.
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk", // Added fallback for testing, but ENV VAR is preferred
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "calculadora-de-horas-wshe0.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "calculadora-de-horas-wshe0",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "calculadora-de-horas-wshe0.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "128893274714",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:128893274714:web:b8a084377a9293b534e663"
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase only once
+// Initialize Firebase only once
 function ensureFirebaseInitialized() {
     // Check if API key is provided and not the placeholder
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk" || firebaseConfig.apiKey === "YOUR_API_KEY") {
-        const errorMsg = "La clave API de Firebase falta o es un marcador de posición. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.";
-        console.error(errorMsg, "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
+        const errorMsg = 'La clave API de Firebase falta o no es válida. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.';
+        console.error(errorMsg, "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY); // Log the raw value for debugging
         throw new Error(errorMsg);
     }
     if (!getApps().length) {
@@ -69,7 +70,12 @@ const isFirstLogin = async (user: User): Promise<boolean> => {
     console.log("Checking if first login for user:", user.uid);
     // Example: Check creation time vs last sign-in time.
     // This is a common pattern but might require adjusting tolerance depending on Firebase behavior.
-    const isNew = user.metadata.creationTime === user.metadata.lastSignInTime;
+    const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+    const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+    // Consider a small tolerance (e.g., 5 seconds) as times might not be exactly equal
+    const isNew = Math.abs(creationTime - lastSignInTime) < 5000;
+    console.log("User metadata:", user.metadata);
+    console.log("Creation time:", creationTime, "Last sign-in time:", lastSignInTime);
     console.log("Is considered first login?", isNew);
     return isNew;
 }
@@ -147,7 +153,7 @@ export default function LoginPage() {
         } else if (error.code === 'auth/unauthorized-domain') {
              setError('Error: Dominio no autorizado. Asegúrate de que "' + window.location.hostname + '" esté en la lista de dominios autorizados en Firebase Auth.');
         } else {
-            setError(`Error al iniciar sesión con Google: ${error.message || 'Intenta de nuevo.'}`);
+            setError(`Error al iniciar sesión con Google: ${error.message || 'Intenta de nuevo.'} Codigo: ${error.code}`);
         }
       } finally { // Ensure isLoading is set to false even if there's an error
         setIsLoading(false);
