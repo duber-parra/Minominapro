@@ -3,11 +3,12 @@
 
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Import Link
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Save, Upload } from 'lucide-react';
+import { Loader2, Save, Upload, Home } from 'lucide-react'; // Added Home icon
 import { useToast } from '@/hooks/use-toast';
 
 // Firebase imports (if needed for profile update, e.g., storing logo URL)
@@ -172,10 +173,15 @@ export default function ProfileSetupPage() {
             </Button>
           </form>
         </CardContent>
-        {/* Optional Footer */}
-        {/* <CardFooter className="flex justify-center text-sm">
-           <p className="text-muted-foreground">Puedes ajustar esto más tarde en la configuración.</p>
-        </CardFooter> */}
+        <CardFooter className="flex flex-col gap-4 pt-6"> {/* Changed to flex-col and added gap */}
+           <p className="text-xs text-muted-foreground text-center">Puedes ajustar esto más tarde en tu perfil.</p>
+           <Link href="/" passHref className="w-full">
+              <Button variant="outline" className="w-full">
+                <Home className="mr-2 h-4 w-4" />
+                Volver al Inicio
+              </Button>
+           </Link>
+        </CardFooter>
       </Card>
     </div>
   );
