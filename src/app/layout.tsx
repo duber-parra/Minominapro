@@ -33,7 +33,7 @@ const firebaseConfig = {
 
 function ensureFirebaseInitialized() {
     if (!getApps().length) {
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Removed specific key check "AIzaSy..."
           // Avoid throwing error here directly in layout, log it instead or handle gracefully
           console.error('Firebase API Key is missing or invalid in RootLayout.');
           return null; // Indicate that initialization failed
@@ -150,10 +150,14 @@ export default function RootLayout({
                     {/* Login/Profile Button */}
                     {currentUser ? (
                         <div className="flex items-center gap-2">
+                             {/* Display company name or user display name */}
+                             <span className="text-sm font-medium text-foreground hidden sm:inline">
+                                {currentUser.displayName || currentUser.email}
+                             </span>
                             <Link href="/profile-setup" passHref>
-                                <Button variant="ghost" size="sm" onClick={(e) => handleNavClick(e, '/profile-setup')}>
-                                    <UserIcon className="mr-2 h-4 w-4" />
-                                    {currentUser.displayName || currentUser.email}
+                                <Button variant="ghost" size="sm" onClick={(e) => handleNavClick(e, '/profile-setup')} title="Configurar Perfil">
+                                    <UserIcon className="mr-0 sm:mr-2 h-4 w-4" />
+                                    <span className="hidden sm:inline">Perfil</span>
                                 </Button>
                             </Link>
                             <Button variant="outline" size="sm" onClick={handleSignOut}>
@@ -194,3 +198,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

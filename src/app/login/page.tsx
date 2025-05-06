@@ -38,10 +38,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase only once
-// Initialize Firebase only once
 function ensureFirebaseInitialized() {
     // Check if API key is provided and not the placeholder
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Removed specific key check "AIzaSy..."
         const errorMsg = 'La clave API de Firebase falta o no es válida. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.';
         console.error(errorMsg, "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY); // Log the raw value for debugging
         throw new Error(errorMsg);
@@ -210,3 +209,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

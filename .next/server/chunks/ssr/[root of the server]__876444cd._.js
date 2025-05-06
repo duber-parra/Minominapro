@@ -2971,7 +2971,7 @@ const firebaseConfig = {
 };
 function ensureFirebaseInitialized() {
     if (!(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$app$2f$dist$2f$esm$2f$index$2e$esm2017$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["getApps"])().length) {
-        if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
+        if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
             // Avoid throwing error here directly in layout, log it instead or handle gracefully
             console.error('Firebase API Key is missing or invalid in RootLayout.');
             return null; // Indicate that initialization failed
@@ -3119,6 +3119,14 @@ function RootLayout({ children }) {
                                 currentUser ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex items-center gap-2",
                                     children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "text-sm font-medium text-foreground hidden sm:inline",
+                                            children: currentUser.displayName || currentUser.email
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/app/layout.tsx",
+                                            lineNumber: 154,
+                                            columnNumber: 30
+                                        }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                                             href: "/profile-setup",
                                             passHref: true,
@@ -3126,24 +3134,32 @@ function RootLayout({ children }) {
                                                 variant: "ghost",
                                                 size: "sm",
                                                 onClick: (e)=>handleNavClick(e, '/profile-setup'),
+                                                title: "Configurar Perfil",
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$user$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__User$3e$__["User"], {
-                                                        className: "mr-2 h-4 w-4"
+                                                        className: "mr-0 sm:mr-2 h-4 w-4"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/layout.tsx",
-                                                        lineNumber: 155,
+                                                        lineNumber: 159,
                                                         columnNumber: 37
                                                     }, this),
-                                                    currentUser.displayName || currentUser.email
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "hidden sm:inline",
+                                                        children: "Perfil"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/layout.tsx",
+                                                        lineNumber: 160,
+                                                        columnNumber: 37
+                                                    }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/layout.tsx",
-                                                lineNumber: 154,
+                                                lineNumber: 158,
                                                 columnNumber: 33
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/layout.tsx",
-                                            lineNumber: 153,
+                                            lineNumber: 157,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -3155,14 +3171,14 @@ function RootLayout({ children }) {
                                                     className: "mr-2 h-4 w-4"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/layout.tsx",
-                                                    lineNumber: 160,
+                                                    lineNumber: 164,
                                                     columnNumber: 33
                                                 }, this),
                                                 " Salir"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/layout.tsx",
-                                            lineNumber: 159,
+                                            lineNumber: 163,
                                             columnNumber: 29
                                         }, this)
                                     ]
@@ -3182,19 +3198,19 @@ function RootLayout({ children }) {
                                                 className: "mr-2 h-4 w-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/layout.tsx",
-                                                lineNumber: 166,
+                                                lineNumber: 170,
                                                 columnNumber: 33
                                             }, this),
                                             " Ingresar"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/layout.tsx",
-                                        lineNumber: 165,
+                                        lineNumber: 169,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/layout.tsx",
-                                    lineNumber: 164,
+                                    lineNumber: 168,
                                     columnNumber: 25
                                 }, this)
                             ]
@@ -3217,12 +3233,12 @@ function RootLayout({ children }) {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/layout.tsx",
-                    lineNumber: 174,
+                    lineNumber: 178,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$toaster$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Toaster"], {}, void 0, false, {
                     fileName: "[project]/src/app/layout.tsx",
-                    lineNumber: 177,
+                    lineNumber: 181,
                     columnNumber: 9
                 }, this),
                 !hideLayoutForAuth && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("footer", {
@@ -3237,14 +3253,14 @@ function RootLayout({ children }) {
                                     className: "bg-border/50"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/layout.tsx",
-                                    lineNumber: 183,
+                                    lineNumber: 187,
                                     columnNumber: 18
                                 }, this),
                                 " "
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/layout.tsx",
-                            lineNumber: 182,
+                            lineNumber: 186,
                             columnNumber: 16
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3252,18 +3268,18 @@ function RootLayout({ children }) {
                             children: "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos"
                         }, void 0, false, {
                             fileName: "[project]/src/app/layout.tsx",
-                            lineNumber: 185,
+                            lineNumber: 189,
                             columnNumber: 16
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/layout.tsx",
-                    lineNumber: 181,
+                    lineNumber: 185,
                     columnNumber: 13
                 }, this),
                 !hideLayoutForAuth && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$labor$2d$calculator$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/src/app/layout.tsx",
-                    lineNumber: 192,
+                    lineNumber: 196,
                     columnNumber: 33
                 }, this)
             ]

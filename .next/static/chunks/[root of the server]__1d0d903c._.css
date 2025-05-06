@@ -863,6 +863,10 @@ body {
   margin-top: auto;
 }
 
+.mr-0 {
+  margin-right: 0;
+}
+
 .block {
   display: block;
 }
@@ -3363,6 +3367,14 @@ body {
 
   .sm\:mt-0 {
     margin-top: 0;
+  }
+
+  .sm\:mr-2 {
+    margin-right: .5rem;
+  }
+
+  .sm\:inline {
+    display: inline;
   }
 
   .sm\:flex {

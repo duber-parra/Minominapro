@@ -85,11 +85,12 @@ function ProfileSetupPage() {
             name,
             logoName: logo?.name
         });
-        await new Promise((resolve)=>setTimeout(resolve, 1500)); // Simulate API call
-        // Example: Handle potential saving error
-        // setError('Hubo un error al guardar el perfil.');
-        // setIsLoading(false);
-        // return;
+        // Simulate API call
+        await new Promise((resolve)=>setTimeout(resolve, 1500));
+        // Example: Store in localStorage (for demo purposes, replace with backend)
+        if ("TURBOPACK compile-time falsy", 0) {
+            "TURBOPACK unreachable";
+        }
         // --- End Placeholder ---
         setIsLoading(false);
         toast({
@@ -111,20 +112,20 @@ function ProfileSetupPage() {
                             children: "Configuración Inicial del Perfil"
                         }, void 0, false, {
                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                            lineNumber: 91,
+                            lineNumber: 102,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                             children: "Completa tu información básica y sube el logo de tu empresa."
                         }, void 0, false, {
                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                            lineNumber: 94,
+                            lineNumber: 105,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                    lineNumber: 90,
+                    lineNumber: 101,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -135,7 +136,7 @@ function ProfileSetupPage() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                            lineNumber: 100,
+                            lineNumber: 111,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -150,7 +151,7 @@ function ProfileSetupPage() {
                                             children: "Nombre (Personal o Empresa)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 107,
+                                            lineNumber: 118,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -164,13 +165,13 @@ function ProfileSetupPage() {
                                             className: "text-base"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 108,
+                                            lineNumber: 119,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                    lineNumber: 106,
+                                    lineNumber: 117,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -181,7 +182,7 @@ function ProfileSetupPage() {
                                             children: "Logo de la Empresa (Opcional)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 122,
+                                            lineNumber: 133,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -197,7 +198,7 @@ function ProfileSetupPage() {
                                                     className: "hidden" // Hide the default input
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                                    lineNumber: 124,
+                                                    lineNumber: 135,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
@@ -208,14 +209,14 @@ function ProfileSetupPage() {
                                                             className: "mr-2 h-4 w-4"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                                            lineNumber: 136,
+                                                            lineNumber: 147,
                                                             columnNumber: 20
                                                         }, this),
                                                         "Seleccionar Archivo"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                                    lineNumber: 132,
+                                                    lineNumber: 143,
                                                     columnNumber: 18
                                                 }, this),
                                                 logoPreview && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
@@ -224,7 +225,7 @@ function ProfileSetupPage() {
                                                     className: "h-10 w-10 rounded-md border object-contain"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                                    lineNumber: 140,
+                                                    lineNumber: 151,
                                                     columnNumber: 20
                                                 }, this),
                                                 !logoPreview && logo && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -232,13 +233,13 @@ function ProfileSetupPage() {
                                                     children: logo.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                                    lineNumber: 147,
+                                                    lineNumber: 158,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 123,
+                                            lineNumber: 134,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -246,13 +247,13 @@ function ProfileSetupPage() {
                                             children: "Tamaño máximo 2MB. Formatos recomendados: PNG, JPG."
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 150,
+                                            lineNumber: 161,
                                             columnNumber: 16
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                    lineNumber: 121,
+                                    lineNumber: 132,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -264,43 +265,43 @@ function ProfileSetupPage() {
                                             className: "animate-spin mr-2"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 156,
+                                            lineNumber: 167,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$save$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Save$3e$__["Save"], {
                                             className: "mr-2 h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 169,
                                             columnNumber: 17
                                         }, this),
                                         isLoading ? 'Guardando...' : 'Guardar y Continuar'
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                                    lineNumber: 154,
+                                    lineNumber: 165,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/profile-setup/page.tsx",
-                            lineNumber: 104,
+                            lineNumber: 115,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/profile-setup/page.tsx",
-                    lineNumber: 98,
+                    lineNumber: 109,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/profile-setup/page.tsx",
-            lineNumber: 89,
+            lineNumber: 100,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/profile-setup/page.tsx",
-        lineNumber: 88,
+        lineNumber: 99,
         columnNumber: 5
     }, this);
 }
