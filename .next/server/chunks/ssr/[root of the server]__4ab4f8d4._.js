@@ -5885,19 +5885,27 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$time$2d$utils$
 ;
 ;
 ;
-// Helper to add the watermark header
-function addWatermarkHeader(doc, initialY = 10) {
+// Helper to add the watermark header and company logo/name
+function addHeaderAndWatermark(doc, initialY = 10) {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const watermarkText = "Desarrollado por Duber Parra, Dpana company © 2025 Calculadora de Turnos y Recargos";
+    const leftMargin = 40; // Consistent with table margin
+    let currentYPos = initialY;
+    // --- Company Logo and Name (if available) ---
+    if ("TURBOPACK compile-time falsy", 0) {
+        "TURBOPACK unreachable";
+    }
+    // --- Watermark ---
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.setTextColor(150); // Set text color to light gray (opacity is harder)
-    doc.text(watermarkText, pageWidth / 2, initialY, {
+    doc.setTextColor(150);
+    doc.text(watermarkText, pageWidth / 2, currentYPos, {
         align: 'center'
     });
-    doc.setTextColor(0); // Reset text color to black for the rest of the content
-    return initialY + 5; // Return the Y position below the watermark
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    return currentYPos + 5; // Return the Y position below the watermark
 }
 function exportScheduleToPDF(data) {
     const doc = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jspdf$2f$dist$2f$jspdf$2e$es$2e$min$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"]({
@@ -5907,12 +5915,12 @@ function exportScheduleToPDF(data) {
     });
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15; // Start position for content (with margin)
+    let currentY = 10;
     const leftMargin = 40;
     const rightMargin = 40;
     const tableWidth = pageWidth - leftMargin - rightMargin;
-    // --- Watermark Header ---
-    currentY = addWatermarkHeader(doc, 10);
+    // --- Header with Watermark, Logo, Name ---
+    currentY = addHeaderAndWatermark(doc, 10);
     // --- Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -6074,7 +6082,7 @@ function exportScheduleToPDF(data) {
         didDrawPage: (hookData)=>{
             currentY = hookData.cursor?.y ?? currentY;
             const pageNum = doc.internal.getNumberOfPages();
-            addWatermarkHeader(doc, 10); // Add watermark near top
+            addHeaderAndWatermark(doc, 10); // Add watermark near top
             doc.setFontSize(8);
             doc.setTextColor(150); // Keep footer text gray
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, {
@@ -6096,11 +6104,11 @@ function exportConsolidatedScheduleToPDF(allLocationData) {
     });
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15; // Start position
+    let currentY = 10;
     const leftMargin = 40;
     const rightMargin = 40;
-    // --- Watermark Header for first page ---
-    currentY = addWatermarkHeader(doc, 10);
+    // --- Header with Watermark, Logo, Name ---
+    currentY = addHeaderAndWatermark(doc, 10);
     // --- Main Header ---
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -6110,6 +6118,10 @@ function exportConsolidatedScheduleToPDF(allLocationData) {
     currentY += 20;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
+    // Add Company Name if available
+    if ("TURBOPACK compile-time falsy", 0) {
+        "TURBOPACK unreachable";
+    }
     const weekStartFormatted = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$format$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["format"])(allLocationData[0].weekDates[0], 'dd MMMM', {
         locale: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$locale$2f$es$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["es"]
     });
@@ -6367,7 +6379,7 @@ function exportConsolidatedScheduleToPDF(allLocationData) {
         didDrawPage: (hookData)=>{
             currentY = hookData.cursor?.y ?? currentY;
             const pageNum = doc.internal.getNumberOfPages();
-            addWatermarkHeader(doc, 10); // Add watermark near top
+            addHeaderAndWatermark(doc, 10); // Add watermark near top
             doc.setFontSize(8);
             doc.setTextColor(150);
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, {

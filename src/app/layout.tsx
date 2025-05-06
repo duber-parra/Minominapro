@@ -1,7 +1,9 @@
+
 'use client'; // Add 'use client' because we need hooks for loading state
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image'; // Import next/image
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -33,10 +35,9 @@ const firebaseConfig = {
 
 function ensureFirebaseInitialized() {
     if (!getApps().length) {
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Removed specific key check "AIzaSy..."
-          // Avoid throwing error here directly in layout, log it instead or handle gracefully
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
           console.error('Firebase API Key is missing or invalid in RootLayout.');
-          return null; // Indicate that initialization failed
+          return null;
       }
         try {
             return initializeApp(firebaseConfig);
@@ -68,6 +69,7 @@ export default function RootLayout({
 }>) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null); // State for current user
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null); // State for company logo
   const pathname = usePathname();
   const router = useRouter(); // For navigation
 
@@ -79,6 +81,15 @@ export default function RootLayout({
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
     });
+
+    // Load company logo from localStorage
+    if (typeof window !== 'undefined') {
+        const savedLogo = localStorage.getItem('companyLogo');
+        if (savedLogo) {
+            setCompanyLogo(savedLogo);
+        }
+    }
+
     return () => unsubscribe();
   }, []);
 
@@ -150,7 +161,16 @@ export default function RootLayout({
                     {/* Login/Profile Button */}
                     {currentUser ? (
                         <div className="flex items-center gap-2">
-                             {/* Display company name or user display name */}
+                             {companyLogo && (
+                                <Image
+                                    src={companyLogo}
+                                    alt="Logo Empresa"
+                                    width={32}
+                                    height={32}
+                                    className="rounded-full object-contain"
+                                    data-ai-hint="company logo"
+                                />
+                             )}
                              <span className="text-sm font-medium text-foreground hidden sm:inline">
                                 {currentUser.displayName || currentUser.email}
                              </span>
@@ -198,5 +218,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
