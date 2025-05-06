@@ -76,12 +76,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const renderNotesTooltip = (notes: ScheduleNote[]) => {
     if (!notes || notes.length === 0) return null;
     return (
-        <div className="text-xs space-y-1 max-w-xs p-2">
+        <div className="text-xs space-y-1 max-w-xs p-2 bg-popover text-popover-foreground rounded-md shadow-md border">
             <p className="font-medium mb-1">Anotaciones:</p>
             {notes.map(note => {
                 const employeeName = note.employeeId ? employees.find(e => e.id === note.employeeId)?.name : null;
+                // Format date for tooltip: Abbreviated day, numeric day, abbreviated month
                 const noteDate = parseDateFns(note.date, 'yyyy-MM-dd', new Date());
-                // Adjusted date format for tooltip to be more concise
                 const formattedDate = isValidDate(noteDate) ? format(noteDate, 'EEE d MMM', { locale: es }) : note.date;
                 return (
                      <p key={note.id}>
@@ -124,14 +124,19 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                          <TooltipProvider delayDuration={100}>
                              <Tooltip>
                                  <TooltipTrigger asChild>
-                                     <AlertDialog>
+                                      <AlertDialog>
                                          <AlertDialogTrigger asChild>
                                               <Button
                                                  variant="ghost"
                                                  size="icon"
                                                  className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer"
                                                  aria-label="Ver/Eliminar anotaciones"
-                                                 onClick={(e) => e.stopPropagation()}
+                                                 onClick={(e) => {
+                                                      e.stopPropagation(); // Prevent card click if any
+                                                      if (setNoteToDeleteId && notesForDay.length > 0) {
+                                                        // Action for click (delete) is handled by AlertDialog
+                                                      }
+                                                 }}
                                               >
                                                   <NotebookPen className="h-4 w-4" />
                                               </Button>
@@ -272,7 +277,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                                                 size="icon"
                                                                 className="h-4 w-4 p-0 text-yellow-500 hover:text-yellow-600 cursor-pointer"
                                                                 aria-label="Ver/Eliminar anotaciones"
-                                                                onClick={(e) => e.stopPropagation()}
+                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 <NotebookPen className="h-3 w-3" />
                                                             </Button>
