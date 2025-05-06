@@ -80,7 +80,7 @@ import { WeekNavigator } from '@/components/schedule/WeekNavigator'; // Import W
 import { ScheduleNotesModal } from '@/components/schedule/ScheduleNotesModal'; // Import Notes modal
 import { SummaryDashboard } from '@/components/schedule/SummaryDashboard'; // Import the dashboard
 import { ConfigTabs } from '@/components/schedule/ConfigTabs'; // Import ConfigTabs
-// import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
+import { ScheduleTemplateList } from '@/components/schedule/ScheduleTemplateList'; // Re-added ScheduleTemplateList import
 
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -2369,94 +2369,56 @@ export default function SchedulePage() {
                                            <Settings className="h-5 w-5"/>
                                        </Button>
                                    </DialogTrigger>
-                                    <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Adjusted padding */}
-                                       <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4"> {/* Added space-x */}
-                                         <div className="flex-1"> {/* Take available space */}
-                                           <DialogTitle>Configuración General</DialogTitle>
-                                           <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
-                                         </div>
-                                          <div className="flex items-center gap-2 flex-shrink-0 mr-8"> {/* Added mr-8 */}
-                                              {/* Config Import Button */}
-                                              <input
-                                                  type="file"
-                                                  accept=".json"
-                                                  ref={fileInputRef}
-                                                  onChange={handleImportConfig}
-                                                  className="hidden"
-                                                  id="import-config-input"
-                                              />
-                                              <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => fileInputRef.current?.click()}
-                                                  title="Importar configuración (JSON)"
-                                              >
-                                                  <UploadCloud className="mr-2 h-4 w-4" /> Importar Conf.
-                                              </Button>
-                                             {/* Config Export Button */}
-                                              <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={handleExportConfig}
-                                                  title="Exportar configuración (JSON)"
-                                              >
-                                                  <Download className="mr-2 h-4 w-4" /> Exportar Conf.
-                                              </Button>
-                                         </div>
-                                         <DialogClose asChild>
-                                            <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                                               <X className="h-4 w-4" />
-                                               <span className="sr-only">Cerrar</span>
-                                           </Button>
-                                         </DialogClose>
-                                        </DialogHeader>
-                                        <div className="flex-grow overflow-hidden p-4"> {/* Main content area */}
-                                             <ConfigTabs
-                                                 locations={locations}
-                                                 departments={departments}
-                                                 employees={employees}
-                                                 templates={savedTemplates} // Pass savedTemplates here
-                                                 selectedLocationId={selectedLocationId}
-                                                 iconMap={iconMap}
-                                                 openConfigForm={openConfigForm}
-                                                 selectedConfigItem={selectedConfigItem}
-                                                 confirmDeleteItem={confirmDeleteItem}
-                                                 handleCopyEmployeeId={handleCopyEmployeeId}
-                                                 handleLoadTemplate={handleLoadTemplate}
-                                                 configFormType={configFormType}
-                                                 locationFormData={locationFormData}
-                                                 setLocationFormData={setLocationFormData}
-                                                 departmentFormData={departmentFormData}
-                                                 setDepartmentFormData={setDepartmentFormData}
-                                                 employeeFormData={employeeFormData}
-                                                 setEmployeeFormData={setEmployeeFormData}
-                                                 handleSaveLocation={handleSaveLocation}
-                                                 handleSaveDepartment={handleSaveDepartment}
-                                                 handleSaveEmployee={handleSaveEmployee}
-                                                 setConfigFormType={setConfigFormType}
-                                                 setSelectedConfigItem={setSelectedConfigItem}
-                                                 handleToggleEmployeeLocation={handleToggleEmployeeLocation} // Pass the correct function
-                                                 handleToggleEmployeeDepartment={handleToggleEmployeeDepartment} // Pass the correct function
-                                                 availableDepartmentsForEmployee={availableDepartmentsForEmployee}
-                                                 activeTab={activeConfigTab}
-                                                 setActiveTab={setActiveTabFn} // Pass state setter directly
-                                                 locationSearch={locationSearch}
-                                                 setLocationSearch={setLocationSearch}
-                                                 departmentSearch={departmentSearch}
-                                                 setDepartmentSearch={setDepartmentSearch}
-                                                 employeeSearch={employeeSearch}
-                                                 setEmployeeSearch={setEmployeeSearch}
-                                                 templateSearch={templateSearch}
-                                                 setTemplateSearch={setTemplateSearch}
-                                                 filteredLocationsData={filteredLocationsData}
-                                                 filteredDepartmentsData={filteredDepartmentsData}
-                                                 filteredEmployeesData={filteredEmployeesData}
-                                                 filteredTemplatesData={filteredTemplatesData}
-                                                 handleExportConfig={handleExportConfig} // Pass export handler prop
-                                                 handleImportConfig={handleImportConfig} // Pass import handler prop
-                                                 fileInputRef={fileInputRef}      // Pass ref prop
-                                             />
-                                       </div>
+                                    <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+                                        <ConfigTabs
+                                             locations={locations}
+                                             departments={departments}
+                                             employees={employees}
+                                             templates={savedTemplates}
+                                             selectedLocationId={selectedLocationId}
+                                             iconMap={iconMap}
+                                             openConfigForm={openConfigForm}
+                                             selectedConfigItem={selectedConfigItem}
+                                             confirmDeleteItem={confirmDeleteItem}
+                                             handleCopyEmployeeId={handleCopyEmployeeId}
+                                             handleLoadTemplate={handleLoadTemplate}
+                                             configFormType={configFormType}
+                                             locationFormData={locationFormData}
+                                             setLocationFormData={setLocationFormData}
+                                             departmentFormData={departmentFormData}
+                                             setDepartmentFormData={setDepartmentFormData}
+                                             employeeFormData={employeeFormData}
+                                             setEmployeeFormData={setEmployeeFormData}
+                                             handleSaveLocation={handleSaveLocation}
+                                             handleSaveDepartment={handleSaveDepartment}
+                                             handleSaveEmployee={handleSaveEmployee}
+                                             setConfigFormType={setConfigFormType}
+                                             setSelectedConfigItem={setSelectedConfigItem}
+                                             handleToggleEmployeeLocation={handleToggleEmployeeLocation}
+                                             handleToggleEmployeeDepartment={handleToggleEmployeeDepartment}
+                                             availableDepartmentsForEmployee={availableDepartmentsForEmployee}
+                                             activeTab={activeConfigTab}
+                                             setActiveTab={setActiveTabFn}
+                                             locationSearch={locationSearch}
+                                             setLocationSearch={setLocationSearch}
+                                             departmentSearch={departmentSearch}
+                                             setDepartmentSearch={setDepartmentSearch}
+                                             employeeSearch={employeeSearch}
+                                             setEmployeeSearch={setEmployeeSearch}
+                                             templateSearch={templateSearch}
+                                             setTemplateSearch={setTemplateSearch}
+                                             filteredLocationsData={filteredLocationsData}
+                                             filteredDepartmentsData={filteredDepartmentsData}
+                                             filteredEmployeesData={filteredEmployeesData}
+                                             filteredTemplatesData={filteredTemplatesData}
+                                             handleExportConfig={handleExportConfig}
+                                             handleImportConfig={handleImportConfig}
+                                             fileInputRef={fileInputRef}
+                                             itemToDelete={itemToDelete}
+                                             setItemToDelete={setItemToDelete}
+                                             handleDeleteItem={handleDeleteItem}
+                                             onCloseDialog={() => setIsConfigModalOpen(false)} // Pass the close handler
+                                         />
                                    </DialogContent>
                                </Dialog>
                          </div>

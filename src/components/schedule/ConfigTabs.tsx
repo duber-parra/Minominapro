@@ -11,13 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'; // Import only necessary parts if this component is not a full dialog
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -43,7 +41,7 @@ import type { Location, Department, Employee, ScheduleTemplate } from '@/types/s
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useToast } from '@/hooks/use-toast';
 
 // Interface for props passed to ConfigTabs
 interface ConfigTabsProps {
@@ -93,6 +91,7 @@ interface ConfigTabsProps {
   itemToDelete: { type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null;
   setItemToDelete: React.Dispatch<React.SetStateAction<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>>;
   handleDeleteItem: () => void;
+  onCloseDialog: () => void; // Add prop to handle closing the dialog
 }
 
 export function ConfigTabs({
@@ -142,6 +141,7 @@ export function ConfigTabs({
     itemToDelete,
     setItemToDelete,
     handleDeleteItem,
+    onCloseDialog,
 }: ConfigTabsProps) {
 
     const { toast } = useToast();
@@ -247,7 +247,7 @@ export function ConfigTabs({
                                     <SelectTrigger id="department-icon"><SelectValue placeholder="Selecciona icono" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ninguno">Ninguno</SelectItem>
-                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })}</span></SelectItem>)}
+                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })} {iconName}</span></SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -392,136 +392,135 @@ export function ConfigTabs({
     };
 
   return (
-    <Dialog open={true} onOpenChange={() => { /* Controlled externally */ }}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-            <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4">
-                <div className="flex-1">
-                    <DialogTitle>Configuración General</DialogTitle>
-                    <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0"> {/* Removed mr-8 */}
-                    <input
-                        type="file"
-                        accept=".json"
-                        ref={fileInputRef}
-                        onChange={handleImportConfig}
-                        className="hidden"
-                        id="import-config-input-modal"
-                    />
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Importar configuración (JSON)"
-                    >
-                        <UploadCloud className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleExportConfig}
-                        title="Exportar configuración (JSON)"
-                    >
-                        <Download className="h-4 w-4" />
-                    </Button>
-                </div>
-                <DialogClose asChild>
-                     <Button variant="ghost" size="icon" className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                         <X className="h-4 w-4" />
-                        <span className="sr-only">Cerrar</span>
-                    </Button>
-                </DialogClose>
-            </DialogHeader>
-            <div className="flex-grow overflow-hidden p-4">
-                 <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeTab} onValueChange={ tabValue => { setActiveTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
-                   <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0">
-                     <TabsTrigger value="sedes">Sedes</TabsTrigger>
-                     <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
-                     <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
-                     <TabsTrigger value="templates">Templates</TabsTrigger>
-                   </TabsList>
+    <>
+        <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4">
+            <div className="flex-1">
+                <DialogTitle>Configuración General</DialogTitle>
+                <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 mr-8"> {/* Reduced mr-8 to mr-4 */}
+                <input
+                    type="file"
+                    accept=".json"
+                    ref={fileInputRef}
+                    onChange={handleImportConfig}
+                    className="hidden"
+                    id="import-config-input-modal"
+                />
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Importar configuración (JSON)"
+                >
+                    <UploadCloud className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleExportConfig}
+                    title="Exportar configuración (JSON)"
+                >
+                    <Download className="h-4 w-4" />
+                </Button>
+            </div>
+             {/* Use DialogClose from the parent Dialog to close the modal */}
+            <DialogClose asChild>
+                 <Button variant="ghost" size="icon" className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                     <X className="h-4 w-4" />
+                    <span className="sr-only">Cerrar</span>
+                </Button>
+            </DialogClose>
+        </DialogHeader>
+        <div className="flex-grow overflow-hidden p-4">
+             <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeTab} onValueChange={ tabValue => { setActiveTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
+               <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0">
+                 <TabsTrigger value="sedes">Sedes</TabsTrigger>
+                 <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
+                 <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
+                 <TabsTrigger value="templates">Templates</TabsTrigger>
+               </TabsList>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden">
-                         <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
-                             <div className="flex items-center gap-2 flex-shrink-0">
-                                 <Input
-                                     placeholder={`Buscar en ${activeTab}...`}
-                                     className="flex-grow"
-                                     value={
-                                         activeTab === 'sedes' ? locationSearch :
-                                         activeTab === 'departamentos' ? departmentSearch :
-                                         activeTab === 'colaboradores' ? employeeSearch :
-                                         templateSearch
-                                     }
-                                     onChange={(e) => {
-                                         const value = e.target.value;
-                                         if (activeTab === 'sedes') setLocationSearch(value);
-                                         else if (activeTab === 'departamentos') setDepartmentSearch(value);
-                                         else if (activeTab === 'colaboradores') setEmployeeSearch(value);
-                                         else if (activeTab === 'templates') setTemplateSearch(value);
-                                     }}
-                                 />
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                        const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
-                                            sedes: 'location',
-                                            departamentos: 'department',
-                                            colaboradores: 'employee',
-                                            templates: 'template',
-                                        };
-                                        const formType = typeMap[activeTab];
-                                        setSelectedConfigItem(null);
-                                        if (formType === 'location') setLocationFormData({ name: '' });
-                                        else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
-                                        else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : (locations.length > 0 ? [locations[0].id] : []), departmentIds: [] });
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden">
+                     <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
+                         <div className="flex items-center gap-2 flex-shrink-0">
+                             <Input
+                                 placeholder={`Buscar en ${activeTab}...`}
+                                 className="flex-grow"
+                                 value={
+                                     activeTab === 'sedes' ? locationSearch :
+                                     activeTab === 'departamentos' ? departmentSearch :
+                                     activeTab === 'colaboradores' ? employeeSearch :
+                                     templateSearch
+                                 }
+                                 onChange={(e) => {
+                                     const value = e.target.value;
+                                     if (activeTab === 'sedes') setLocationSearch(value);
+                                     else if (activeTab === 'departamentos') setDepartmentSearch(value);
+                                     else if (activeTab === 'colaboradores') setEmployeeSearch(value);
+                                     else if (activeTab === 'templates') setTemplateSearch(value);
+                                 }}
+                             />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                    const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
+                                        sedes: 'location',
+                                        departamentos: 'department',
+                                        colaboradores: 'employee',
+                                        templates: 'template',
+                                    };
+                                    const formType = typeMap[activeTab];
+                                    setSelectedConfigItem(null);
+                                    if (formType === 'location') setLocationFormData({ name: '' });
+                                    else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
+                                    else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : (locations.length > 0 ? [locations[0].id] : []), departmentIds: [] });
 
 
-                                        if (formType && formType !== 'template') {
-                                            openConfigForm(formType, null);
-                                        } else if (formType === 'template') {
-                                             toast({ title: "Info", description: "La creación manual de templates no está habilitada. Guarda desde el planificador.", variant: "default" });
-                                        }
-                                    }}
-                                    title={`Agregar ${activeTab}`}
-                                    disabled={activeTab === 'templates'}
-                                >
-                                    <PlusCircle className="h-4 w-4" />
-                                </Button>
-                             </div>
-                             <div className="flex-grow overflow-hidden">
-                                 <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
-                                 <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
-                                 <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
-                                 <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
-                             </div>
+                                    if (formType && formType !== 'template') {
+                                        openConfigForm(formType, null);
+                                    } else if (formType === 'template') {
+                                         toast({ title: "Info", description: "La creación manual de templates no está habilitada. Guarda desde el planificador.", variant: "default" });
+                                    }
+                                }}
+                                title={`Agregar ${activeTab}`}
+                                disabled={activeTab === 'templates'}
+                            >
+                                <PlusCircle className="h-4 w-4" />
+                            </Button>
                          </div>
-                         <div className="md:col-span-2 h-full overflow-hidden">
-                             {renderConfigDetailForm()}
+                         <div className="flex-grow overflow-hidden">
+                             <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
+                             <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
+                             <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
+                             <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
                          </div>
                      </div>
-                 </Tabs>
-            </div>
-             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Eliminar {itemToDelete?.type} "{itemToDelete?.name}"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDeleteItem}
-                            className="bg-destructive hover:bg-destructive/90">
-                            Eliminar
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </DialogContent>
-    </Dialog>
+                     <div className="md:col-span-2 h-full overflow-hidden">
+                         {renderConfigDetailForm()}
+                     </div>
+                 </div>
+             </Tabs>
+        </div>
+         <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Eliminar {itemToDelete?.type} "{itemToDelete?.name}"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleDeleteItem}
+                        className="bg-destructive hover:bg-destructive/90">
+                        Eliminar
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </>
   );
 }

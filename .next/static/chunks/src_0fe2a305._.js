@@ -4399,20 +4399,28 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$b
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/input.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$scroll$2d$area$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/scroll-area.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/tabs.tsx [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/card.tsx [app-client] (ecmascript)"); // Added CardFooter
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/card.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/select.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/label.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$textarea$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/textarea.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/dialog.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/dropdown-menu.tsx [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__PlusCircle$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/circle-plus.js [app-client] (ecmascript) <export default as PlusCircle>"); // Added Library icon
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/alert-dialog.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__PlusCircle$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/circle-plus.js [app-client] (ecmascript) <export default as PlusCircle>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$square$2d$pen$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Edit$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/square-pen.js [app-client] (ecmascript) <export default as Edit>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$trash$2d$2$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Trash2$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/trash-2.js [app-client] (ecmascript) <export default as Trash2>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$copy$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Copy$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/copy.js [app-client] (ecmascript) <export default as Copy>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$upload$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Upload$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/upload.js [app-client] (ecmascript) <export default as Upload>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/download.js [app-client] (ecmascript) <export default as Download>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$cloud$2d$upload$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__UploadCloud$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/cloud-upload.js [app-client] (ecmascript) <export default as UploadCloud>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/x.js [app-client] (ecmascript) <export default as X>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/utils.ts [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$format$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/date-fns/format.mjs [app-client] (ecmascript) <locals>"); // Import format and parseISO
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$format$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/date-fns/format.mjs [app-client] (ecmascript) <locals>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$parseISO$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/parseISO.mjs [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$locale$2f$es$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/locale/es.mjs [app-client] (ecmascript)"); // Import Spanish locale
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$locale$2f$es$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/locale/es.mjs [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$use$2d$toast$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/hooks/use-toast.ts [app-client] (ecmascript)"); // Import useToast
+;
+var _s = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
@@ -4429,7 +4437,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$
 ;
 ;
 ;
-function ConfigTabs({ locations, departments, employees, templates, selectedLocationId, iconMap, openConfigForm, selectedConfigItem, confirmDeleteItem, handleCopyEmployeeId, handleLoadTemplate, configFormType, locationFormData, setLocationFormData, departmentFormData, setDepartmentFormData, employeeFormData, setEmployeeFormData, handleSaveLocation, handleSaveDepartment, handleSaveEmployee, setConfigFormType, setSelectedConfigItem, handleToggleEmployeeLocation, handleToggleEmployeeDepartment, availableDepartmentsForEmployee, activeTab, setActiveTab, locationSearch, setLocationSearch, departmentSearch, setDepartmentSearch, employeeSearch, setEmployeeSearch, templateSearch, setTemplateSearch, filteredLocationsData, filteredDepartmentsData, filteredEmployeesData, filteredTemplatesData, handleExportConfig, handleImportConfig, fileInputRef }) {
+;
+;
+function ConfigTabs({ locations, departments, employees, templates, selectedLocationId, iconMap, openConfigForm, selectedConfigItem, confirmDeleteItem, handleCopyEmployeeId, handleLoadTemplate, configFormType, locationFormData, setLocationFormData, departmentFormData, setDepartmentFormData, employeeFormData, setEmployeeFormData, handleSaveLocation, handleSaveDepartment, handleSaveEmployee, setConfigFormType, setSelectedConfigItem, handleToggleEmployeeLocation, handleToggleEmployeeDepartment, availableDepartmentsForEmployee, activeTab, setActiveTab, locationSearch, setLocationSearch, departmentSearch, setDepartmentSearch, employeeSearch, setEmployeeSearch, templateSearch, setTemplateSearch, filteredLocationsData, filteredDepartmentsData, filteredEmployeesData, filteredTemplatesData, handleExportConfig, handleImportConfig, fileInputRef, itemToDelete, setItemToDelete, handleDeleteItem }) {
+    _s();
+    const { toast } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$use$2d$toast$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useToast"])();
     const renderConfigListContent = (items, type)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$scroll$2d$area$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ScrollArea"], {
             className: "h-full border rounded-md p-2",
             children: [
@@ -4455,7 +4467,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 146,
+                                        lineNumber: 163,
                                         columnNumber: 51
                                     }, this),
                                     type === 'employee' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4467,7 +4479,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 147,
+                                        lineNumber: 164,
                                         columnNumber: 49
                                     }, this),
                                     type === 'template' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4481,19 +4493,18 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 149,
+                                        lineNumber: 166,
                                         columnNumber: 30
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 143,
+                                lineNumber: 160,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "absolute top-1/2 right-1 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0 flex-shrink-0",
                                 children: [
-                                    " ",
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
                                         variant: "ghost",
                                         size: "icon",
@@ -4507,12 +4518,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 154,
+                                            lineNumber: 171,
                                             columnNumber: 31
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 153,
+                                        lineNumber: 170,
                                         columnNumber: 27
                                     }, this),
                                     type === 'employee' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -4528,12 +4539,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 175,
                                             columnNumber: 34
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 157,
+                                        lineNumber: 174,
                                         columnNumber: 30
                                     }, this),
                                     type === 'template' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -4549,12 +4560,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 163,
+                                            lineNumber: 180,
                                             columnNumber: 33
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 162,
+                                        lineNumber: 179,
                                         columnNumber: 31
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -4562,7 +4573,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         size: "icon",
                                         className: "h-6 w-6 text-destructive hover:bg-destructive/10",
                                         onClick: (e)=>{
-                                            e.stopPropagation(); // Prevent item selection when clicking delete
+                                            e.stopPropagation();
                                             confirmDeleteItem(type, item.id, item.name);
                                         },
                                         title: `Eliminar ${type}`,
@@ -4570,24 +4581,24 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 177,
+                                            lineNumber: 193,
                                             columnNumber: 31
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 167,
+                                        lineNumber: 183,
                                         columnNumber: 27
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 152,
+                                lineNumber: 169,
                                 columnNumber: 22
                             }, this)
                         ]
                     }, item.id, true, {
                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 135,
+                        lineNumber: 152,
                         columnNumber: 17
                     }, this)),
                 items.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4595,13 +4606,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                     children: "No hay elementos."
                 }, void 0, false, {
                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                    lineNumber: 182,
+                    lineNumber: 198,
                     columnNumber: 36
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-            lineNumber: 133,
+            lineNumber: 150,
             columnNumber: 10
         }, this);
     const renderConfigDetailForm = ()=>{
@@ -4611,7 +4622,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                 children: "Selecciona un elemento de la lista para ver/editar detalles o presiona '+' para crear uno nuevo."
             }, void 0, false, {
                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                lineNumber: 188,
+                lineNumber: 204,
                 columnNumber: 20
             }, this);
         }
@@ -4628,12 +4639,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 196,
+                                lineNumber: 212,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 195,
+                            lineNumber: 211,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -4645,7 +4656,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         children: "Nombre"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 200,
+                                        lineNumber: 216,
                                         columnNumber: 33
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -4657,18 +4668,18 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         placeholder: "Nombre de la Sede"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 201,
+                                        lineNumber: 217,
                                         columnNumber: 33
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 199,
+                                lineNumber: 215,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 198,
+                            lineNumber: 214,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardFooter"], {
@@ -4683,7 +4694,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                     children: "Cancelar"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 205,
+                                    lineNumber: 221,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -4691,19 +4702,19 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                     children: "Guardar Sede"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 206,
+                                    lineNumber: 222,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 204,
+                            lineNumber: 220,
                             columnNumber: 26
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                    lineNumber: 194,
+                    lineNumber: 210,
                     columnNumber: 21
                 }, this);
             case 'department':
@@ -4718,18 +4729,17 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 214,
+                                lineNumber: 230,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 213,
+                            lineNumber: 229,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
                             className: "flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]",
                             children: [
-                                " ",
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
@@ -4737,7 +4747,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Nombre"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 218,
+                                            lineNumber: 234,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -4750,13 +4760,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             placeholder: "Nombre del Departamento"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 219,
+                                            lineNumber: 235,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 217,
+                                    lineNumber: 233,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4766,7 +4776,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Sede"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 222,
+                                            lineNumber: 238,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Select"], {
@@ -4782,12 +4792,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                         placeholder: "Selecciona una sede"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                        lineNumber: 224,
+                                                        lineNumber: 240,
                                                         columnNumber: 77
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 224,
+                                                    lineNumber: 240,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -4798,26 +4808,26 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                                 children: loc.name
                                                             }, loc.id, false, {
                                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                lineNumber: 225,
+                                                                lineNumber: 241,
                                                                 columnNumber: 75
                                                             }, this)),
                                                         " "
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 225,
+                                                    lineNumber: 241,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 223,
+                                            lineNumber: 239,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 221,
+                                    lineNumber: 237,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4827,7 +4837,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Icono (Opcional)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 229,
+                                            lineNumber: 245,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Select"], {
@@ -4843,12 +4853,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                         placeholder: "Selecciona icono"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                        lineNumber: 231,
+                                                        lineNumber: 247,
                                                         columnNumber: 73
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 231,
+                                                    lineNumber: 247,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -4858,51 +4868,48 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                             children: "Ninguno"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 233,
+                                                            lineNumber: 249,
                                                             columnNumber: 41
                                                         }, this),
                                                         Object.keys(iconMap).map((iconName)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
                                                                 value: iconName,
                                                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                     className: "flex items-center gap-2",
-                                                                    children: [
-                                                                        /*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].createElement(iconMap[iconName], {
-                                                                            className: 'h-4 w-4'
-                                                                        }),
-                                                                        " "
-                                                                    ]
-                                                                }, void 0, true, {
+                                                                    children: /*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].createElement(iconMap[iconName], {
+                                                                        className: 'h-4 w-4'
+                                                                    })
+                                                                }, void 0, false, {
                                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                    lineNumber: 234,
+                                                                    lineNumber: 250,
                                                                     columnNumber: 124
                                                                 }, this)
                                                             }, iconName, false, {
                                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                lineNumber: 234,
+                                                                lineNumber: 250,
                                                                 columnNumber: 80
                                                             }, this))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 232,
+                                                    lineNumber: 248,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 230,
+                                            lineNumber: 246,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 228,
+                                    lineNumber: 244,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 216,
+                            lineNumber: 232,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardFooter"], {
@@ -4917,7 +4924,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                     children: "Cancelar"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 240,
+                                    lineNumber: 256,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -4925,19 +4932,19 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                     children: "Guardar Departamento"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 241,
+                                    lineNumber: 257,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 239,
+                            lineNumber: 255,
                             columnNumber: 26
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                    lineNumber: 212,
+                    lineNumber: 228,
                     columnNumber: 21
                 }, this);
             case 'employee':
@@ -4952,18 +4959,17 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 249,
+                                lineNumber: 265,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 248,
+                            lineNumber: 264,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
                             className: "flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]",
                             children: [
-                                " ",
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
@@ -4971,7 +4977,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "ID Colaborador"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 253,
+                                            lineNumber: 269,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -4985,13 +4991,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             disabled: !!selectedConfigItem
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 254,
+                                            lineNumber: 270,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 252,
+                                    lineNumber: 268,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5001,7 +5007,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Nombre Completo"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 257,
+                                            lineNumber: 273,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -5014,13 +5020,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             placeholder: "Nombre y Apellido"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 258,
+                                            lineNumber: 274,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 256,
+                                    lineNumber: 272,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5029,7 +5035,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Sedes"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 261,
+                                            lineNumber: 277,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenu"], {
@@ -5042,12 +5048,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                         children: employeeFormData.locationIds.length > 0 ? employeeFormData.locationIds.map((id)=>locations.find((l)=>l.id === id)?.name).filter(Boolean).join(', ') : "Seleccionar Sedes"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                        lineNumber: 264,
+                                                        lineNumber: 280,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 263,
+                                                    lineNumber: 279,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuContent"], {
@@ -5057,12 +5063,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                             children: "Sedes Disponibles"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 274,
+                                                            lineNumber: 290,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuSeparator"], {}, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 275,
+                                                            lineNumber: 291,
                                                             columnNumber: 41
                                                         }, this),
                                                         locations.map((location)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuCheckboxItem"], {
@@ -5071,25 +5077,25 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                                 children: location.name
                                                             }, location.id, false, {
                                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                lineNumber: 277,
+                                                                lineNumber: 293,
                                                                 columnNumber: 45
                                                             }, this))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 273,
+                                                    lineNumber: 289,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 278,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 260,
+                                    lineNumber: 276,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5098,7 +5104,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Departamentos (Opcional)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 289,
+                                            lineNumber: 305,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenu"], {
@@ -5112,12 +5118,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                         children: employeeFormData.departmentIds.length > 0 ? employeeFormData.departmentIds.map((id)=>departments.find((d)=>d.id === id)?.name).filter(Boolean).join(', ') : availableDepartmentsForEmployee.length === 0 ? "Primero selecciona sede" : "Seleccionar Deptos"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                        lineNumber: 292,
+                                                        lineNumber: 308,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 291,
+                                                    lineNumber: 307,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuContent"], {
@@ -5127,12 +5133,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                             children: "Departamentos Disponibles"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 302,
+                                                            lineNumber: 318,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuSeparator"], {}, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 303,
+                                                            lineNumber: 319,
                                                             columnNumber: 41
                                                         }, this),
                                                         availableDepartmentsForEmployee.map((dept)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuCheckboxItem"], {
@@ -5150,13 +5156,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                        lineNumber: 310,
+                                                                        lineNumber: 326,
                                                                         columnNumber: 61
                                                                     }, this)
                                                                 ]
                                                             }, dept.id, true, {
                                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                                lineNumber: 305,
+                                                                lineNumber: 321,
                                                                 columnNumber: 45
                                                             }, this)),
                                                         availableDepartmentsForEmployee.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DropdownMenuItem"], {
@@ -5164,37 +5170,36 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                             children: "No hay departamentos para las sedes seleccionadas."
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                            lineNumber: 313,
+                                                            lineNumber: 329,
                                                             columnNumber: 90
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 301,
+                                                    lineNumber: 317,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 290,
+                                            lineNumber: 306,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 288,
+                                    lineNumber: 304,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 251,
+                            lineNumber: 267,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardFooter"], {
                             className: "flex justify-between gap-2 border-t pt-4",
                             children: [
-                                " ",
                                 selectedConfigItem && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
                                     variant: "destructive",
                                     onClick: ()=>confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name),
@@ -5203,20 +5208,19 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "mr-2 h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 324,
+                                            lineNumber: 340,
                                             columnNumber: 38
                                         }, this),
                                         " Eliminar Colaborador"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 320,
+                                    lineNumber: 336,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex gap-2 ml-auto",
                                     children: [
-                                        " ",
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
                                             variant: "ghost",
                                             onClick: ()=>{
@@ -5226,7 +5230,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Cancelar"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 328,
+                                            lineNumber: 344,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -5234,25 +5238,25 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Guardar Colaborador"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 329,
+                                            lineNumber: 345,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 327,
+                                    lineNumber: 343,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 318,
+                            lineNumber: 334,
                             columnNumber: 26
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                    lineNumber: 247,
+                    lineNumber: 263,
                     columnNumber: 22
                 }, this);
             case 'template':
@@ -5264,12 +5268,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                 children: selectedConfigItem ? 'Detalles Template' : 'Agregar Template (Manual no implementado)'
                             }, void 0, false, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 338,
+                                lineNumber: 354,
                                 columnNumber: 30
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 337,
+                            lineNumber: 353,
                             columnNumber: 26
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5282,7 +5286,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: "Nombre:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 343,
+                                                lineNumber: 359,
                                                 columnNumber: 43
                                             }, this),
                                             " ",
@@ -5290,13 +5294,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: selectedConfigItem.name
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 343,
+                                                lineNumber: 359,
                                                 columnNumber: 66
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 343,
+                                        lineNumber: 359,
                                         columnNumber: 38
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5305,7 +5309,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: "Tipo:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 344,
+                                                lineNumber: 360,
                                                 columnNumber: 43
                                             }, this),
                                             " ",
@@ -5313,13 +5317,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: selectedConfigItem.type === 'week' ? 'Semanal' : 'Diario'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 344,
+                                                lineNumber: 360,
                                                 columnNumber: 64
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 344,
+                                        lineNumber: 360,
                                         columnNumber: 38
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5328,7 +5332,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: "Sede:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 345,
+                                                lineNumber: 361,
                                                 columnNumber: 43
                                             }, this),
                                             " ",
@@ -5336,13 +5340,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: locations.find((l)=>l.id === selectedConfigItem.locationId)?.name || 'N/A'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 345,
+                                                lineNumber: 361,
                                                 columnNumber: 64
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 345,
+                                        lineNumber: 361,
                                         columnNumber: 38
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5351,7 +5355,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 children: "Creado:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 346,
+                                                lineNumber: 362,
                                                 columnNumber: 43
                                             }, this),
                                             " ",
@@ -5363,13 +5367,13 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                 }) : 'N/A'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                lineNumber: 346,
+                                                lineNumber: 362,
                                                 columnNumber: 66
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 346,
+                                        lineNumber: 362,
                                         columnNumber: 38
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$textarea$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Textarea"], {
@@ -5378,7 +5382,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                         rows: 10
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 347,
+                                        lineNumber: 363,
                                         columnNumber: 39
                                     }, this)
                                 ]
@@ -5387,12 +5391,12 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                 children: "La creación manual de templates no está implementada. Guarda templates desde el planificador."
                             }, void 0, false, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 350,
+                                lineNumber: 366,
                                 columnNumber: 34
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 340,
+                            lineNumber: 356,
                             columnNumber: 26
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardFooter"], {
@@ -5406,14 +5410,14 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             className: "mr-2 h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 359,
+                                            lineNumber: 375,
                                             columnNumber: 38
                                         }, this),
                                         " Eliminar Template"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 355,
+                                    lineNumber: 371,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5428,7 +5432,7 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                             children: "Cerrar"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 363,
+                                            lineNumber: 379,
                                             columnNumber: 33
                                         }, this),
                                         selectedConfigItem && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -5438,226 +5442,215 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                                                     className: "mr-2 h-4 w-4"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                                    lineNumber: 366,
+                                                    lineNumber: 382,
                                                     columnNumber: 41
                                                 }, this),
                                                 " Cargar Template"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 365,
+                                            lineNumber: 381,
                                             columnNumber: 38
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                    lineNumber: 362,
+                                    lineNumber: 378,
                                     columnNumber: 31
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                            lineNumber: 353,
+                            lineNumber: 369,
                             columnNumber: 26
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                    lineNumber: 336,
+                    lineNumber: 352,
                     columnNumber: 22
+                }, this);
+            default:
+                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "p-4 text-center text-muted-foreground h-full flex items-center justify-center",
+                    children: "Tipo de configuración no reconocido."
+                }, void 0, false, {
+                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                    lineNumber: 390,
+                    columnNumber: 24
                 }, this);
         }
     };
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tabs"], {
-        defaultValue: "sedes",
-        className: "w-full h-full flex flex-col",
-        value: activeTab,
-        onValueChange: (tabValue)=>{
-            setActiveTab(tabValue);
-            setConfigFormType(null);
-            setSelectedConfigItem(null);
-        },
-        children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsList"], {
-                className: "grid w-full grid-cols-4 mb-4 flex-shrink-0",
-                children: [
-                    " ",
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
-                        value: "sedes",
-                        children: "Sedes"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 379,
-                        columnNumber: 10
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
-                        value: "departamentos",
-                        children: "Departamentos"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 380,
-                        columnNumber: 10
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
-                        value: "colaboradores",
-                        children: "Colaboradores"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 381,
-                        columnNumber: 10
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
-                        value: "templates",
-                        children: "Templates"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 382,
-                        columnNumber: 10
-                    }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                lineNumber: 378,
-                columnNumber: 8
-            }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden",
-                children: [
-                    " ",
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "md:col-span-1 flex flex-col gap-4 h-full overflow-hidden",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex items-center gap-2 flex-shrink-0",
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Dialog"], {
+        open: true,
+        onOpenChange: ()=>{},
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DialogContent"], {
+            className: "max-w-4xl h-[90vh] flex flex-col p-0",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DialogHeader"], {
+                    className: "p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex-1",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DialogTitle"], {
+                                    children: "Configuración General"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                    lineNumber: 399,
+                                    columnNumber: 21
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DialogDescription"], {
+                                    children: "Gestiona sedes, departamentos, colaboradores y templates."
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                    lineNumber: 400,
+                                    columnNumber: 21
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                            lineNumber: 398,
+                            columnNumber: 17
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex items-center gap-2 flex-shrink-0",
+                            children: [
+                                " ",
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                    type: "file",
+                                    accept: ".json",
+                                    ref: fileInputRef,
+                                    onChange: handleImportConfig,
+                                    className: "hidden",
+                                    id: "import-config-input-modal"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                    lineNumber: 403,
+                                    columnNumber: 21
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                    variant: "outline",
+                                    size: "icon",
+                                    onClick: ()=>fileInputRef.current?.click(),
+                                    title: "Importar configuración (JSON)",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$cloud$2d$upload$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__UploadCloud$3e$__["UploadCloud"], {
+                                        className: "h-4 w-4"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 417,
+                                        columnNumber: 25
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                    lineNumber: 411,
+                                    columnNumber: 21
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                    variant: "outline",
+                                    size: "icon",
+                                    onClick: handleExportConfig,
+                                    title: "Exportar configuración (JSON)",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
+                                        className: "h-4 w-4"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 425,
+                                        columnNumber: 25
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                    lineNumber: 419,
+                                    columnNumber: 21
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                            lineNumber: 402,
+                            columnNumber: 17
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DialogClose"], {
+                            asChild: true,
+                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                variant: "ghost",
+                                size: "icon",
+                                className: "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground",
                                 children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
-                                        placeholder: `Buscar en ${activeTab}...`,
-                                        className: "flex-grow",
-                                        value: activeTab === 'sedes' ? locationSearch : activeTab === 'departamentos' ? departmentSearch : activeTab === 'colaboradores' ? employeeSearch : templateSearch,
-                                        onChange: (e)=>{
-                                            const value = e.target.value;
-                                            if (activeTab === 'sedes') setLocationSearch(value);
-                                            else if (activeTab === 'departamentos') setDepartmentSearch(value);
-                                            else if (activeTab === 'colaboradores') setEmployeeSearch(value);
-                                            else if (activeTab === 'templates') setTemplateSearch(value);
-                                        }
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
+                                        className: "h-4 w-4"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 388,
-                                        columnNumber: 22
+                                        lineNumber: 430,
+                                        columnNumber: 26
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
-                                        variant: "outline",
-                                        size: "icon",
-                                        onClick: ()=>{
-                                            const typeMap = {
-                                                sedes: 'location',
-                                                departamentos: 'department',
-                                                colaboradores: 'employee',
-                                                templates: 'template'
-                                            };
-                                            const formType = typeMap[activeTab];
-                                            // Reset form data for the active tab type when adding new
-                                            setSelectedConfigItem(null); // Ensure no item is selected
-                                            if (formType === 'location') setLocationFormData({
-                                                name: ''
-                                            });
-                                            else if (formType === 'department') setDepartmentFormData({
-                                                name: '',
-                                                locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''),
-                                                iconName: undefined
-                                            });
-                                            else if (formType === 'employee') setEmployeeFormData({
-                                                id: '',
-                                                name: '',
-                                                locationIds: selectedLocationId ? [
-                                                    selectedLocationId
-                                                ] : [],
-                                                departmentIds: []
-                                            });
-                                            // No need to reset form for template as adding manually is disabled
-                                            if (formType && formType !== 'template') {
-                                                openConfigForm(formType, null);
-                                            } else if (formType === 'template') {
-                                                toast({
-                                                    title: "Info",
-                                                    description: "La creación manual de templates no está habilitada. Guarda desde el planificador.",
-                                                    variant: "default"
-                                                });
-                                            }
-                                        },
-                                        title: `Agregar ${activeTab}`,
-                                        disabled: activeTab === 'templates',
-                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__PlusCircle$3e$__["PlusCircle"], {
-                                            className: "h-4 w-4"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                            lineNumber: 432,
-                                            columnNumber: 25
-                                        }, this)
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        className: "sr-only",
+                                        children: "Cerrar"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                        lineNumber: 405,
-                                        columnNumber: 21
+                                        lineNumber: 431,
+                                        columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                                lineNumber: 387,
-                                columnNumber: 18
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex-grow overflow-hidden",
+                                lineNumber: 429,
+                                columnNumber: 22
+                            }, this)
+                        }, void 0, false, {
+                            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                            lineNumber: 428,
+                            columnNumber: 17
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                    lineNumber: 397,
+                    columnNumber: 13
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "flex-grow overflow-hidden p-4",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tabs"], {
+                        defaultValue: "sedes",
+                        className: "w-full h-full flex flex-col",
+                        value: activeTab,
+                        onValueChange: (tabValue)=>{
+                            setActiveTab(tabValue);
+                            setConfigFormType(null);
+                            setSelectedConfigItem(null);
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsList"], {
+                                className: "grid w-full grid-cols-4 mb-4 flex-shrink-0",
                                 children: [
-                                    " ",
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
                                         value: "sedes",
-                                        className: "mt-0 h-full",
-                                        children: [
-                                            " ",
-                                            renderConfigListContent(filteredLocationsData, 'location'),
-                                            " "
-                                        ]
-                                    }, void 0, true, {
+                                        children: "Sedes"
+                                    }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
                                         lineNumber: 438,
                                         columnNumber: 22
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
                                         value: "departamentos",
-                                        className: "mt-0 h-full",
-                                        children: [
-                                            " ",
-                                            renderConfigListContent(filteredDepartmentsData, 'department'),
-                                            " "
-                                        ]
-                                    }, void 0, true, {
+                                        children: "Departamentos"
+                                    }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
                                         lineNumber: 439,
                                         columnNumber: 22
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
                                         value: "colaboradores",
-                                        className: "mt-0 h-full",
-                                        children: [
-                                            " ",
-                                            renderConfigListContent(filteredEmployeesData, 'employee'),
-                                            " "
-                                        ]
-                                    }, void 0, true, {
+                                        children: "Colaboradores"
+                                    }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
                                         lineNumber: 440,
                                         columnNumber: 22
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsTrigger"], {
                                         value: "templates",
-                                        className: "mt-0 h-full",
-                                        children: [
-                                            " ",
-                                            renderConfigListContent(filteredTemplatesData, 'template'),
-                                            " "
-                                        ]
-                                    }, void 0, true, {
+                                        children: "Templates"
+                                    }, void 0, false, {
                                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
                                         lineNumber: 441,
                                         columnNumber: 22
@@ -5666,38 +5659,271 @@ function ConfigTabs({ locations, departments, employees, templates, selectedLoca
                             }, void 0, true, {
                                 fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
                                 lineNumber: 437,
-                                columnNumber: 18
+                                columnNumber: 20
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "md:col-span-1 flex flex-col gap-4 h-full overflow-hidden",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex items-center gap-2 flex-shrink-0",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
+                                                        placeholder: `Buscar en ${activeTab}...`,
+                                                        className: "flex-grow",
+                                                        value: activeTab === 'sedes' ? locationSearch : activeTab === 'departamentos' ? departmentSearch : activeTab === 'colaboradores' ? employeeSearch : templateSearch,
+                                                        onChange: (e)=>{
+                                                            const value = e.target.value;
+                                                            if (activeTab === 'sedes') setLocationSearch(value);
+                                                            else if (activeTab === 'departamentos') setDepartmentSearch(value);
+                                                            else if (activeTab === 'colaboradores') setEmployeeSearch(value);
+                                                            else if (activeTab === 'templates') setTemplateSearch(value);
+                                                        }
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 447,
+                                                        columnNumber: 34
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                                        variant: "outline",
+                                                        size: "icon",
+                                                        onClick: ()=>{
+                                                            const typeMap = {
+                                                                sedes: 'location',
+                                                                departamentos: 'department',
+                                                                colaboradores: 'employee',
+                                                                templates: 'template'
+                                                            };
+                                                            const formType = typeMap[activeTab];
+                                                            setSelectedConfigItem(null);
+                                                            if (formType === 'location') setLocationFormData({
+                                                                name: ''
+                                                            });
+                                                            else if (formType === 'department') setDepartmentFormData({
+                                                                name: '',
+                                                                locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''),
+                                                                iconName: undefined
+                                                            });
+                                                            else if (formType === 'employee') setEmployeeFormData({
+                                                                id: '',
+                                                                name: '',
+                                                                locationIds: selectedLocationId ? [
+                                                                    selectedLocationId
+                                                                ] : locations.length > 0 ? [
+                                                                    locations[0].id
+                                                                ] : [],
+                                                                departmentIds: []
+                                                            });
+                                                            if (formType && formType !== 'template') {
+                                                                openConfigForm(formType, null);
+                                                            } else if (formType === 'template') {
+                                                                toast({
+                                                                    title: "Info",
+                                                                    description: "La creación manual de templates no está habilitada. Guarda desde el planificador.",
+                                                                    variant: "default"
+                                                                });
+                                                            }
+                                                        },
+                                                        title: `Agregar ${activeTab}`,
+                                                        disabled: activeTab === 'templates',
+                                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__PlusCircle$3e$__["PlusCircle"], {
+                                                            className: "h-4 w-4"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                            lineNumber: 490,
+                                                            columnNumber: 37
+                                                        }, this)
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 464,
+                                                        columnNumber: 33
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                lineNumber: 446,
+                                                columnNumber: 30
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex-grow overflow-hidden",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                                        value: "sedes",
+                                                        className: "mt-0 h-full",
+                                                        children: [
+                                                            " ",
+                                                            renderConfigListContent(filteredLocationsData, 'location'),
+                                                            " "
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 494,
+                                                        columnNumber: 34
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                                        value: "departamentos",
+                                                        className: "mt-0 h-full",
+                                                        children: [
+                                                            " ",
+                                                            renderConfigListContent(filteredDepartmentsData, 'department'),
+                                                            " "
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 495,
+                                                        columnNumber: 34
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                                        value: "colaboradores",
+                                                        className: "mt-0 h-full",
+                                                        children: [
+                                                            " ",
+                                                            renderConfigListContent(filteredEmployeesData, 'employee'),
+                                                            " "
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 496,
+                                                        columnNumber: 34
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TabsContent"], {
+                                                        value: "templates",
+                                                        className: "mt-0 h-full",
+                                                        children: [
+                                                            " ",
+                                                            renderConfigListContent(filteredTemplatesData, 'template'),
+                                                            " "
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                        lineNumber: 497,
+                                                        columnNumber: 34
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                                lineNumber: 493,
+                                                columnNumber: 30
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 445,
+                                        columnNumber: 26
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "md:col-span-2 h-full overflow-hidden",
+                                        children: renderConfigDetailForm()
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 500,
+                                        columnNumber: 26
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                lineNumber: 444,
+                                columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 386,
-                        columnNumber: 14
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "md:col-span-2 h-full overflow-hidden",
+                        lineNumber: 436,
+                        columnNumber: 18
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                    lineNumber: 435,
+                    columnNumber: 13
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialog"], {
+                    open: !!itemToDelete,
+                    onOpenChange: (open)=>!open && setItemToDelete(null),
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogContent"], {
                         children: [
-                            " ",
-                            renderConfigDetailForm()
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogHeader"], {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogTitle"], {
+                                        children: "¿Estás seguro?"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 509,
+                                        columnNumber: 25
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogDescription"], {
+                                        children: [
+                                            "Eliminar ",
+                                            itemToDelete?.type,
+                                            ' "',
+                                            itemToDelete?.name,
+                                            '"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.'
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 510,
+                                        columnNumber: 25
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                lineNumber: 508,
+                                columnNumber: 21
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogFooter"], {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogCancel"], {
+                                        onClick: ()=>setItemToDelete(null),
+                                        children: "Cancelar"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 515,
+                                        columnNumber: 25
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$alert$2d$dialog$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertDialogAction"], {
+                                        onClick: handleDeleteItem,
+                                        className: "bg-destructive hover:bg-destructive/90",
+                                        children: "Eliminar"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                        lineNumber: 516,
+                                        columnNumber: 25
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                                lineNumber: 514,
+                                columnNumber: 21
+                            }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                        lineNumber: 445,
-                        columnNumber: 14
+                        lineNumber: 507,
+                        columnNumber: 17
                     }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-                lineNumber: 385,
-                columnNumber: 9
-            }, this)
-        ]
-    }, void 0, true, {
+                }, void 0, false, {
+                    fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+                    lineNumber: 506,
+                    columnNumber: 14
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
+            lineNumber: 396,
+            columnNumber: 9
+        }, this)
+    }, void 0, false, {
         fileName: "[project]/src/components/schedule/ConfigTabs.tsx",
-        lineNumber: 377,
-        columnNumber: 6
+        lineNumber: 395,
+        columnNumber: 5
     }, this);
 }
+_s(ConfigTabs, "XbQoRqPDPo6PJEzRId7w4FMisDk=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$use$2d$toast$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useToast"]
+    ];
+});
 _c = ConfigTabs;
 var _c;
 __turbopack_context__.k.register(_c, "ConfigTabs");
