@@ -320,7 +320,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T, isJson: boolean 
              // Schedule notes are stored as a string, no parsing needed
              // Ensure we handle the default value correctly if savedData is null
              return (savedData !== null ? savedData : defaultValue) as T;
-        } else {
+         } else {
             // For unknown keys, just return the parsed data if it's not null/undefined
             return parsed as T;
         }
@@ -457,7 +457,7 @@ interface EmployeeHoursSummary {
 
 export default function SchedulePage() {
     // --- State Initialization ---
-    const [currentDate, setCurrentDate] = useState<Date>(() => new Date()); // Initialize immediately
+    const [currentDate, setCurrentDate] = useState<Date | undefined>(undefined); // Initialize immediately
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
     const [locations, setLocations] = useState<Location[]>([]); // Initialized empty, load in useEffect
     const [departments, setDepartments] = useState<Department[]>([]); // Initialized empty, load in useEffect
@@ -491,7 +491,7 @@ export default function SchedulePage() {
     const [shiftRequestContext, setShiftRequestContext] = useState<{ departmentId: string; date: Date } | null>(null);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [editingShift, setEditingShift] = useState<{ assignment: ShiftAssignment; date: Date; departmentId: string } | null>(null);
-    const [targetDate, setTargetDate] = useState<Date>(() => new Date()); // Used for day view and template application context
+    const [targetDate, setTargetDate] = useState<Date | undefined>(undefined); // Used for day view and template application context
 
     // --- Config Modal State ---
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -531,6 +531,13 @@ export default function SchedulePage() {
     const isMobile = useIsMobile();
     const { toast } = useToast();
 
+    // Initialize dates in useEffect to avoid hydration mismatch
+    useEffect(() => {
+        const now = new Date();
+        setCurrentDate(now);
+        setTargetDate(now);
+    }, []);
+
 
     // --- Load Data from localStorage on Mount (Client-side only) ---
     useEffect(() => {
@@ -561,11 +568,6 @@ export default function SchedulePage() {
         setDepartmentFormData(prev => ({ ...prev, locationId: initialLocId }));
         setEmployeeFormData(prev => ({ ...prev, id: '', name: '', locationIds: initialLocId ? [initialLocId] : [], departmentIds: [] }));
 
-        // Set initial targetDate and currentDate (can be the same initially)
-        const now = new Date();
-        setCurrentDate(now);
-        setTargetDate(now);
-
         setIsLoadingPage(false); // Stop loading indicator
     }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -576,7 +578,7 @@ export default function SchedulePage() {
     useEffect(() => {
         if (!isClient || !currentDate) return; // Only run on client and if currentDate is valid
 
-        const datesInView = viewMode === 'day' ? [currentDate] : weekDates;
+        const datesInView = viewMode === 'day' && targetDate ? [targetDate] : weekDates;
         if (datesInView.length === 0 || !isValid(datesInView[0])) return; // Ensure we have valid dates
 
         const startYear = getYear(datesInView[0]);
@@ -597,7 +599,7 @@ export default function SchedulePage() {
             .finally(() => {
                 setIsCheckingHoliday(false);
             });
-    }, [currentDate, viewMode, weekDates, isClient]); // Added weekDates and isClient
+    }, [currentDate, targetDate, viewMode, weekDates, isClient]); // Added weekDates and isClient
 
 
      // --- Save Data to localStorage on Change ---
@@ -745,6 +747,7 @@ export default function SchedulePage() {
 
 
     const getScheduleForDate = useCallback((date: Date): ScheduleData => {
+        if (!date || !isValid(date)) return { date: new Date(), assignments: {} };
         const key = format(date, 'yyyy-MM-dd');
         const dayData = scheduleData[key];
         const hydratedAssignments: { [departmentId: string]: ShiftAssignment[] } = {};
@@ -804,6 +807,7 @@ export default function SchedulePage() {
 
     // Memoized list of available employees, considering current view and assigned employees
     const availableEmployees = useMemo(() => {
+        if (!targetDate) return []; // Return empty if targetDate is not yet initialized
         // Determine the date or dates for filtering based on viewMode and context
         const datesForFiltering = viewMode === 'day' ? [targetDate] : (weekDates || []);
 
@@ -954,6 +958,7 @@ export default function SchedulePage() {
     };
 
     const handleAddOrUpdateShift = (details: ShiftDetails) => { // Updated to ShiftDetails
+        if (!currentDate) return;
         const context = editingShift || shiftRequestContext;
         const employeeForShift = editingShift?.assignment.employee || selectedEmployee;
 
@@ -1305,6 +1310,7 @@ export default function SchedulePage() {
         });
     };
 
+
      const availableDepartmentsForEmployee = useMemo(() => {
         if (!employeeFormData.locationIds || employeeFormData.locationIds.length === 0) {
             return [];
@@ -1387,12 +1393,11 @@ export default function SchedulePage() {
                              } else if (tpl.type === 'week') {
                                  Object.keys(tpl.assignments).forEach(dateKey => {
                                      const weeklyAssignments = tpl.assignments as WeeklyAssignments;
-                                     if (weeklyAssignments[dateKey] && weeklyAssignments[dateKey][itemToDelete.id]) {
-                                         delete weeklyAssignments[dateKey][itemToDelete.id];
+                                     if (weeklyAssignments[key] && weeklyAssignments[key][itemToDelete.id]) {
+                                         delete weeklyAssignments[key][itemToDelete.id];
                                      }
                                  });
                              }
-                         }
                          return tpl;
                       }));
                      setEmployees(prevEmps => prevEmps.map(emp => ({
@@ -1484,6 +1489,7 @@ export default function SchedulePage() {
 
 
      const handleDuplicateDay = (sourceDate: Date) => {
+         if (!currentDate) return;
          const sourceDayKey = format(sourceDate, 'yyyy-MM-dd');
          const nextDayDate = addDays(sourceDate, 1);
          const nextDayKey = format(nextDayDate, 'yyyy-MM-dd');
@@ -1516,7 +1522,7 @@ export default function SchedulePage() {
              },
          }));
 
-         if (viewMode === 'day') {
+         if (viewMode === 'day' && targetDate) {
              setTargetDate(nextDayDate);
          }
 
@@ -1635,6 +1641,7 @@ export default function SchedulePage() {
              toast({ title: "Nombre Requerido", description: "Por favor ingresa un nombre para el template.", variant: "destructive" });
              return;
          }
+        if (!currentDate || !targetDate) return;
 
          let assignmentsToSave: DailyAssignments | WeeklyAssignments;
          if (viewMode === 'day') {
@@ -1716,6 +1723,7 @@ export default function SchedulePage() {
      };
 
      const handleLoadTemplate = (templateId: string) => {
+          if (!currentDate || !targetDate) return;
           console.log("Intentando cargar template con ID:", templateId);
           const templateToLoad = savedTemplates.find(t => t.id === templateId);
 
@@ -2094,6 +2102,7 @@ export default function SchedulePage() {
 
 
      const handleShareSchedule = async () => {
+        if (!currentDate || !targetDate) return;
         let textToCopy = "";
         const locationName = locations.find(l => l.id === selectedLocationId)?.name || selectedLocationId;
 
@@ -2209,7 +2218,7 @@ export default function SchedulePage() {
 
     // --- Logic to Calculate Employee Hours Summary ---
     useEffect(() => {
-        if (!isClient || !currentDate) return; // Don't run on server or if currentDate is null
+        if (!isClient || !currentDate || !targetDate) return; // Don't run on server or if currentDate is null
 
         const calculateSummary = () => {
             const summaryMap = new Map<string, { id: string, name: string, totalHours: number }>();
@@ -2312,7 +2321,7 @@ export default function SchedulePage() {
 
 
     // Render null or a loader during initial server render and hydration phase
-     if (!isClient) {
+     if (!isClient || !currentDate || !targetDate) { // Also check for targetDate initialization
          return (
              <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                  <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -2436,7 +2445,7 @@ export default function SchedulePage() {
                                                 !targetDate && 'text-muted-foreground',
                                                  isHoliday(targetDate) && 'border-primary font-semibold border-2' // Keep primary border for holiday
                                             )}
-                                            disabled={isCheckingHoliday}
+                                            disabled={isCheckingHoliday || !targetDate}
                                         >
                                             {isCheckingHoliday ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2756,7 +2765,7 @@ export default function SchedulePage() {
                              Eliminar
                          </AlertDialogAction>
                      </AlertDialogFooter>
-                 </AlertDialogContent>
+                  </AlertDialogContent>
              </AlertDialog>
 
 

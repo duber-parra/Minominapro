@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, ChangeEvent, useEffect, useRef, DragEvent } from 'react';
 import Image from 'next/image'; // Import next/image
-import { WorkdayForm } from '@/components/workday-form'; // Removed formSchema import as it's now local
+import { WorkdayForm } from '@/components/workday-form';
 import { ResultsDisplay, labelMap as fullLabelMap, abbreviatedLabelMap, displayOrder, formatHours, formatCurrency } from '@/components/results-display'; // Import helpers and rename labelMap
 import type { CalculationResults, CalculationError, QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee } from '@/types'; // Added AdjustmentItem, SavedPayrollData, Employee
 import type { ScheduleData, ShiftAssignment } from '@/types/schedule'; // Import schedule types
@@ -182,7 +182,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                          createdAtDate = parsedDays[0].inputData.startDate;
                     }
 
-                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport) {
+                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeducciones.length > 0 || parsedIncludeTransport) {
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                          const savedPayrollItem: SavedPayrollData = {
                             key: key,
@@ -222,14 +222,8 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [employees, setEmployees] = useState<Employee[]>([]); // State for employees list
-    const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
-        const now = new Date();
-        return now.getDate() <= 15 ? startOfMonth(now) : setDate(startOfMonth(now), 16);
-    });
-    const [payPeriodEnd, setPayPeriodEnd] = useState<Date | undefined>(() => {
-         const now = new Date();
-         return now.getDate() <= 15 ? setDate(startOfMonth(now), 15) : endOfMonth(now);
-    });
+    const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(undefined);
+    const [payPeriodEnd, setPayPeriodEnd] = useState<Date | undefined>(undefined);
     const [calculatedDays, setCalculatedDays] = useState<CalculationResults[]>([]);
     const [editingDayId, setEditingDayId] = useState<string | null>(null);
     const [editingResultsId, setEditingResultsId] = useState<string | null>(null);
@@ -255,6 +249,14 @@ export default function Home() {
     const { toast } = useToast();
     const { setValue } = useForm<WorkdayFormValues>(); // Use useForm hook to get setValue
 
+    // Initialize payPeriodStart and payPeriodEnd in useEffect to avoid hydration issues
+    useEffect(() => {
+        const now = new Date();
+        setPayPeriodStart(now.getDate() <= 15 ? startOfMonth(now) : setDate(startOfMonth(now), 16));
+        setPayPeriodEnd(now.getDate() <= 15 ? setDate(startOfMonth(now), 15) : endOfMonth(now));
+    }, []);
+
+
     // Load ALL saved payrolls and employees on initial mount
     useEffect(() => {
         const loadedEmployees = loadEmployeesFromLocalStorage([]);
@@ -264,7 +266,7 @@ export default function Home() {
 
     // Load current employee/period data from localStorage when employee/period changes
     useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && payPeriodStart && payPeriodEnd) { // Ensure dates are defined
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
             if (storageKey) {
                 console.log(`Intentando cargar datos para la clave: ${storageKey}`);
@@ -299,7 +301,7 @@ export default function Home() {
 
     // Save current employee/period data to localStorage
     useEffect(() => {
-        if (typeof window !== 'undefined' && isDataLoaded) {
+        if (typeof window !== 'undefined' && isDataLoaded && payPeriodStart && payPeriodEnd) { // Ensure dates are defined
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
              // Only save if there's a valid key AND some data to save OR aux transport is enabled
             if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte)) {
