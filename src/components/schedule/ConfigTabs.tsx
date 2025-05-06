@@ -6,10 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"; // Added CardFooter
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,11 +38,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library } from 'lucide-react'; // Added Library icon
+import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library, X } from 'lucide-react';
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns'; // Import format and parseISO
-import { es } from 'date-fns/locale'; // Import Spanish locale
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 // Interface for props passed to ConfigTabs
 interface ConfigTabsProps {
@@ -62,7 +71,7 @@ interface ConfigTabsProps {
   setConfigFormType: React.Dispatch<React.SetStateAction<'location' | 'department' | 'employee' | 'template' | null>>;
   setSelectedConfigItem: React.Dispatch<React.SetStateAction<any | null>>;
   handleToggleEmployeeLocation: (locationId: string) => void;
-  handleToggleEmployeeDepartment: (departmentId: string) => void; // Added this prop
+  handleToggleEmployeeDepartment: (departmentId: string) => void;
   availableDepartmentsForEmployee: Department[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -78,9 +87,12 @@ interface ConfigTabsProps {
   filteredDepartmentsData: Department[];
   filteredEmployeesData: Employee[];
   filteredTemplatesData: ScheduleTemplate[];
-  handleExportConfig: () => void; // Add export handler prop
-  handleImportConfig: (event: React.ChangeEvent<HTMLInputElement>) => void; // Add import handler prop
-  fileInputRef: React.RefObject<HTMLInputElement>; // Add ref prop
+  handleExportConfig: () => void;
+  handleImportConfig: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  itemToDelete: { type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null;
+  setItemToDelete: React.Dispatch<React.SetStateAction<{ type: 'location' | 'department' | 'employee' | 'template'; id: string; name: string } | null>>;
+  handleDeleteItem: () => void;
 }
 
 export function ConfigTabs({
@@ -108,10 +120,10 @@ export function ConfigTabs({
     setConfigFormType,
     setSelectedConfigItem,
     handleToggleEmployeeLocation,
-    handleToggleEmployeeDepartment, // Destructure the passed prop
+    handleToggleEmployeeDepartment,
     availableDepartmentsForEmployee,
     activeTab,
-    setActiveTab, // Use the changed prop name
+    setActiveTab,
     locationSearch,
     setLocationSearch,
     departmentSearch,
@@ -124,10 +136,15 @@ export function ConfigTabs({
     filteredDepartmentsData,
     filteredEmployeesData,
     filteredTemplatesData,
-    handleExportConfig, // Destructure export handler
-    handleImportConfig, // Destructure import handler
-    fileInputRef,      // Destructure ref
+    handleExportConfig,
+    handleImportConfig,
+    fileInputRef,
+    itemToDelete,
+    setItemToDelete,
+    handleDeleteItem,
 }: ConfigTabsProps) {
+
+    const { toast } = useToast();
 
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
          <ScrollArea className="h-full border rounded-md p-2"> {/* Added scroll for list */}
@@ -136,7 +153,7 @@ export function ConfigTabs({
                     key={item.id}
                     onClick={() => openConfigForm(type, item)}
                     className={cn(
-                        `relative p-2 mb-1 rounded cursor-pointer hover:bg-accent flex items-center justify-between group`, // Added relative
+                        `relative p-2 mb-1 rounded cursor-pointer hover:bg-accent flex items-center justify-between group`,
                         selectedConfigItem?.id === item.id ? 'bg-accent font-semibold' : ''
                     )}
                 >
@@ -149,7 +166,7 @@ export function ConfigTabs({
                              <span className="text-xs italic ml-1">({item.type === 'week' ? 'Semanal' : 'Diario'}, {locations.find(l => l.id === item.locationId)?.name || 'Sede?'})</span>
                           )}
                     </span>
-                     <div className="absolute top-1/2 right-1 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0 flex-shrink-0"> {/* Positioned right */}
+                     <div className="absolute top-1/2 right-1 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-0 flex-shrink-0">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); openConfigForm(type, item); }} title={`Editar ${type}`}>
                               <Edit className="h-4 w-4" />
                           </Button>
@@ -163,13 +180,12 @@ export function ConfigTabs({
                                 <Upload className="h-4 w-4" />
                               </Button>
                            )}
-                          {/* Delete Button Trigger - uses confirmDeleteItem */}
                           <Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-destructive hover:bg-destructive/10"
                               onClick={(e) => {
-                                  e.stopPropagation(); // Prevent item selection when clicking delete
+                                  e.stopPropagation();
                                   confirmDeleteItem(type, item.id, item.name);
                               }}
                               title={`Eliminar ${type}`}
@@ -213,7 +229,7 @@ export function ConfigTabs({
                         <CardHeader>
                             <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Departamento</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]"> {/* Added scroll */}
+                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
                             <div>
                                 <Label htmlFor="department-name">Nombre</Label>
                                 <Input id="department-name" value={departmentFormData.name} onChange={(e) => setDepartmentFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del Departamento" />
@@ -231,7 +247,7 @@ export function ConfigTabs({
                                     <SelectTrigger id="department-icon"><SelectValue placeholder="Selecciona icono" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ninguno">Ninguno</SelectItem>
-                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })} {/* Removed label */}</span></SelectItem>)}
+                                         {Object.keys(iconMap).map(iconName => <SelectItem key={iconName} value={iconName}><span className='flex items-center gap-2'>{React.createElement(iconMap[iconName], { className: 'h-4 w-4' })}</span></SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -248,7 +264,7 @@ export function ConfigTabs({
                         <CardHeader>
                             <CardTitle>{selectedConfigItem ? 'Editar' : 'Agregar'} Colaborador</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]"> {/* Make content scrollable */}
+                        <CardContent className="flex-grow space-y-3 overflow-y-auto max-h-[calc(100%_-_150px)]">
                             <div>
                                 <Label htmlFor="employee-id">ID Colaborador</Label>
                                 <Input id="employee-id" value={employeeFormData.id} onChange={(e) => setEmployeeFormData(prev => ({ ...prev, id: e.target.value }))} placeholder="ID (Ej: Cédula)" disabled={!!selectedConfigItem} />
@@ -315,16 +331,16 @@ export function ConfigTabs({
                                 </DropdownMenu>
                             </div>
                         </CardContent>
-                         <CardFooter className="flex justify-between gap-2 border-t pt-4"> {/* Changed justify-end to justify-between */}
-                            {selectedConfigItem && ( // Show delete button only when editing
+                         <CardFooter className="flex justify-between gap-2 border-t pt-4">
+                            {selectedConfigItem && (
                                 <Button
                                      variant="destructive"
-                                     onClick={() => confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name)} // Trigger confirmation
+                                     onClick={() => confirmDeleteItem('employee', selectedConfigItem.id, selectedConfigItem.name)}
                                 >
                                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar Colaborador
                                 </Button>
                             )}
-                            <div className="flex gap-2 ml-auto"> {/* Group Cancel and Save */}
+                            <div className="flex gap-2 ml-auto">
                                 <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cancelar</Button>
                                 <Button onClick={handleSaveEmployee}>Guardar Colaborador</Button>
                             </div>
@@ -351,17 +367,17 @@ export function ConfigTabs({
                              )}
                          </CardContent>
                          <CardFooter className="flex justify-between gap-2 border-t pt-4">
-                             {selectedConfigItem && ( // Show delete button only when viewing details
+                             {selectedConfigItem && (
                                 <Button
                                     variant="destructive"
-                                    onClick={() => confirmDeleteItem('template', selectedConfigItem.id, selectedConfigItem.name)} // Trigger confirmation
+                                    onClick={() => confirmDeleteItem('template', selectedConfigItem.id, selectedConfigItem.name)}
                                 >
                                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar Template
                                 </Button>
                              )}
                               <div className="flex gap-2 ml-auto">
                                 <Button variant="ghost" onClick={() => { setConfigFormType(null); setSelectedConfigItem(null); }}>Cerrar</Button>
-                                {selectedConfigItem && ( // Show Load button only when viewing details
+                                {selectedConfigItem && (
                                      <Button onClick={() => handleLoadTemplate(selectedConfigItem.id)}>
                                         <Upload className="mr-2 h-4 w-4" /> Cargar Template
                                      </Button>
@@ -370,82 +386,142 @@ export function ConfigTabs({
                          </CardFooter>
                      </Card>
                  );
+            default:
+                return <div className="p-4 text-center text-muted-foreground h-full flex items-center justify-center">Tipo de configuración no reconocido.</div>;
         }
     };
 
   return (
-     <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeTab} onValueChange={ tabValue => { setActiveTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
-       <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0"> {/* Ensure TabsList doesn't shrink */}
-         <TabsTrigger value="sedes">Sedes</TabsTrigger>
-         <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
-         <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
-         <TabsTrigger value="templates">Templates</TabsTrigger>
-       </TabsList>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden"> {/* Layout Lista + Detalle */}
-             <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
-                 <div className="flex items-center gap-2 flex-shrink-0">
-                     <Input
-                         placeholder={`Buscar en ${activeTab}...`}
-                         className="flex-grow"
-                         value={
-                             activeTab === 'sedes' ? locationSearch :
-                             activeTab === 'departamentos' ? departmentSearch :
-                             activeTab === 'colaboradores' ? employeeSearch :
-                             templateSearch
-                         }
-                         onChange={(e) => {
-                             const value = e.target.value;
-                             if (activeTab === 'sedes') setLocationSearch(value);
-                             else if (activeTab === 'departamentos') setDepartmentSearch(value);
-                             else if (activeTab === 'colaboradores') setEmployeeSearch(value);
-                             else if (activeTab === 'templates') setTemplateSearch(value);
-                         }}
-                     />
+    <Dialog open={true} onOpenChange={() => { /* Controlled externally */ }}>
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+            <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row items-center justify-between space-x-4">
+                <div className="flex-1">
+                    <DialogTitle>Configuración General</DialogTitle>
+                    <DialogDescription>Gestiona sedes, departamentos, colaboradores y templates.</DialogDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0"> {/* Removed mr-8 */}
+                    <input
+                        type="file"
+                        accept=".json"
+                        ref={fileInputRef}
+                        onChange={handleImportConfig}
+                        className="hidden"
+                        id="import-config-input-modal"
+                    />
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => {
-                            const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
-                                sedes: 'location',
-                                departamentos: 'department',
-                                colaboradores: 'employee',
-                                templates: 'template',
-                            };
-                            const formType = typeMap[activeTab];
-                            // Reset form data for the active tab type when adding new
-                            setSelectedConfigItem(null); // Ensure no item is selected
-                            if (formType === 'location') setLocationFormData({ name: '' });
-                            else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
-                            else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : [], departmentIds: [] });
-                            // No need to reset form for template as adding manually is disabled
-
-                            if (formType && formType !== 'template') { // Only open form if not template
-                                openConfigForm(formType, null);
-                            } else if (formType === 'template') {
-                                 toast({ title: "Info", description: "La creación manual de templates no está habilitada. Guarda desde el planificador.", variant: "default" });
-                            }
-                        }}
-                        title={`Agregar ${activeTab}`}
-                        disabled={activeTab === 'templates'} // Disable adding templates manually
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Importar configuración (JSON)"
                     >
-                        <PlusCircle className="h-4 w-4" />
+                        <UploadCloud className="h-4 w-4" />
                     </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleExportConfig}
+                        title="Exportar configuración (JSON)"
+                    >
+                        <Download className="h-4 w-4" />
+                    </Button>
+                </div>
+                <DialogClose asChild>
+                     <Button variant="ghost" size="icon" className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                         <X className="h-4 w-4" />
+                        <span className="sr-only">Cerrar</span>
+                    </Button>
+                </DialogClose>
+            </DialogHeader>
+            <div className="flex-grow overflow-hidden p-4">
+                 <Tabs defaultValue="sedes" className="w-full h-full flex flex-col" value={activeTab} onValueChange={ tabValue => { setActiveTab(tabValue); setConfigFormType(null); setSelectedConfigItem(null); } }>
+                   <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0">
+                     <TabsTrigger value="sedes">Sedes</TabsTrigger>
+                     <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
+                     <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
+                     <TabsTrigger value="templates">Templates</TabsTrigger>
+                   </TabsList>
 
-                 </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow overflow-hidden">
+                         <div className="md:col-span-1 flex flex-col gap-4 h-full overflow-hidden">
+                             <div className="flex items-center gap-2 flex-shrink-0">
+                                 <Input
+                                     placeholder={`Buscar en ${activeTab}...`}
+                                     className="flex-grow"
+                                     value={
+                                         activeTab === 'sedes' ? locationSearch :
+                                         activeTab === 'departamentos' ? departmentSearch :
+                                         activeTab === 'colaboradores' ? employeeSearch :
+                                         templateSearch
+                                     }
+                                     onChange={(e) => {
+                                         const value = e.target.value;
+                                         if (activeTab === 'sedes') setLocationSearch(value);
+                                         else if (activeTab === 'departamentos') setDepartmentSearch(value);
+                                         else if (activeTab === 'colaboradores') setEmployeeSearch(value);
+                                         else if (activeTab === 'templates') setTemplateSearch(value);
+                                     }}
+                                 />
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                        const typeMap: Record<string, 'location' | 'department' | 'employee' | 'template'> = {
+                                            sedes: 'location',
+                                            departamentos: 'department',
+                                            colaboradores: 'employee',
+                                            templates: 'template',
+                                        };
+                                        const formType = typeMap[activeTab];
+                                        setSelectedConfigItem(null);
+                                        if (formType === 'location') setLocationFormData({ name: '' });
+                                        else if (formType === 'department') setDepartmentFormData({ name: '', locationId: selectedLocationId || (locations.length > 0 ? locations[0].id : ''), iconName: undefined });
+                                        else if (formType === 'employee') setEmployeeFormData({ id: '', name: '', locationIds: selectedLocationId ? [selectedLocationId] : (locations.length > 0 ? [locations[0].id] : []), departmentIds: [] });
 
-                 <div className="flex-grow overflow-hidden"> {/* Make list area scrollable */}
-                     <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
-                     <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
-                     <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
-                     <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
-                 </div>
-             </div>
 
-             <div className="md:col-span-2 h-full overflow-hidden"> {/* Ensure form area uses available height */}
-                 {renderConfigDetailForm()}
-             </div>
-         </div>
-     </Tabs>
+                                        if (formType && formType !== 'template') {
+                                            openConfigForm(formType, null);
+                                        } else if (formType === 'template') {
+                                             toast({ title: "Info", description: "La creación manual de templates no está habilitada. Guarda desde el planificador.", variant: "default" });
+                                        }
+                                    }}
+                                    title={`Agregar ${activeTab}`}
+                                    disabled={activeTab === 'templates'}
+                                >
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                             </div>
+                             <div className="flex-grow overflow-hidden">
+                                 <TabsContent value="sedes" className="mt-0 h-full"> {renderConfigListContent(filteredLocationsData, 'location')} </TabsContent>
+                                 <TabsContent value="departamentos" className="mt-0 h-full"> {renderConfigListContent(filteredDepartmentsData, 'department')} </TabsContent>
+                                 <TabsContent value="colaboradores" className="mt-0 h-full"> {renderConfigListContent(filteredEmployeesData, 'employee')} </TabsContent>
+                                 <TabsContent value="templates" className="mt-0 h-full"> {renderConfigListContent(filteredTemplatesData, 'template')} </TabsContent>
+                             </div>
+                         </div>
+                         <div className="md:col-span-2 h-full overflow-hidden">
+                             {renderConfigDetailForm()}
+                         </div>
+                     </div>
+                 </Tabs>
+            </div>
+             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Eliminar {itemToDelete?.type} "{itemToDelete?.name}"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteItem}
+                            className="bg-destructive hover:bg-destructive/90">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </DialogContent>
+    </Dialog>
   );
 }
