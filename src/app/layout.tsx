@@ -35,9 +35,10 @@ const firebaseConfig = {
 
 function ensureFirebaseInitialized() {
     if (!getApps().length) {
+      // Check if API key is provided and not the placeholder
       if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
-          console.error('Firebase API Key is missing or invalid in RootLayout.');
-          return null;
+          console.error('Firebase API Key is missing or invalid in RootLayout. Please verify your .env.local file (NEXT_PUBLIC_FIREBASE_API_KEY) and restart the server.');
+          return null; // Indicate failure
       }
         try {
             return initializeApp(firebaseConfig);
@@ -67,19 +68,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false); // For navigation loading
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // For initial Firebase auth loading
   const [currentUser, setCurrentUser] = useState<User | null>(null); // State for current user
   const [companyLogo, setCompanyLogo] = useState<string | null>(null); // State for company logo
   const pathname = usePathname();
   const router = useRouter(); // For navigation
 
   useEffect(() => {
+    setIsAuthLoading(true); // Indicate that auth check is starting
     const app = ensureFirebaseInitialized();
-    if (!app) return; // Don't proceed if Firebase init failed
+    if (!app) {
+        setIsAuthLoading(false); // Firebase init failed, stop auth loading
+        return;
+    }
 
     const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      setIsAuthLoading(false); // Auth state has been determined
     });
 
     // Load company logo from localStorage
@@ -94,47 +101,48 @@ export default function RootLayout({
   }, []);
 
 
-  // Reset loading state when path changes
+  // Reset navigation loading state when path changes
   useEffect(() => {
-    setIsLoading(false);
+    setIsNavigating(false);
   }, [pathname]);
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>, href: string) => {
     // Prevent navigation if already on the target page or a login/register page
     if (pathname === href || (href === '/login' && (pathname === '/login' || pathname === '/register'))) {
         e.preventDefault();
         return;
     }
-    setIsLoading(true);
-    // Let the default Link behavior handle navigation after setting loading state
+    setIsNavigating(true); // Set navigation loading state
+    // Let the default Link behavior or router.push handle navigation after setting loading state
   };
 
   const handleSignOut = async () => {
     const app = ensureFirebaseInitialized();
     if (!app) return;
     const auth = getAuth(app);
-    setIsLoading(true);
+    setIsNavigating(true); // Show loader during sign out
     try {
       await signOut(auth);
-      setCurrentUser(null);
+      setCurrentUser(null); // This will trigger onAuthStateChanged, which will set isAuthLoading appropriately
       router.push('/login'); // Redirect to login after sign out
     } catch (error) {
       console.error("Error signing out:", error);
       // Handle sign-out error (e.g., show a toast)
     } finally {
-      setIsLoading(false);
+      setIsNavigating(false); // Stop navigation loader
     }
   };
 
 
   // Hide main navigation and footer on login/register/profile-setup pages
   const hideLayoutForAuth = pathname === '/login' || pathname === '/register' || pathname === '/profile-setup';
+  const showLoadingIndicator = isNavigating || isAuthLoading;
 
   return (
     // Ensure no whitespace or comments directly inside the <html> tag
     <html lang="es">
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground relative flex flex-col min-h-screen`}>
-         {isLoading && <LoadingIndicator />} {/* Show loading indicator */}
+         {showLoadingIndicator && <LoadingIndicator />} {/* Show loading indicator */}
          {/* Navigation */}
          {!hideLayoutForAuth && ( // Only show nav if not on auth pages
              <nav className="bg-card border-b p-4 sticky top-0 z-40 w-full"> {/* Make nav sticky and full width */}
