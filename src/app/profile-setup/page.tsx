@@ -79,11 +79,13 @@ export default function ProfileSetupPage() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Example: Store in localStorage (for demo purposes, replace with backend)
+    // Store in localStorage
     if (typeof window !== 'undefined') {
         localStorage.setItem('companyName', name);
-        if (logoPreview) { // Save logo as data URL (not ideal for production)
+        if (logoPreview) { // Save logo as data URL
             localStorage.setItem('companyLogo', logoPreview);
+        } else {
+            localStorage.removeItem('companyLogo'); // Remove if no logo selected
         }
     }
     // --- End Placeholder ---

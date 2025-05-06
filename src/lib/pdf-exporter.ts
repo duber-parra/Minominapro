@@ -1,3 +1,4 @@
+
 // src/lib/pdf-exporter.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -385,7 +386,7 @@ const calculateNetoYTotalDeducciones = (payroll: SavedPayrollData): { neto: numb
     const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
 
     // Estimate legal deductions (IBC excludes transport allowance)
-    const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+    const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos; // IBC excludes transport allowance
     const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
     const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
@@ -569,3 +570,4 @@ const parseTimeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
 };
+

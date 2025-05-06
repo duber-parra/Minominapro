@@ -2298,7 +2298,7 @@ const calculateNetoYTotalDeducciones = (payroll)=>{
     // Calculate Total Devengado Bruto
     const totalDevengadoBruto = baseMasExtras + auxTransporteAplicado + totalOtrosIngresos;
     // Estimate legal deductions (IBC excludes transport allowance)
-    const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos;
+    const ibcEstimadoQuincenal = baseMasExtras + totalOtrosIngresos; // IBC excludes transport allowance
     const deduccionSaludQuincenal = ibcEstimadoQuincenal * 0.04;
     const deduccionPensionQuincenal = ibcEstimadoQuincenal * 0.04;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
