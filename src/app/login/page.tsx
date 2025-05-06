@@ -38,28 +38,22 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase only once
-function ensureFirebaseInitialized() {
+function ensureFirebaseInitialized(): firebase.app.App | null {
     // Check if API key is provided and not the placeholder
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") { // Removed specific key check "AIzaSy..."
-        const errorMsg = 'La clave API de Firebase falta o no es válida. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.';
-        console.error(errorMsg, "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY); // Log the raw value for debugging
-        throw new Error(errorMsg);
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+        console.error('La clave API de Firebase falta o no es válida en LoginPage. Por favor, verifica tu archivo .env.local (NEXT_PUBLIC_FIREBASE_API_KEY) y reinicia el servidor.', "Raw env value:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+        return null; // Indicate failure
     }
     if (!getApps().length) {
         try {
-            console.log("Initializing Firebase..."); // Log initialization attempt
+            console.log("Initializing Firebase in LoginPage...");
             return initializeApp(firebaseConfig);
         } catch (error: any) {
-             console.error("Firebase initialization error:", error);
-             // Provide a more specific error message if possible
-             if (error.code === 'auth/invalid-api-key' || error.message.includes('invalid-api-key')) {
-                 throw new Error("La clave API de Firebase no es válida. Revisa la configuración en Firebase Console y tu archivo .env.local.");
-             }
-             throw new Error("No se pudo inicializar Firebase. Revisa la consola para más detalles.");
+             console.error("Firebase initialization error in LoginPage:", error);
+             return null; // Indicate failure
         }
-    } else {
-        return getApp(); // Use existing app instance
     }
+    return getApp();
 }
 
 // --- Placeholder Function for First Login Check ---
@@ -85,54 +79,51 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize Firebase and check auth state on mount
-    try {
-        const app = ensureFirebaseInitialized();
-        const auth = getAuth(app);
-
-        // Check for existing authentication
-        const unsubscribe = onAuthStateChanged(auth, async (user) => { // Make async
-          if (user) {
-            // --- First Login Check ---
-            const firstLogin = await isFirstLogin(user); // Check if it's the first login
-            if (firstLogin) {
-               console.log("First login detected, redirecting to profile setup.");
-               router.push('/profile-setup'); // Redirect to setup page
-            } else {
-                console.log("Existing user detected, redirecting to home.");
-                 router.push('/'); // Redirect to home page for existing users
-            }
-            // -----------------------
-          } else {
-            console.log('No user currently logged in (onAuthStateChanged).');
-          }
-        });
-        // Cleanup subscription on unmount
-        return () => unsubscribe();
-
-    } catch (initError: any) {
-        console.error("Error during Firebase init or auth check:", initError);
-        setError(initError.message || "Error al inicializar la autenticación.");
+    const app = ensureFirebaseInitialized();
+    if (!app) {
+        setError("Error al inicializar Firebase. Verifica la configuración.");
+        setFirebaseInitialized(false);
+        return;
     }
-  }, [router]); // Add router to dependency array
+    setFirebaseInitialized(true);
+    const auth = getAuth(app);
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const firstLogin = await isFirstLogin(user);
+        if (firstLogin) {
+           console.log("First login detected, redirecting to profile setup.");
+           router.push('/profile-setup');
+        } else {
+            console.log("Existing user detected, redirecting to home.");
+            router.push('/');
+        }
+      } else {
+        console.log('No user currently logged in (onAuthStateChanged).');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
 
   const handleGoogleSignIn = async () => {
+    if (!firebaseInitialized) {
+        setError("Firebase no está inicializado. No se puede iniciar sesión.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     try {
         console.log("Attempting Google Sign-In...");
-        const app = ensureFirebaseInitialized(); // Ensure initialized before getting auth
+        const app = getApp(); // Get existing app instance
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
-        // Consider adding custom parameters if needed, e.g., language preference
-        // provider.setCustomParameters({ 'login_hint': 'user@example.com' });
         await signInWithPopup(auth, provider);
-        // onAuthStateChanged will handle the redirect after checking if it's the first login
         console.log("Google Sign-In Popup successful (before onAuthStateChanged handles redirect).");
-      } catch (error: any) { // Catch specific Firebase errors if possible
+      } catch (error: any) {
         console.error("Google Sign-In Error:", error);
         console.error("Error Code:", error.code);
         console.error("Error Message:", error.message);
@@ -146,7 +137,7 @@ export default function LoginPage() {
         } else if (error.code === 'auth/network-request-failed') {
             setError('Error de red. Verifica tu conexión e intenta de nuevo.');
         } else if (error.message && error.message.includes("La clave API de Firebase falta")) {
-            setError(error.message); // Show the specific missing key error
+            setError(error.message);
         } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
              setError('La clave API de Firebase no es válida. Verifica tu archivo .env.local y la configuración en Firebase Console.');
         } else if (error.code === 'auth/unauthorized-domain') {
@@ -154,7 +145,7 @@ export default function LoginPage() {
         } else {
             setError(`Error al iniciar sesión con Google: ${error.message || 'Intenta de nuevo.'} Codigo: ${error.code}`);
         }
-      } finally { // Ensure isLoading is set to false even if there's an error
+      } finally {
         setIsLoading(false);
       }
   };
@@ -170,19 +161,17 @@ export default function LoginPage() {
             Ingresa usando tu cuenta de Google.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6"> {/* Increased space */}
+        <CardContent className="space-y-6">
           {error && (
             <p className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
               {error}
             </p>
           )}
-
-          {/* Google Sign-In Button is the only option */}
           <Button
             variant="outline"
             className="w-full"
             onClick={handleGoogleSignIn}
-            disabled={isLoading}
+            disabled={isLoading || !firebaseInitialized}
           >
              {isLoading ? (
                 <Loader2 className="animate-spin" />
@@ -194,20 +183,7 @@ export default function LoginPage() {
               )}
           </Button>
         </CardContent>
-         {/* Optionally keep the link to register, or remove if registration is also Google-only */}
-        {/*
-        <CardFooter className="flex justify-center text-sm">
-          <p className="text-muted-foreground">
-            ¿No tienes una cuenta?{' '}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Regístrate aquí
-            </Link>
-          </p>
-        </CardFooter>
-         */}
       </Card>
     </div>
   );
 }
-
-    
