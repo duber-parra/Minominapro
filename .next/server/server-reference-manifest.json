@@ -1,11 +1,8 @@
 {
   "node": {
-    "600794c3604139c4f9fa00e7152a2fa86283639485": {
+    "d73db42042286e6135a609f47f354326f6f0d780": {
       "workers": {
-        "app/page": {
-          "moduleId": "[project]/.next-internal/server/app/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/actions/calculate-workday.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
-          "async": false
-        }
+        "app/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Fuser%2Fstudio%2Fsrc%2Factions%2Fcalculate-workday.ts%22%2C%5B%22calculateSingleWorkday%22%5D%5D%5D&__client_imported__=true!"
       },
       "layer": {
         "app/page": "action-browser"
@@ -13,5 +10,5 @@
     }
   },
   "edge": {},
-  "encryptionKey": "S+X40ityqGBYTAGqvDmRnc72Gnuvtx9z9+Yl3yiUyEk="
+  "encryptionKey": "WJuP48/28HSdCxagQH5lWtldwp/cWkAYOiP9Nba59vw="
 }

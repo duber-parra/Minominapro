@@ -1,0 +1,27 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Allow authenticated users to read and write to the 'payrollSettings' collection.
+    // For production, you should restrict write access to administrators.
+    match /payrollSettings/{settingId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // In production, check for admin role: request.auth.token.admin == true
+    }
+
+    // Default deny all other collections/documents if not explicitly allowed
+    // You'll need to add rules for other collections your app uses.
+    // For example, if you store user profiles in a 'users' collection:
+    // match /users/{userId} {
+    //   allow read: if true; // Or based on authentication
+    //   allow write: if request.auth != null && request.auth.uid == userId; // User can write their own profile
+    // }
+
+    // Catch-all rule to deny access to unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
