@@ -34,7 +34,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { VALORES } from '@/config/payroll-values'; // Import VALORES from new location
+import { VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL } from '@/config/payroll-values'; // Import VALORES and AUXILIO_TRANSPORTE_VALOR_QUINCENAL from new location
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
@@ -54,7 +54,7 @@ import { z } from 'zod'; // Import zod for form schema
 
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
-const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance
+// const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance - REMOVED, now imported
 const SCHEDULE_DATA_KEY = 'schedulePlannerData'; // LocalStorage key for schedule data
 
 // Define keys for local storage
@@ -107,6 +107,7 @@ function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
             periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
             periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
             createdAt: item.createdAt && typeof item.createdAt === 'string' ? parseISO(item.createdAt) : item.createdAt,
+            incluyeAuxTransporte: typeof item.incluyeAuxTransporte === 'boolean' ? item.incluyeAuxTransporte : false,
             incluyeDeduccionSalud: typeof item.incluyeDeduccionSalud === 'boolean' ? item.incluyeDeduccionSalud : true,
             incluyeDeduccionPension: typeof item.incluyeDeduccionPension === 'boolean' ? item.incluyeDeduccionPension : true,
         };
@@ -203,7 +204,6 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                          createdAtDate = parsedDays[0].inputData.startDate;
                     }
 
-                    // Ensure that data is considered "present" if there are days, adjustments, or if flags are non-default
                     const hasDataContent = parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 ||
                                          parsedIncludeTransport || !parsedIncluyeSalud || !parsedIncluyePension;
 
@@ -350,8 +350,8 @@ export default function Home() {
                              otrosIngresos.length > 0 ||
                              otrasDeducciones.length > 0 ||
                              incluyeAuxTransporte ||
-                             !incluyeDeduccionSalud || // Saved if non-default
-                             !incluyeDeduccionPension; // Saved if non-default
+                             !incluyeDeduccionSalud ||
+                             !incluyeDeduccionPension;
 
         if (hasDataToSave) {
             try {
@@ -372,7 +372,7 @@ export default function Home() {
                 };
                 localStorage.setItem(storageKey, JSON.stringify(dataToSave));
                 const loadedEmployees = loadEmployeesFromLocalStorage([]);
-                setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Update the list of saved payrolls
+                setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
                 toast({
                     title: 'Nómina Guardada',
                     description: `Los datos para ${employees.find(emp => emp.id === employeeId)?.name || employeeId} se han guardado.`,
@@ -387,8 +387,6 @@ export default function Home() {
                 });
             }
         } else {
-            // If no data to save, but an entry exists for this key, remove it
-            // This handles the case where a user clears all data and then "saves" an empty state.
             if (localStorage.getItem(storageKey)) {
                 localStorage.removeItem(storageKey);
                 const loadedEmployees = loadEmployeesFromLocalStorage([]);
@@ -707,7 +705,7 @@ export default function Home() {
         toast({
             title: `Auxilio de Transporte ${!incluyeAuxTransporte ? 'Activado' : 'Desactivado'}`,
             description: !incluyeAuxTransporte
-                         ? `Se sumará ${formatCurrency(AUXILIO_TRANSPORTE_VALOR)} al total devengado.`
+                         ? `Se sumará ${formatCurrency(AUXILIO_TRANSPORTE_VALOR_QUINCENAL)} al total devengado.`
                          : 'El auxilio de transporte no se incluirá en el cálculo.',
         });
     };
@@ -802,7 +800,7 @@ export default function Home() {
          return;
      }
      try {
-          const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
+          const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR_QUINCENAL : 0;
           const currentEmployee = employees.find(emp => emp.id === employeeId);
         exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionSalud, incluyeDeduccionPension);
         toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });
@@ -833,9 +831,13 @@ export default function Home() {
      setEmployeeId(payrollToLoad.employeeId);
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
+     setCalculatedDays(payrollToLoad.calculatedDays || []);
+     setOtrosIngresos(payrollToLoad.otrosIngresosLista || []);
+     setOtrasDeducciones(payrollToLoad.otrasDeduccionesLista || []);
+     setIncluyeAuxTransporte(payrollToLoad.incluyeAuxTransporte);
      setIncluyeDeduccionSalud(payrollToLoad.incluyeDeduccionSalud);
      setIncluyeDeduccionPension(payrollToLoad.incluyeDeduccionPension);
-     setIsDataLoaded(false); // Trigger useEffect to load data
+     setIsDataLoaded(false);
      toast({ title: 'Nómina Cargada', description: `Se cargaron los datos de ${payrollToLoad.employeeName || payrollToLoad.employeeId} para ${format(payrollToLoad.periodStart, 'dd/MM/yy')} - ${format(payrollToLoad.periodEnd, 'dd/MM/yy')}.` });
    };
 
@@ -882,6 +884,7 @@ export default function Home() {
                  summary: {
                      ...payroll.summary,
                  },
+                 incluyeAuxTransporte: typeof payroll.incluyeAuxTransporte === 'boolean' ? payroll.incluyeAuxTransporte : false,
                  incluyeDeduccionSalud: typeof payroll.incluyeDeduccionSalud === 'boolean' ? payroll.incluyeDeduccionSalud : true,
                  incluyeDeduccionPension: typeof payroll.incluyeDeduccionPension === 'boolean' ? payroll.incluyeDeduccionPension : true,
             }));
@@ -931,6 +934,7 @@ export default function Home() {
                 }
 
                 if (!Array.isArray(importedDataRaw)) {
+                    // throw new Error("El archivo JSON no contiene un array de nóminas válido."); // Previous error
                     toast({ title: "Error de Formato", description: "El archivo JSON debe contener un array (lista) de nóminas en su raíz.", variant: "destructive" });
                     if (importJsonInputRef.current) importJsonInputRef.current.value = '';
                     return;
@@ -1317,7 +1321,7 @@ export default function Home() {
                    onDeleteDeduccion={handleDeleteDeduccion}
                    incluyeAuxTransporte={incluyeAuxTransporte}
                    onToggleTransporte={handleToggleTransporte}
-                   auxTransporteValor={AUXILIO_TRANSPORTE_VALOR}
+                   auxTransporteValor={AUXILIO_TRANSPORTE_VALOR_QUINCENAL}
                    incluyeDeduccionSalud={incluyeDeduccionSalud}
                    onToggleSalud={handleToggleSalud}
                    incluyeDeduccionPension={incluyeDeduccionPension}

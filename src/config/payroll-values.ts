@@ -2,7 +2,8 @@
 
 /**
  * @fileOverview Configuration file for payroll values.
- * This file exports constants used in payroll calculations, specifically the hourly rates for different types of work hours.
+ * This file exports constants used in payroll calculations, specifically the hourly rates for different types of work hours
+ * and other global payroll constants.
  * It is separated from 'use server' files to allow importing constants into client components without violating 'use server' rules.
  */
 
@@ -18,3 +19,6 @@ export const VALORES = {
     "HEND_F": 15472.83,                    // Hora Extra Dominical/Festiva Nocturna (después de 7.66h)
     "Ordinaria_Diurna_Base": 0          // Horas base diurnas laborales (sin recargo adicional sobre el salario)
 };
+
+// Valor del auxilio de transporte quincenal
+export const AUXILIO_TRANSPORTE_VALOR_QUINCENAL = 100000;
