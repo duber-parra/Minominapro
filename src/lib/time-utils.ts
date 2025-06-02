@@ -26,3 +26,14 @@ export function formatTo12Hour(timeString: string | undefined): string {
     return timeString; // Return original string on error
   }
 }
+
+/**
+ * Parses a time string (HH:MM) into total minutes from midnight.
+ * @param timeStr - The time string in "HH:mm" format.
+ * @returns The total minutes from midnight, or 0 if invalid.
+ */
+export const parseTimeToMinutes = (timeStr: string | undefined): number => {
+    if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+};
