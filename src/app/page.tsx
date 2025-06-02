@@ -101,20 +101,39 @@ const getStorageKey = (employeeId: string, periodStart: Date | undefined, period
 
 // --- Function to revive Date objects from JSON string representation ---
 function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
-    return data.map(item => ({
-        ...item,
-        periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
-        periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
-        createdAt: item.createdAt && typeof item.createdAt === 'string' ? parseISO(item.createdAt) : item.createdAt,
-        // Revive startDate within calculatedDays.inputData
-        summary: {
-             ...item.summary,
-             // Ensure nested calculatedDays have their startDate revived too
-              // This part is tricky as summary doesn't store days.
-              // We need to handle day revival in parseStoredData or when loading.
+    return data.map(item => {
+        const revivedItem: any = { // Usar any temporalmente para flexibilidad
+            ...item,
+            periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
+            periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
+            createdAt: item.createdAt && typeof item.createdAt === 'string' ? parseISO(item.createdAt) : item.createdAt,
+        };
+
+        if (Array.isArray(item.calculatedDays)) {
+            revivedItem.calculatedDays = item.calculatedDays.map((day: any) => {
+                const revivedStartDate = day.inputData?.startDate && typeof day.inputData.startDate === 'string'
+                                        ? parseISO(day.inputData.startDate)
+                                        : (day.inputData?.startDate instanceof Date ? day.inputData.startDate : undefined);
+                return {
+                    ...day,
+                    inputData: {
+                        ...day.inputData,
+                        startDate: revivedStartDate,
+                    }
+                };
+            }).filter((day: any) => day.inputData?.startDate && isValidDate(day.inputData.startDate));
+        } else {
+            revivedItem.calculatedDays = [];
         }
-    })).filter(item => item.periodStart && isValidDate(item.periodStart) && item.periodEnd && isValidDate(item.periodEnd)); // Filter out invalid entries
+        // Asumimos que el 'summary' en el JSON es un placeholder o se recalculará,
+        // por lo que no intentamos revivir fechas dentro de él aquí.
+        // Si el summary del JSON contuviera objetos Date, necesitarían manejo.
+        revivedItem.summary = item.summary || {}; // Tomar el summary del item o un objeto vacío
+
+        return revivedItem;
+    }).filter(item => item.periodStart && isValidDate(item.periodStart) && item.periodEnd && isValidDate(item.periodEnd)) as SavedPayrollData[];
 }
+
 
 const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[], includeTransport: boolean, includeDeducciones: boolean } => {
     if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false, includeDeducciones: true };
@@ -179,18 +198,17 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                     const storedData = localStorage.getItem(key);
                     const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport, includeDeducciones: parsedIncludeDeducciones } = parseStoredData(storedData);
 
-                    // Determine createdAt - use the start date of the first calculated day if available, otherwise use periodStart
-                    let createdAtDate: Date | undefined = startDate; // Default to period start
+                    let createdAtDate: Date | undefined = startDate;
                     if (parsedDays.length > 0 && parsedDays[0].inputData.startDate instanceof Date && isValidDate(parsedDays[0].inputData.startDate)) {
                          createdAtDate = parsedDays[0].inputData.startDate;
                     }
 
-                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport || !parsedIncludeDeducciones) { // Include if deductions are OFF
+                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport || !parsedIncludeDeducciones) {
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                          const savedPayrollItem: SavedPayrollData = {
                             key: key,
                             employeeId: employeeId,
-                            employeeName: employeeMap.get(employeeId), // Add employee name
+                            employeeName: employeeMap.get(employeeId),
                             periodStart: startDate,
                             periodEnd: endDate,
                             summary: summary || {
@@ -202,11 +220,12 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                                 totalDuracionTrabajadaHorasQuincena: 0,
                                 diasCalculados: 0,
                             },
+                            calculatedDays: parsedDays, // Store the parsed days
                             otrosIngresosLista: parsedIncome,
                             otrasDeduccionesLista: parsedDeductions,
                             incluyeAuxTransporte: parsedIncludeTransport,
                             incluyeDeduccionesLegales: parsedIncludeDeducciones,
-                            createdAt: createdAtDate // Use the determined date
+                            createdAt: createdAtDate
                          };
                         savedPayrolls.push(savedPayrollItem);
                     }
@@ -308,23 +327,21 @@ export default function Home() {
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) {
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
-             // Save if: valid key AND (some data exists OR aux transport is enabled OR legal deductions are disabled (non-default))
             if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionesLegales)) {
                 try {
                      console.log(`Intentando guardar datos (incluye transporte: ${incluyeAuxTransporte}, incluye deducciones: ${incluyeDeduccionesLegales}) en la clave: ${storageKey}`);
                      const dataToSave = {
-                         calculatedDays: calculatedDays.map(day => ({
+                         calculatedDays: calculatedDays.map(day => ({ // Ensure dates within calculatedDays are strings
                              ...day,
                              inputData: {
                                  ...day.inputData,
                                  startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
                              },
-                              summary: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
                          })),
                          otrosIngresosLista: otrosIngresos,
                          otrasDeduccionesLista: otrasDeducciones,
                          incluyeAuxTransporte: incluyeAuxTransporte,
-                         incluyeDeduccionesLegales: incluyeDeduccionesLegales, // Save deductions state
+                         incluyeDeduccionesLegales: incluyeDeduccionesLegales,
                      };
                     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
                     const loadedEmployees = loadEmployeesFromLocalStorage([]);
@@ -338,7 +355,6 @@ export default function Home() {
                     });
                 }
             } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte && incluyeDeduccionesLegales) {
-                 // Remove item if all data is cleared, transport is off, AND deductions are ON (default)
                 if (localStorage.getItem(storageKey)) {
                     localStorage.removeItem(storageKey);
                     console.log(`Clave ${storageKey} eliminada porque no hay datos, auxilio transporte está inactivo y deducciones están activas (default).`);
@@ -672,11 +688,8 @@ export default function Home() {
            diasCalculados: 0,
        };
        if (baseSummary) { finalSummary.pagoTotalConSalarioQuincena = baseSummary.pagoTotalConSalarioQuincena; }
-       // The following lines related to actual net pay calculation are better handled in ResultsDisplay or PDF exporter
-       // const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
-       // const totalOtrosIngresos = otrosIngresos.reduce((sum, item) => sum + item.monto, 0);
        return finalSummary;
-  }, [calculatedDays, incluyeAuxTransporte, otrosIngresos, incluyeDeduccionesLegales]); // Added incluyeDeduccionesLegales
+  }, [calculatedDays, incluyeAuxTransporte, otrosIngresos, otrasDeducciones, incluyeDeduccionesLegales]); // Added incluyeDeduccionesLegales, otrasDeducciones
 
   const editingDayData = useMemo(() => {
     if (!editingDayId) return undefined;
@@ -708,11 +721,9 @@ export default function Home() {
     try {
         const result = await calculateSingleWorkday(nextDayValues, newDayId);
         handleDayCalculationComplete(result);
-        // No separate toast here, handleDayCalculationComplete now handles the success toast and date advance
     } catch (error) {
         console.error("Error duplicando el turno:", error);
         const errorMessage = error instanceof Error ? error.message : "Hubo un error al duplicar.";
-        // Pass error object structure to the completion handler
         handleDayCalculationComplete({ error: `Error duplicando: ${errorMessage}` });
     } finally {
         setIsLoadingDay(false);
@@ -721,7 +732,7 @@ export default function Home() {
 
 
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
-  const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionesLegales; // Show if deductions are off
+  const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionesLegales;
 
   const handleExportPDF = () => {
       const currentSummary = quincenalSummary;
@@ -731,8 +742,8 @@ export default function Home() {
      }
      try {
           const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR : 0;
-          const currentEmployee = employees.find(emp => emp.id === employeeId); // Find employee details
-        exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionesLegales); // Pass name and deductions flag
+          const currentEmployee = employees.find(emp => emp.id === employeeId);
+        exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionesLegales);
         toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });
      } catch (error) {
         console.error("Error exportando PDF:", error);
@@ -741,13 +752,13 @@ export default function Home() {
   };
 
   const handleBulkExportPDF = () => {
-    const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls(employees); // Pass current employees list
+    const allPayrollDataToExport: SavedPayrollData[] = loadAllSavedPayrolls(employees);
     if (allPayrollDataToExport.length === 0) {
         toast({ title: 'No Hay Datos para Exportar', description: 'No se encontraron nóminas guardadas.', variant: 'default' });
         return;
     }
     try {
-        exportAllPayrollsToPDF(allPayrollDataToExport, employees); // Pass employees list
+        exportAllPayrollsToPDF(allPayrollDataToExport, employees);
         toast({ title: 'Exportación Masiva Completa', description: `Se generó un PDF con ${allPayrollDataToExport.length} comprobantes.` });
     } catch (error) {
         console.error("Error durante la exportación masiva de PDF:", error);
@@ -761,7 +772,7 @@ export default function Home() {
      setEmployeeId(payrollToLoad.employeeId);
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
-     setIncluyeDeduccionesLegales(payrollToLoad.incluyeDeduccionesLegales); // Load deductions state
+     setIncluyeDeduccionesLegales(payrollToLoad.incluyeDeduccionesLegales);
      setIsDataLoaded(false);
      toast({ title: 'Nómina Cargada', description: `Se cargaron los datos de ${payrollToLoad.employeeName || payrollToLoad.employeeId} para ${format(payrollToLoad.periodStart, 'dd/MM/yy')} - ${format(payrollToLoad.periodEnd, 'dd/MM/yy')}.` });
    };
@@ -778,8 +789,6 @@ export default function Home() {
          const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
          if (currentKey === payrollToDeleteKey) {
              setCalculatedDays([]); setOtrosIngresos([]); setOtrasDeducciones([]); setIncluyeAuxTransporte(false); setIncluyeDeduccionesLegales(true);
-             // Optionally clear employee/period selection if the current one was deleted
-             // setEmployeeId(''); setPayPeriodStart(undefined); setPayPeriodEnd(undefined);
          }
       } catch (error) {
           console.error("Error deleting saved payroll:", error);
@@ -796,13 +805,19 @@ export default function Home() {
                 toast({ title: "Nada que Exportar", description: "No hay nóminas guardadas para exportar.", variant: "default" });
                 return;
             }
-            // Prepare data for export: Dates must be ISO strings
             const dataToExport = allPayrolls.map(payroll => ({
                 ...payroll,
                 periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
                 periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
                 createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
-                 summary: {
+                calculatedDays: (payroll.calculatedDays || []).map(day => ({
+                    ...day,
+                    inputData: {
+                        ...day.inputData,
+                        startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
+                    }
+                })),
+                 summary: { // El summary ya está calculado y no necesita serialización especial de fechas aquí
                      ...payroll.summary,
                  }
             }));
@@ -838,72 +853,71 @@ export default function Home() {
                     throw new Error("El archivo JSON no contiene un array de nóminas válido.");
                 }
 
-                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw); // Revive dates
+                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw); // Revive dates, including nested in calculatedDays
 
                 if (importedPayrolls.length === 0 && importedDataRaw.length > 0) {
                      throw new Error("No se pudieron parsear nóminas válidas del archivo.");
                 }
 
                 let addedCount = 0;
-                let skippedCount = 0;
+                let updatedCount = 0; // Changed from skippedCount to updatedCount
 
-                 const currentKeys = new Set(savedPayrolls.map(p => p.key));
+                const currentPayrollKeysInStorage = new Set<string>();
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('payroll_')) {
+                        currentPayrollKeysInStorage.add(key);
+                    }
+                }
 
                 importedPayrolls.forEach(payroll => {
                     const storageKey = getStorageKey(payroll.employeeId, payroll.periodStart, payroll.periodEnd);
                     if (!storageKey) {
-                        console.warn("Omitiendo nómina importada con datos inválidos:", payroll);
-                        skippedCount++;
-                        return;
+                        console.warn("Omitiendo nómina importada con datos inválidos para generar clave:", payroll);
+                        return; // Skip if key cannot be generated
                     }
-                    payroll.key = storageKey; 
+                    payroll.key = storageKey; // Assign the generated key to the payroll object
 
-                      const dataToStore = {
-                         employeeId: payroll.employeeId,
-                         employeeName: payroll.employeeName,
-                         periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
-                         periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
-                         createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
-                         otrosIngresosLista: payroll.otrosIngresosLista,
-                         otrasDeduccionesLista: payroll.otrasDeduccionesLista,
-                         incluyeAuxTransporte: payroll.incluyeAuxTransporte,
-                         incluyeDeduccionesLegales: typeof payroll.incluyeDeduccionesLegales === 'boolean' ? payroll.incluyeDeduccionesLegales : true, // Default to true if missing
-                         calculatedDays: [], 
-                     };
-
+                    // Prepare data for localStorage (dates should be ISO strings)
+                    const dataToSaveInLocalStorage = {
+                        employeeId: payroll.employeeId,
+                        employeeName: payroll.employeeName,
+                        periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
+                        periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
+                        createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
+                        otrosIngresosLista: payroll.otrosIngresosLista || [],
+                        otrasDeduccionesLista: payroll.otrasDeduccionesLista || [],
+                        incluyeAuxTransporte: typeof payroll.incluyeAuxTransporte === 'boolean' ? payroll.incluyeAuxTransporte : false,
+                        incluyeDeduccionesLegales: typeof payroll.incluyeDeduccionesLegales === 'boolean' ? payroll.incluyeDeduccionesLegales : true,
+                        calculatedDays: (payroll.calculatedDays || []).map((day: CalculationResults) => ({
+                            ...day,
+                            inputData: {
+                                ...day.inputData,
+                                startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
+                            }
+                        })),
+                        // Summary is not stored in the individual localStorage item; it's calculated on load
+                    };
 
                     try {
-                        const existingDataRaw = localStorage.getItem(storageKey);
-                        const { days: existingDays } = parseStoredData(existingDataRaw);
-
-                         localStorage.setItem(storageKey, JSON.stringify({
-                             ...dataToStore,
-                             calculatedDays: existingDays.map(d => ({ 
-                                 ...d,
-                                 inputData: {
-                                    ...d.inputData,
-                                     startDate: d.inputData.startDate instanceof Date ? d.inputData.startDate.toISOString() : d.inputData.startDate
-                                 }
-                             }))
-                         }));
-
-                        if (!currentKeys.has(storageKey)) {
-                            addedCount++;
+                        localStorage.setItem(storageKey, JSON.stringify(dataToSaveInLocalStorage));
+                        if (currentPayrollKeysInStorage.has(storageKey)) {
+                            updatedCount++;
                         } else {
-                            skippedCount++; 
+                            addedCount++;
                         }
                     } catch (storageError) {
                          console.error(`Error guardando nómina importada ${storageKey} en localStorage:`, storageError);
-                         skippedCount++;
+                         // Consider how to count this: as an error or skipped? Let's assume skipped for now if not critical.
                     }
                 });
 
                  const loadedEmployees = loadEmployeesFromLocalStorage([]);
-                 setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
+                 setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Refresh the UI list
 
                 toast({
                      title: "Importación Completada",
-                     description: `${addedCount} nóminas nuevas importadas. ${skippedCount} nóminas actualizadas o ignoradas.`,
+                     description: `${addedCount} nóminas nuevas importadas. ${updatedCount} nóminas existentes actualizadas.`,
                      variant: "default"
                  });
 

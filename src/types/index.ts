@@ -62,6 +62,7 @@ import type { Employee } from './schedule'; // Import Employee type
     periodStart: Date;
     periodEnd: Date;
     summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments and transport allowance
+    calculatedDays: CalculationResults[]; // List of individual day calculations
     otrosIngresosLista: AdjustmentItem[]; // List of other income items
     otrasDeduccionesLista: AdjustmentItem[]; // List of other deduction items
     incluyeAuxTransporte: boolean; // Flag indicating if transport allowance was included for this saved period
@@ -71,3 +72,4 @@ import type { Employee } from './schedule'; // Import Employee type
 
  // Re-export Employee type if needed elsewhere
  export type { Employee };
+
