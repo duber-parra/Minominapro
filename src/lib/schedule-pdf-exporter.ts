@@ -46,25 +46,36 @@ function addScheduleHeaderAndWatermark(doc: jsPDF, initialY: number = 10): numbe
                     doc.setFont('helvetica', 'bold');
                     doc.text(companyName, leftMargin + logoSize + 3, currentYPos + logoSize / 2 + 3);
                 }
-                currentYPos += logoSize + 5;
+                currentYPos += logoSize + 5; // Space after logo/name
             } catch (e) {
                 console.error("Error adding company logo to PDF:", e);
+                 if (companyName) { // Fallback if logo fails but name exists
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(companyName, leftMargin, currentYPos + 5);
+                    currentYPos += 10;
+                }
             }
         } else if (companyName) {
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.text(companyName, leftMargin, currentYPos + 5);
-            currentYPos += 10;
+            currentYPos += 10; // Space after name if no logo
         }
     }
+
+    // Watermark position needs to be predictable
+    const watermarkY = currentYPos; // Draw watermark after logo/name
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(150);
-    doc.text(watermarkText, pageWidth / 2, currentYPos, { align: 'center' });
+    doc.text(watermarkText, pageWidth / 2, watermarkY, { align: 'center' });
     doc.setTextColor(0);
     doc.setFont('helvetica', 'normal');
-    return currentYPos + 5;
+    
+    // Return Y position *after* the watermark
+    return watermarkY + 5; // Add a small fixed gap after watermark
 }
 
 
@@ -83,7 +94,7 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
     const rightMargin = 40;
 
     currentY = addScheduleHeaderAndWatermark(doc, 10);
-    currentY += 7; // Add space for title if needed in single PDF too
+    currentY += 12; // Increased gap for title if needed in single PDF too
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -121,10 +132,13 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
                 if (assignment) {
                     assignmentFound = true;
                     hasShiftThisWeek = true;
-                    cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
+                    let lines = [];
+                    lines.push(`${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`);
+                    // No Sede/Depto for single location PDF as it's contextually known
                     if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                        cellContent += `\nD: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`;
+                        lines.push(`D: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`);
                     }
+                    cellContent = lines.join('\n');
                 }
             });
             if (assignmentFound) {
@@ -195,14 +209,13 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
     const leftMargin = 40;
     const rightMargin = 40;
 
-    currentY = addScheduleHeaderAndWatermark(doc, 10);
-
-    currentY += 7; // Add extra space below watermark, before main title
+    currentY = addScheduleHeaderAndWatermark(doc, 10); 
+    currentY += 12; // Increased gap after watermark, before main title
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Horario Semanal Consolidado', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 13; // Adjusted space after main title (was 20, now 20-7 = 13)
+    currentY += 15; // Space after main title
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
@@ -247,7 +260,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         let hasShiftThisWeek = false;
 
         allLocationData[0].weekDates.forEach(date => {
-            let cellContentArray: any[] = [];
+            let cellText = ' '; // Default to empty space for the cell
             let assignmentFound = false;
 
             for (const locData of allLocationData) {
@@ -263,34 +276,24 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
 
                         const assignedLocationName = locData.locationName;
                         const assignedDepartmentName = departmentObject ? departmentObject.name : 'N/A';
-
-                        cellContentArray.push({
-                            content: `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`,
-                            styles: { fontSize: 9 }
-                        });
-                        cellContentArray.push({
-                            content: assignedLocationName,
-                            styles: { fontSize: 9 }
-                        });
-                        cellContentArray.push({
-                            content: assignedDepartmentName,
-                            styles: { fontSize: 8 }
-                        });
+                        
+                        let lines = [];
+                        lines.push(`${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`);
+                        lines.push(assignedLocationName);
+                        lines.push(assignedDepartmentName);
 
                         if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                            cellContentArray.push({
-                                content: `D:${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`,
-                                styles: { fontSize: 8 }
-                            });
+                            lines.push(`D:${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`);
                         }
-                        break;
+                        cellText = lines.join('\n');
+                        break; 
                     }
                 }
-                if (assignmentFound) break;
+                if (assignmentFound) break; 
             }
 
             if (assignmentFound) {
-                employeeRow.push({ content: cellContentArray, styles: { halign: 'center', valign: 'middle' } });
+                employeeRow.push({ content: cellText, styles: { halign: 'center', valign: 'middle', fontSize: 8 } });
             } else {
                 const dayOfWeek = getDay(date);
                 employeeRow.push({
@@ -298,7 +301,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
                     styles: {
                         halign: 'center',
                         valign: 'middle',
-                        fontSize: 8, // Consistent base size for "DESCANSO"
+                        fontSize: 8, 
                         fontStyle: (dayOfWeek === 6 || dayOfWeek === 0) ? 'italic' : 'normal',
                         textColor: (dayOfWeek === 6 || dayOfWeek === 0) ? [220, 53, 69] : [108, 117, 125]
                     }
@@ -335,19 +338,19 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
             lineColor: [200, 200, 200]
         },
         columnStyles: {
-            0: { cellWidth: 90, fontStyle: 'bold', fontSize: 9 },
+            0: { cellWidth: 90, fontStyle: 'bold', fontSize: 9 }, // Employee name
             ...Array.from({ length: allLocationData[0].weekDates.length + 1 }).reduce((styles, _, index) => {
-                if (index < allLocationData[0].weekDates.length) {
-                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 };
-                } else {
+                if (index < allLocationData[0].weekDates.length) { // Day columns
+                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 }; // Base font size for cell content
+                } else { // HR TOTAL column
                     styles[index + 1] = { cellWidth: 35, halign: 'right', fontStyle: 'bold', fontSize: 9 };
                 }
                 return styles;
             }, {} as any)
         },
         styles: {
-            cellPadding: 2.5,
-            fontSize: 8,
+            cellPadding: 2.5, // Global cell padding
+            fontSize: 8, // Default font size for cell text if not overridden
             overflow: 'linebreak',
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
