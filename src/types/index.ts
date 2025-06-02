@@ -59,6 +59,7 @@ import type { Employee } from './schedule'; // Import Employee type
     key: string; // The localStorage key for this entry (e.g., payroll_123_2023-10-01_2023-10-15)
     employeeId: string;
     employeeName?: string; // Optional: Employee's name for display
+    payrollTitle?: string; // Optional: User-defined title for the payroll period (e.g., "Nómina Mayo Q1")
     periodStart: Date;
     periodEnd: Date;
     summary: QuincenalCalculationSummary; // The calculated summary BEFORE adjustments and transport allowance
@@ -73,3 +74,4 @@ import type { Employee } from './schedule'; // Import Employee type
 
  // Re-export Employee type if needed elsewhere
  export type { Employee };
+

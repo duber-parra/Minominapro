@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
-import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck
+import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText
 import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
@@ -54,7 +54,6 @@ import { z } from 'zod'; // Import zod for form schema
 
 // Constants
 const SALARIO_BASE_QUINCENAL_FIJO = 711750; // Example fixed salary
-// const AUXILIO_TRANSPORTE_VALOR = 100000; // User-defined value for transport allowance - REMOVED, now imported
 const SCHEDULE_DATA_KEY = 'schedulePlannerData'; // LocalStorage key for schedule data
 
 // Define keys for local storage
@@ -104,6 +103,7 @@ function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
     return data.map(item => {
         const revivedItem: any = {
             ...item,
+            payrollTitle: typeof item.payrollTitle === 'string' ? item.payrollTitle : undefined,
             periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
             periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
             createdAt: item.createdAt && typeof item.createdAt === 'string' ? parseISO(item.createdAt) : item.createdAt,
@@ -135,8 +135,8 @@ function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
 }
 
 
-const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[], includeTransport: boolean, incluyeDeduccionSalud: boolean, incluyeDeduccionPension: boolean } => {
-    if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false, incluyeDeduccionSalud: true, incluyeDeduccionPension: true };
+const parseStoredData = (jsonData: string | null): { days: CalculationResults[], income: AdjustmentItem[], deductions: AdjustmentItem[], includeTransport: boolean, incluyeDeduccionSalud: boolean, incluyeDeduccionPension: boolean, payrollTitle?: string } => {
+    if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false, incluyeDeduccionSalud: true, incluyeDeduccionPension: true, payrollTitle: undefined };
     try {
         const storedObject = JSON.parse(jsonData) as {
              calculatedDays: any[],
@@ -144,7 +144,8 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
              otrasDeduccionesLista?: AdjustmentItem[],
              incluyeAuxTransporte?: boolean,
              incluyeDeduccionSalud?: boolean,
-             incluyeDeduccionPension?: boolean
+             incluyeDeduccionPension?: boolean,
+             payrollTitle?: string;
         };
 
         const revivedDays = (storedObject.calculatedDays || []).map(day => ({
@@ -162,12 +163,13 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
         const includeTransport = typeof storedObject.incluyeAuxTransporte === 'boolean' ? storedObject.incluyeAuxTransporte : false;
         const incluyeDeduccionSalud = typeof storedObject.incluyeDeduccionSalud === 'boolean' ? storedObject.incluyeDeduccionSalud : true;
         const incluyeDeduccionPension = typeof storedObject.incluyeDeduccionPension === 'boolean' ? storedObject.incluyeDeduccionPension : true;
+        const payrollTitle = typeof storedObject.payrollTitle === 'string' ? storedObject.payrollTitle : undefined;
 
-        return { days: revivedDays, income: incomeList, deductions: deductionList, includeTransport, incluyeDeduccionSalud, incluyeDeduccionPension };
+        return { days: revivedDays, income: incomeList, deductions: deductionList, includeTransport, incluyeDeduccionSalud, incluyeDeduccionPension, payrollTitle };
 
     } catch (error) {
         console.error("Error parseando datos de localStorage:", error);
-        return { days: [], income: [], deductions: [], includeTransport: false, incluyeDeduccionSalud: true, incluyeDeduccionPension: true };
+        return { days: [], income: [], deductions: [], includeTransport: false, incluyeDeduccionSalud: true, incluyeDeduccionPension: true, payrollTitle: undefined };
     }
 };
 
@@ -197,7 +199,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                     }
 
                     const storedData = localStorage.getItem(key);
-                    const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport, incluyeDeduccionSalud: parsedIncluyeSalud, incluyeDeduccionPension: parsedIncluyePension } = parseStoredData(storedData);
+                    const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport, incluyeDeduccionSalud: parsedIncluyeSalud, incluyeDeduccionPension: parsedIncluyePension, payrollTitle: storedPayrollTitle } = parseStoredData(storedData);
 
                     let createdAtDate: Date | undefined = startDate;
                     if (parsedDays.length > 0 && parsedDays[0].inputData.startDate instanceof Date && isValidDate(parsedDays[0].inputData.startDate)) {
@@ -205,7 +207,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                     }
 
                     const hasDataContent = parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 ||
-                                         parsedIncludeTransport || !parsedIncluyeSalud || !parsedIncluyePension;
+                                         parsedIncludeTransport || !parsedIncluyeSalud || !parsedIncluyePension || (storedPayrollTitle && storedPayrollTitle.length > 0);
 
                     if (hasDataContent) {
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
@@ -213,6 +215,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                             key: key,
                             employeeId: employeeId,
                             employeeName: employeeMap.get(employeeId),
+                            payrollTitle: storedPayrollTitle,
                             periodStart: startDate,
                             periodEnd: endDate,
                             summary: summary || {
@@ -249,6 +252,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
 
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
+    const [payrollTitle, setPayrollTitle] = useState<string>(''); // New state for payroll title
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
         const now = new Date();
@@ -299,13 +303,14 @@ export default function Home() {
             if (storageKey) {
                 console.log(`Intentando cargar datos para la clave: ${storageKey}`);
                 const storedData = localStorage.getItem(storageKey);
-                const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport, incluyeDeduccionSalud: parsedIncluyeSalud, incluyeDeduccionPension: parsedIncluyePension } = parseStoredData(storedData);
+                const { days: parsedDays, income: parsedIncome, deductions: parsedDeductions, includeTransport: parsedIncludeTransport, incluyeDeduccionSalud: parsedIncluyeSalud, incluyeDeduccionPension: parsedIncluyePension, payrollTitle: parsedPayrollTitle } = parseStoredData(storedData);
                 setCalculatedDays(parsedDays);
                 setOtrosIngresos(parsedIncome);
                 setOtrasDeducciones(parsedDeductions);
                 setIncluyeAuxTransporte(parsedIncludeTransport);
                 setIncluyeDeduccionSalud(parsedIncluyeSalud);
                 setIncluyeDeduccionPension(parsedIncluyePension);
+                setPayrollTitle(parsedPayrollTitle || ''); // Set payroll title
                 setIsDataLoaded(true);
                  if (employeeId && payPeriodStart && payPeriodEnd && !isDataLoaded) {
                      toast({
@@ -321,6 +326,7 @@ export default function Home() {
                 setIncluyeAuxTransporte(false);
                 setIncluyeDeduccionSalud(true);
                 setIncluyeDeduccionPension(true);
+                setPayrollTitle(''); // Reset payroll title
                 setIsDataLoaded(true);
             }
              setEditingDayId(null);
@@ -351,12 +357,14 @@ export default function Home() {
                              otrasDeducciones.length > 0 ||
                              incluyeAuxTransporte ||
                              !incluyeDeduccionSalud ||
-                             !incluyeDeduccionPension;
+                             !incluyeDeduccionPension ||
+                             (payrollTitle && payrollTitle.trim().length > 0);
 
         if (hasDataToSave) {
             try {
-                console.log(`Intentando guardar datos (transporte: ${incluyeAuxTransporte}, salud: ${incluyeDeduccionSalud}, pension: ${incluyeDeduccionPension}) en la clave: ${storageKey}`);
+                console.log(`Intentando guardar datos (transporte: ${incluyeAuxTransporte}, salud: ${incluyeDeduccionSalud}, pension: ${incluyeDeduccionPension}, título: ${payrollTitle}) en la clave: ${storageKey}`);
                 const dataToSave = {
+                    payrollTitle: payrollTitle.trim(),
                     calculatedDays: calculatedDays.map(day => ({
                         ...day,
                         inputData: {
@@ -405,7 +413,7 @@ export default function Home() {
             }
         }
     }, [
-        employeeId, payPeriodStart, payPeriodEnd, calculatedDays, otrosIngresos, otrasDeducciones,
+        employeeId, payPeriodStart, payPeriodEnd, payrollTitle, calculatedDays, otrosIngresos, otrasDeducciones,
         incluyeAuxTransporte, incluyeDeduccionSalud, incluyeDeduccionPension,
         isDataLoaded, toast, setSavedPayrolls, employees
     ]);
@@ -517,6 +525,7 @@ export default function Home() {
          setIncluyeAuxTransporte(false);
          setIncluyeDeduccionSalud(true);
          setIncluyeDeduccionPension(true);
+         setPayrollTitle(''); // Clear payroll title
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
@@ -789,8 +798,8 @@ export default function Home() {
 
 
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
-  const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension;
-  const canSaveCurrentPayroll = !isFormDisabled && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension);
+  const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension || (payrollTitle && payrollTitle.trim().length > 0);
+  const canSaveCurrentPayroll = !isFormDisabled && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension || (payrollTitle && payrollTitle.trim().length > 0));
 
 
   const handleExportPDF = () => {
@@ -802,7 +811,7 @@ export default function Home() {
      try {
           const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR_QUINCENAL : 0;
           const currentEmployee = employees.find(emp => emp.id === employeeId);
-        exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionSalud, incluyeDeduccionPension);
+        exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, payrollTitle, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionSalud, incluyeDeduccionPension);
         toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });
      } catch (error) {
         console.error("Error exportando PDF:", error);
@@ -829,6 +838,7 @@ export default function Home() {
      const payrollToLoad = savedPayrolls.find(p => p.key === payrollKey);
      if (!payrollToLoad || typeof window === 'undefined') return;
      setEmployeeId(payrollToLoad.employeeId);
+     setPayrollTitle(payrollToLoad.payrollTitle || ''); // Load payroll title
      setPayPeriodStart(payrollToLoad.periodStart);
      setPayPeriodEnd(payrollToLoad.periodEnd);
      setCalculatedDays(payrollToLoad.calculatedDays || []);
@@ -852,7 +862,7 @@ export default function Home() {
          toast({ title: 'Nómina Guardada Eliminada', description: payrollInfo ? `La nómina de ${payrollInfo.employeeName || payrollInfo.employeeId} (${format(payrollInfo.periodStart, 'dd/MM/yy')}) fue eliminada.` : 'Nómina eliminada.', variant: 'destructive' });
          const currentKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
          if (currentKey === payrollToDeleteKey) {
-             setCalculatedDays([]); setOtrosIngresos([]); setOtrasDeducciones([]); setIncluyeAuxTransporte(false); setIncluyeDeduccionSalud(true); setIncluyeDeduccionPension(true);
+             setCalculatedDays([]); setOtrosIngresos([]); setOtrasDeducciones([]); setIncluyeAuxTransporte(false); setIncluyeDeduccionSalud(true); setIncluyeDeduccionPension(true); setPayrollTitle('');
          }
       } catch (error) {
           console.error("Error deleting saved payroll:", error);
@@ -871,6 +881,7 @@ export default function Home() {
             }
             const dataToExport = allPayrolls.map(payroll => ({
                 ...payroll,
+                payrollTitle: payroll.payrollTitle || '',
                 periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
                 periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
                 createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
@@ -934,7 +945,6 @@ export default function Home() {
                 }
 
                 if (!Array.isArray(importedDataRaw)) {
-                    // throw new Error("El archivo JSON no contiene un array de nóminas válido."); // Previous error
                     toast({ title: "Error de Formato", description: "El archivo JSON debe contener un array (lista) de nóminas en su raíz.", variant: "destructive" });
                     if (importJsonInputRef.current) importJsonInputRef.current.value = '';
                     return;
@@ -976,6 +986,7 @@ export default function Home() {
                     const dataToSaveInLocalStorage = {
                         employeeId: payroll.employeeId,
                         employeeName: payroll.employeeName,
+                        payrollTitle: payroll.payrollTitle || '',
                         periodStart: payroll.periodStart instanceof Date ? payroll.periodStart.toISOString() : payroll.periodStart,
                         periodEnd: payroll.periodEnd instanceof Date ? payroll.periodEnd.toISOString() : payroll.periodEnd,
                         createdAt: payroll.createdAt instanceof Date ? payroll.createdAt.toISOString() : payroll.createdAt,
@@ -1067,12 +1078,16 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-lg text-foreground"> <User className="h-5 w-5" /> Selección de Colaborador y Período </CardTitle>
               <CardDescription> Ingresa el ID del colaborador y selecciona el período para cargar/guardar o importar turnos. </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div className="space-y-2">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+              <div className="space-y-2 lg:col-span-1">
                   <Label htmlFor="employeeId" className="text-foreground">ID Colaborador</Label>
                   <Input id="employeeId" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Ej: 12345678" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
+                  <Label htmlFor="payrollTitle" className="text-foreground">Título de Nómina (Opcional)</Label>
+                  <Input id="payrollTitle" value={payrollTitle} onChange={(e) => setPayrollTitle(e.target.value)} placeholder="Ej: Nómina Mayo Q1" />
+              </div>
+              <div className="space-y-2 lg:col-span-1">
                   <Label className="text-foreground">Inicio Período</Label>
                   <Popover>
                       <PopoverTrigger asChild>
@@ -1084,7 +1099,7 @@ export default function Home() {
                       <PopoverContent className="w-auto p-0"> <Calendar mode="single" selected={payPeriodStart} onSelect={setPayPeriodStart} initialFocus locale={es} /> </PopoverContent>
                   </Popover>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                   <Label className="text-foreground">Fin Período</Label>
                    <Popover>
                       <PopoverTrigger asChild>
@@ -1097,7 +1112,7 @@ export default function Home() {
                   </Popover>
               </div>
 
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4">
+                <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4">
 
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
@@ -1106,7 +1121,7 @@ export default function Home() {
 
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="outline" className="w-full hover:bg-destructive hover:text-destructive-foreground" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte && incluyeDeduccionSalud && incluyeDeduccionPension) }>
+                             <Button variant="outline" className="w-full hover:bg-destructive hover:text-destructive-foreground" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte && incluyeDeduccionSalud && incluyeDeduccionPension && !payrollTitle) }>
                                 <Eraser className="mr-2 h-4 w-4" /> Limpiar Período Actual
                             </Button>
                         </AlertDialogTrigger>
@@ -1278,7 +1293,7 @@ export default function Home() {
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                <div className="flex-1">
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
-                 <CardDescription>Resultados para {employees.find(emp => emp.id === employeeId)?.name || employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
+                 <CardDescription>Resultados para {employees.find(emp => emp.id === employeeId)?.name || employeeId} ({payrollTitle || (payPeriodStart && payPeriodEnd ? `${format(payPeriodStart, 'dd/MM')} - ${format(payPeriodEnd, 'dd/MM')}` : 'Período no definido')}).</CardDescription>
                </div>
                <div className="flex items-center gap-2 mt-2 sm:mt-0">
                    <Button
