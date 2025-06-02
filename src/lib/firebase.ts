@@ -1,3 +1,4 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
@@ -12,33 +13,34 @@ const firebaseConfig = {
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL, // Required for RTDB if used elsewhere
 };
 
-let app: FirebaseApp;
-let db: Firestore;
+let app: FirebaseApp | undefined = undefined; // Initialize as undefined
+let db: Firestore | undefined = undefined; // Initialize as undefined
+
+const knownInvalidApiKeys = ["YOUR_API_KEY", "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk"];
 
 if (!getApps().length) {
-  // Check for truly missing or default placeholder API key for a warning
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+  if (!firebaseConfig.apiKey || knownInvalidApiKeys.includes(firebaseConfig.apiKey)) {
     console.warn(
-        'Firebase API Key is missing or is a generic placeholder in firebase.ts. Ensure NEXT_PUBLIC_FIREBASE_API_KEY is correctly set in .env.local for full Firebase functionality. Attempting initialization...'
+        'Firebase API Key is missing or is a generic placeholder in firebase.ts. Ensure NEXT_PUBLIC_FIREBASE_API_KEY is correctly set for full Firebase functionality. Firebase will not be initialized.'
     );
-  } else if (firebaseConfig.apiKey === "AIzaSyBEdaK17t-QaB-yvUuP6--aZiBj-tNRiHk") {
-  // Always attempt to initialize Firebase if no app is found.
-  // Actual API key validity will be checked by Firebase SDK during operations.
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (e) {
-    console.error("Error initializing Firebase in firebase.ts:", e);
-    // db will remain undefined if initializeApp or getFirestore fails
+  } else {
+    // API key seems present and not a known placeholder, attempt initialization.
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      console.log("Firebase initialized successfully in firebase.ts");
+    } catch (e) {
+      console.error("Error initializing Firebase in firebase.ts:", e);
+      // app and db will remain undefined
+    }
   }
-
 } else {
   app = getApp();
   try {
     db = getFirestore(app);
   } catch (e) {
     console.error("Error getting Firestore instance in firebase.ts:", e);
-    // db will remain undefined if getFirestore fails
+    // db will remain undefined
   }
 }
 
