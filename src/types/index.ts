@@ -65,6 +65,7 @@ import type { Employee } from './schedule'; // Import Employee type
     otrosIngresosLista: AdjustmentItem[]; // List of other income items
     otrasDeduccionesLista: AdjustmentItem[]; // List of other deduction items
     incluyeAuxTransporte: boolean; // Flag indicating if transport allowance was included for this saved period
+    incluyeDeduccionesLegales: boolean; // Flag indicating if legal deductions were included
     createdAt?: Date; // Optional: Timestamp when the payroll was saved/calculated
  }
 
