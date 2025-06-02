@@ -216,7 +216,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
     currentY += 30;
 
     const head: any[] = [
-        [{ content: 'EMPLEADO', styles: { halign: 'left', valign: 'middle' } }]
+        [{ content: 'EMPLEADO', styles: { halign: 'left', valign: 'middle', fontStyle: 'bold' } }]
     ];
     allLocationData[0].weekDates.forEach(date => {
         head[0].push({
@@ -239,7 +239,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
     const sortedEmployees = Array.from(allEmployeesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
     sortedEmployees.forEach(emp => {
-        const employeeRow: any[] = [{ content: emp.name, styles: { valign: 'middle', fontSize: 8 } }];
+        const employeeRow: any[] = [{ content: emp.name, styles: { valign: 'middle', fontStyle: 'bold', fontSize: 9 } }]; // Employee name font size
         let totalHoursWeek = 0;
         let hasShiftThisWeek = false;
 
@@ -264,8 +264,12 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
                         assignedDepartmentName = departmentObject ? departmentObject.name : 'N/A';
 
                         cellContent = `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`;
+                        // No "Sede:" prefix
+                        cellContent += `\n${assignedLocationName}`;
+                        // No "Depto:" prefix
+                        cellContent += `\n${assignedDepartmentName}`;
                         if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
-                            cellContent += `\nD: ${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`;
+                            cellContent += `\nD:${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`;
                         }
                         break;
                     }
@@ -274,10 +278,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
             }
 
             if (assignmentFound) {
-                let finalCellContent = cellContent;
-                finalCellContent += `\nSede: ${assignedLocationName}`;
-                finalCellContent += `\nDepto: ${assignedDepartmentName}`;
-                employeeRow.push({ content: finalCellContent, styles: { halign: 'center', valign: 'middle', fontSize: 6 } }); // Adjusted font size
+                employeeRow.push({ content: cellContent, styles: { halign: 'center', valign: 'middle', fontSize: 8 } }); // Shift details font size +2 -> 8
             } else {
                 const dayOfWeek = getDay(date);
                 employeeRow.push({
@@ -285,27 +286,27 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
                     styles: {
                         halign: 'center',
                         valign: 'middle',
-                        fontSize: 7, // Consistent font size for DESCANSO
+                        fontSize: 8, // DESCANSO font size
                         fontStyle: (dayOfWeek === 6 || dayOfWeek === 0) ? 'italic' : 'normal',
-                        textColor: (dayOfWeek === 6 || dayOfWeek === 0) ? [220, 53, 69] : [108, 117, 125] // Red for weekends, gray for weekdays
+                        textColor: (dayOfWeek === 6 || dayOfWeek === 0) ? [220, 53, 69] : [108, 117, 125]
                     }
                 });
             }
         });
 
         if (hasShiftThisWeek) {
-            employeeRow.push({ content: totalHoursWeek.toFixed(1), styles: { halign: 'right', valign: 'middle', fontStyle: 'bold', fontSize: 8 } });
+            employeeRow.push({ content: totalHoursWeek.toFixed(1), styles: { halign: 'right', valign: 'middle', fontStyle: 'bold', fontSize: 9 } }); // HR Total font size
             totalHoursGrandTotal += totalHoursWeek;
         } else {
-            employeeRow.push({ content: '0.0', styles: { halign: 'right', valign: 'middle', fontSize: 8 } });
+            employeeRow.push({ content: '0.0', styles: { halign: 'right', valign: 'middle', fontSize: 9 } }); // HR Total (0.0) font size
         }
         body.push(employeeRow);
     });
 
-    head[0].push({ content: 'HR TOTAL', styles: { halign: 'center', valign: 'middle' } });
+    head[0].push({ content: 'HR TOTAL', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold' } }); // HR Total header
     const grandTotalRow: any[] = [
-        { content: 'TOTAL HORAS SEMANA:', colSpan: allLocationData[0].weekDates.length + 1, styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } }, // Adjusted font size
-        { content: totalHoursGrandTotal.toFixed(1), styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } } // Adjusted font size
+        { content: 'TOTAL HORAS SEMANA:', colSpan: allLocationData[0].weekDates.length + 1, styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } }, // Grand total font size
+        { content: totalHoursGrandTotal.toFixed(1), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10 } } // Grand total value font size
     ];
     body.push(grandTotalRow);
 
@@ -317,24 +318,24 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         headStyles: {
             fillColor: [76, 67, 223],
             textColor: [255, 255, 255],
-            fontSize: 8, // Adjusted head font size
+            fontSize: 9, // Header font size
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },
         columnStyles: {
-            0: { cellWidth: 90, fontStyle: 'bold', fontSize: 8 }, // Adjusted employee name column
+            0: { cellWidth: 90, fontStyle: 'bold', fontSize: 9 }, // Employee name column
             ...Array.from({ length: allLocationData[0].weekDates.length + 1 }).reduce((styles, _, index) => {
-                if (index < allLocationData[0].weekDates.length) {
-                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 6 }; // Adjusted day column font size
-                } else {
-                    styles[index + 1] = { cellWidth: 35, halign: 'right', fontStyle: 'bold', fontSize: 8 }; // HR TOTAL column
+                if (index < allLocationData[0].weekDates.length) { // Day columns
+                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 }; // Shift details content cells
+                } else { // HR TOTAL column
+                    styles[index + 1] = { cellWidth: 35, halign: 'right', fontStyle: 'bold', fontSize: 9 }; // HR Total values
                 }
                 return styles;
             }, {} as any)
         },
-        styles: {
-            cellPadding: 2.5, // Adjusted cell padding
-            fontSize: 7, // Default cell font size
+        styles: { // Default styles for body cells if not overridden by columnStyles
+            cellPadding: 2.5,
+            fontSize: 8, // Default body cell font size
             overflow: 'linebreak',
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
