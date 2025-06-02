@@ -142,8 +142,8 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
              otrosIngresosLista?: AdjustmentItem[],
              otrasDeduccionesLista?: AdjustmentItem[],
              incluyeAuxTransporte?: boolean,
-             incluyeDeduccionSalud?: boolean, // New flag
-             incluyeDeduccionPension?: boolean // New flag
+             incluyeDeduccionSalud?: boolean,
+             incluyeDeduccionPension?: boolean
         };
 
         const revivedDays = (storedObject.calculatedDays || []).map(day => ({
@@ -203,7 +203,11 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                          createdAtDate = parsedDays[0].inputData.startDate;
                     }
 
-                    if (parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 || parsedIncludeTransport || !parsedIncluyeSalud || !parsedIncluyePension) {
+                    // Ensure that data is considered "present" if there are days, adjustments, or if flags are non-default
+                    const hasDataContent = parsedDays.length > 0 || parsedIncome.length > 0 || parsedDeductions.length > 0 ||
+                                         parsedIncludeTransport || !parsedIncluyeSalud || !parsedIncluyePension;
+
+                    if (hasDataContent) {
                         const summary = calculateQuincenalSummary(parsedDays, SALARIO_BASE_QUINCENAL_FIJO);
                          const savedPayrollItem: SavedPayrollData = {
                             key: key,
@@ -329,49 +333,84 @@ export default function Home() {
     }, [employeeId, payPeriodStart, payPeriodEnd]);
 
 
-    useEffect(() => {
-        if (typeof window !== 'undefined' && isDataLoaded) {
-            const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
-            if (storageKey && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension)) {
-                try {
-                     console.log(`Intentando guardar datos (incluye transporte: ${incluyeAuxTransporte}, salud: ${incluyeDeduccionSalud}, pension: ${incluyeDeduccionPension}) en la clave: ${storageKey}`);
-                     const dataToSave = {
-                         calculatedDays: calculatedDays.map(day => ({
-                             ...day,
-                             inputData: {
-                                 ...day.inputData,
-                                 startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
-                             },
-                         })),
-                         otrosIngresosLista: otrosIngresos,
-                         otrasDeduccionesLista: otrasDeducciones,
-                         incluyeAuxTransporte: incluyeAuxTransporte,
-                         incluyeDeduccionSalud: incluyeDeduccionSalud,
-                         incluyeDeduccionPension: incluyeDeduccionPension,
-                     };
-                    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-                    const loadedEmployees = loadEmployeesFromLocalStorage([]);
-                    setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
-                } catch (error) {
-                    console.error("Error guardando datos en localStorage:", error);
-                    toast({
-                        title: 'Error al Guardar',
-                        description: 'No se pudieron guardar los cambios localmente.',
-                        variant: 'destructive',
-                    });
-                }
-            } else if (storageKey && calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte && incluyeDeduccionSalud && incluyeDeduccionPension) {
-                if (localStorage.getItem(storageKey)) {
-                    localStorage.removeItem(storageKey);
-                    console.log(`Clave ${storageKey} eliminada porque no hay datos y las opciones están en default.`);
-                     const loadedEmployees = loadEmployeesFromLocalStorage([]);
-                     setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
-                }
+    const handleSaveCurrentPayroll = useCallback(() => {
+        if (typeof window === 'undefined' || !isDataLoaded) return;
+
+        const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
+        if (!storageKey) {
+            toast({
+                title: 'Error al Guardar',
+                description: 'No se pudo generar una clave para guardar (verifica ID de empleado y período).',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        const hasDataToSave = calculatedDays.length > 0 ||
+                             otrosIngresos.length > 0 ||
+                             otrasDeducciones.length > 0 ||
+                             incluyeAuxTransporte ||
+                             !incluyeDeduccionSalud || // Saved if non-default
+                             !incluyeDeduccionPension; // Saved if non-default
+
+        if (hasDataToSave) {
+            try {
+                console.log(`Intentando guardar datos (transporte: ${incluyeAuxTransporte}, salud: ${incluyeDeduccionSalud}, pension: ${incluyeDeduccionPension}) en la clave: ${storageKey}`);
+                const dataToSave = {
+                    calculatedDays: calculatedDays.map(day => ({
+                        ...day,
+                        inputData: {
+                            ...day.inputData,
+                            startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
+                        },
+                    })),
+                    otrosIngresosLista: otrosIngresos,
+                    otrasDeduccionesLista: otrasDeducciones,
+                    incluyeAuxTransporte: incluyeAuxTransporte,
+                    incluyeDeduccionSalud: incluyeDeduccionSalud,
+                    incluyeDeduccionPension: incluyeDeduccionPension,
+                };
+                localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+                const loadedEmployees = loadEmployeesFromLocalStorage([]);
+                setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Update the list of saved payrolls
+                toast({
+                    title: 'Nómina Guardada',
+                    description: `Los datos para ${employees.find(emp => emp.id === employeeId)?.name || employeeId} se han guardado.`,
+                    variant: 'default',
+                });
+            } catch (error) {
+                console.error("Error guardando datos en localStorage:", error);
+                toast({
+                    title: 'Error al Guardar',
+                    description: 'No se pudieron guardar los cambios localmente.',
+                    variant: 'destructive',
+                });
+            }
+        } else {
+            // If no data to save, but an entry exists for this key, remove it
+            // This handles the case where a user clears all data and then "saves" an empty state.
+            if (localStorage.getItem(storageKey)) {
+                localStorage.removeItem(storageKey);
+                const loadedEmployees = loadEmployeesFromLocalStorage([]);
+                setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
+                toast({
+                    title: 'Nómina Limpiada',
+                    description: `Se eliminaron los datos guardados para ${employees.find(emp => emp.id === employeeId)?.name || employeeId} ya que no había información para guardar.`,
+                    variant: 'default',
+                });
+            } else {
+                 toast({
+                     title: 'Nada que Guardar',
+                     description: 'No hay datos para guardar en la nómina actual.',
+                     variant: 'default',
+                 });
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [calculatedDays, otrosIngresos, otrasDeducciones, incluyeAuxTransporte, incluyeDeduccionSalud, incluyeDeduccionPension, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]);
-
+    }, [
+        employeeId, payPeriodStart, payPeriodEnd, calculatedDays, otrosIngresos, otrasDeducciones,
+        incluyeAuxTransporte, incluyeDeduccionSalud, incluyeDeduccionPension,
+        isDataLoaded, toast, setSavedPayrolls, employees
+    ]);
 
 
     const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
@@ -753,6 +792,8 @@ export default function Home() {
 
   const isFormDisabled = !employeeId || !payPeriodStart || !payPeriodEnd;
   const showSummary = quincenalSummary !== null || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension;
+  const canSaveCurrentPayroll = !isFormDisabled && (calculatedDays.length > 0 || otrosIngresos.length > 0 || otrasDeducciones.length > 0 || incluyeAuxTransporte || !incluyeDeduccionSalud || !incluyeDeduccionPension);
+
 
   const handleExportPDF = () => {
       const currentSummary = quincenalSummary;
@@ -841,7 +882,6 @@ export default function Home() {
                  summary: {
                      ...payroll.summary,
                  },
-                 // Ensure new flags are exported
                  incluyeDeduccionSalud: typeof payroll.incluyeDeduccionSalud === 'boolean' ? payroll.incluyeDeduccionSalud : true,
                  incluyeDeduccionPension: typeof payroll.incluyeDeduccionPension === 'boolean' ? payroll.incluyeDeduccionPension : true,
             }));
@@ -866,7 +906,7 @@ export default function Home() {
     const handleImportSavedPayrolls = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) {
-            if (importJsonInputRef.current) importJsonInputRef.current.value = ''; // Clear if no file selected
+            if (importJsonInputRef.current) importJsonInputRef.current.value = '';
             return;
         }
 
@@ -896,7 +936,7 @@ export default function Home() {
                     return;
                 }
 
-                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw); // Revive dates, including nested in calculatedDays
+                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw);
 
                 if (importedPayrolls.length === 0 && importedDataRaw.length > 0) {
                     toast({ title: "Error de Contenido", description: "El archivo JSON es un array, pero no se pudieron procesar nóminas válidas a partir de su contenido. Verifica la estructura de cada objeto de nómina.", variant: "destructive" });
@@ -940,7 +980,7 @@ export default function Home() {
                         incluyeAuxTransporte: typeof payroll.incluyeAuxTransporte === 'boolean' ? payroll.incluyeAuxTransporte : false,
                         incluyeDeduccionSalud: typeof payroll.incluyeDeduccionSalud === 'boolean' ? payroll.incluyeDeduccionSalud : true,
                         incluyeDeduccionPension: typeof payroll.incluyeDeduccionPension === 'boolean' ? payroll.incluyeDeduccionPension : true,
-                        calculatedDays: (payroll.calculatedDays || []).map((day: CalculationResults) => ({ // Make sure calculatedDays are saved
+                        calculatedDays: (payroll.calculatedDays || []).map((day: CalculationResults) => ({
                             ...day,
                             inputData: {
                                 ...day.inputData,
@@ -1231,11 +1271,20 @@ export default function Home() {
 
       {showSummary && (
          <Card className="shadow-lg mt-8 bg-card lg:col-span-7">
-            <CardHeader className="flex flex-row items-center justify-between">
-               <div>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+               <div className="flex-1">
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
                  <CardDescription>Resultados para {employees.find(emp => emp.id === employeeId)?.name || employeeId} ({payPeriodStart ? format(payPeriodStart, 'dd/MM') : ''} - {payPeriodEnd ? format(payPeriodEnd, 'dd/MM') : ''}).</CardDescription>
                </div>
+               <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                   <Button
+                      onClick={handleSaveCurrentPayroll}
+                      variant="default"
+                      size="sm"
+                      disabled={!canSaveCurrentPayroll}
+                    >
+                        <Save className="mr-2 h-4 w-4" /> Guardar Nómina Actual
+                   </Button>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -1252,7 +1301,7 @@ export default function Home() {
                        <DropdownMenuItem onClick={handleBulkExportPDF} disabled={savedPayrolls.length === 0} className="text-red-600 focus:text-red-700"> Exportar Lista Guardadas </DropdownMenuItem>
                     </DropdownMenuContent>
                  </DropdownMenu>
-
+                </div>
             </CardHeader>
             <CardContent>
                <ResultsDisplay
@@ -1285,3 +1334,4 @@ export default function Home() {
     </main>
   );
 }
+
