@@ -102,7 +102,7 @@ const getStorageKey = (employeeId: string, periodStart: Date | undefined, period
 // --- Function to revive Date objects from JSON string representation ---
 function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
     return data.map(item => {
-        const revivedItem: any = { // Usar any temporalmente para flexibilidad
+        const revivedItem: any = { 
             ...item,
             periodStart: typeof item.periodStart === 'string' ? parseISO(item.periodStart) : item.periodStart,
             periodEnd: typeof item.periodEnd === 'string' ? parseISO(item.periodEnd) : item.periodEnd,
@@ -123,12 +123,9 @@ function reviveSavedPayrollDates(data: any[]): SavedPayrollData[] {
                 };
             }).filter((day: any) => day.inputData?.startDate && isValidDate(day.inputData.startDate));
         } else {
-            revivedItem.calculatedDays = [];
+            revivedItem.calculatedDays = []; // Ensure calculatedDays is always an array
         }
-        // Asumimos que el 'summary' en el JSON es un placeholder o se recalculará,
-        // por lo que no intentamos revivir fechas dentro de él aquí.
-        // Si el summary del JSON contuviera objetos Date, necesitarían manejo.
-        revivedItem.summary = item.summary || {}; // Tomar el summary del item o un objeto vacío
+        revivedItem.summary = item.summary || {}; 
 
         return revivedItem;
     }).filter(item => item.periodStart && isValidDate(item.periodStart) && item.periodEnd && isValidDate(item.periodEnd)) as SavedPayrollData[];
@@ -139,14 +136,13 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
     if (!jsonData) return { days: [], income: [], deductions: [], includeTransport: false, includeDeducciones: true };
     try {
         const storedObject = JSON.parse(jsonData) as {
-             calculatedDays: any[], // Expect dates as strings here initially
+             calculatedDays: any[], 
              otrosIngresosLista?: AdjustmentItem[],
              otrasDeduccionesLista?: AdjustmentItem[],
              incluyeAuxTransporte?: boolean,
              incluyeDeduccionesLegales?: boolean
         };
 
-        // Revive dates within calculatedDays
         const revivedDays = (storedObject.calculatedDays || []).map(day => ({
             ...day,
             inputData: {
@@ -160,7 +156,7 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
         const incomeList = Array.isArray(storedObject.otrosIngresosLista) ? storedObject.otrosIngresosLista : [];
         const deductionList = Array.isArray(storedObject.otrasDeduccionesLista) ? storedObject.otrasDeduccionesLista : [];
         const includeTransport = typeof storedObject.incluyeAuxTransporte === 'boolean' ? storedObject.incluyeAuxTransporte : false;
-        const includeDeducciones = typeof storedObject.incluyeDeduccionesLegales === 'boolean' ? storedObject.incluyeDeduccionesLegales : true; // Default to true
+        const includeDeducciones = typeof storedObject.incluyeDeduccionesLegales === 'boolean' ? storedObject.incluyeDeduccionesLegales : true; 
 
         return { days: revivedDays, income: incomeList, deductions: deductionList, includeTransport, includeDeducciones };
 
@@ -172,10 +168,10 @@ const parseStoredData = (jsonData: string | null): { days: CalculationResults[],
 
 const storageKeyRegex = /^payroll_([a-zA-Z0-9_-]+)_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
 
-const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { // Accept employees list
+const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { 
     if (typeof window === 'undefined') return [];
 
-    const employeeMap = new Map(employees.map(emp => [emp.id, emp.name])); // Create a map for quick name lookup
+    const employeeMap = new Map(employees.map(emp => [emp.id, emp.name])); 
 
     const savedPayrolls: SavedPayrollData[] = [];
     try {
@@ -220,7 +216,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
                                 totalDuracionTrabajadaHorasQuincena: 0,
                                 diasCalculados: 0,
                             },
-                            calculatedDays: parsedDays, // Store the parsed days
+                            calculatedDays: parsedDays, 
                             otrosIngresosLista: parsedIncome,
                             otrasDeduccionesLista: parsedDeductions,
                             incluyeAuxTransporte: parsedIncludeTransport,
@@ -244,7 +240,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => { //
 
 export default function Home() {
     const [employeeId, setEmployeeId] = useState<string>('');
-    const [employees, setEmployees] = useState<Employee[]>([]); // State for employees list
+    const [employees, setEmployees] = useState<Employee[]>([]); 
     const [payPeriodStart, setPayPeriodStart] = useState<Date | undefined>(() => {
         const now = new Date();
         return now.getDate() <= 15 ? startOfMonth(now) : setDate(startOfMonth(now), 16);
@@ -271,22 +267,22 @@ export default function Home() {
     const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
 
     const [incluyeAuxTransporte, setIncluyeAuxTransporte] = useState<boolean>(false);
-    const [incluyeDeduccionesLegales, setIncluyeDeduccionesLegales] = useState<boolean>(true); // Default true
+    const [incluyeDeduccionesLegales, setIncluyeDeduccionesLegales] = useState<boolean>(true); 
 
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
-    const importJsonInputRef = useRef<HTMLInputElement>(null); // Ref for JSON import
+    const fileInputRef = useRef<HTMLInputElement>(null); 
+    const importJsonInputRef = useRef<HTMLInputElement>(null); 
 
     const { toast } = useToast();
-    const { setValue } = useForm<WorkdayFormValues>(); // Use useForm hook to get setValue
+    const { setValue } = useForm<WorkdayFormValues>(); 
 
-    // Load ALL saved payrolls and employees on initial mount
+    
     useEffect(() => {
         const loadedEmployees = loadEmployeesFromLocalStorage([]);
         setEmployees(loadedEmployees);
-        setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Pass employees to loader
-    }, []); // Only on mount
+        setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); 
+    }, []); 
 
-    // Load current employee/period data from localStorage when employee/period changes
+    
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
@@ -298,7 +294,7 @@ export default function Home() {
                 setOtrosIngresos(parsedIncome);
                 setOtrasDeducciones(parsedDeductions);
                 setIncluyeAuxTransporte(parsedIncludeTransport);
-                setIncluyeDeduccionesLegales(parsedIncludeDeducciones); // Load deductions state
+                setIncluyeDeduccionesLegales(parsedIncludeDeducciones); 
                 setIsDataLoaded(true);
                  if (employeeId && payPeriodStart && payPeriodEnd && !isDataLoaded) {
                      toast({
@@ -312,7 +308,7 @@ export default function Home() {
                 setOtrosIngresos([]);
                 setOtrasDeducciones([]);
                 setIncluyeAuxTransporte(false);
-                setIncluyeDeduccionesLegales(true); // Default to true when no data
+                setIncluyeDeduccionesLegales(true); 
                 setIsDataLoaded(true);
             }
              setEditingDayId(null);
@@ -320,10 +316,10 @@ export default function Home() {
              setIsIncomeModalOpen(false);
              setIsDeductionModalOpen(false);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [employeeId, payPeriodStart, payPeriodEnd]); // Removed toast, isDataLoaded dependencies
+    
+    }, [employeeId, payPeriodStart, payPeriodEnd]); 
 
-    // Save current employee/period data to localStorage
+    
     useEffect(() => {
         if (typeof window !== 'undefined' && isDataLoaded) {
             const storageKey = getStorageKey(employeeId, payPeriodStart, payPeriodEnd);
@@ -331,7 +327,7 @@ export default function Home() {
                 try {
                      console.log(`Intentando guardar datos (incluye transporte: ${incluyeAuxTransporte}, incluye deducciones: ${incluyeDeduccionesLegales}) en la clave: ${storageKey}`);
                      const dataToSave = {
-                         calculatedDays: calculatedDays.map(day => ({ // Ensure dates within calculatedDays are strings
+                         calculatedDays: calculatedDays.map(day => ({ 
                              ...day,
                              inputData: {
                                  ...day.inputData,
@@ -366,17 +362,17 @@ export default function Home() {
     }, [calculatedDays, otrosIngresos, otrasDeducciones, incluyeAuxTransporte, incluyeDeduccionesLegales, employeeId, payPeriodStart, payPeriodEnd, isDataLoaded, toast]);
 
 
-    // Function to check if a date is already calculated
+    
     const isDateCalculated = useCallback((dateToCheck: Date): boolean => {
         if (!dateToCheck || !isValidDate(dateToCheck)) return false;
         return calculatedDays.some(day =>
              day.inputData.startDate instanceof Date && isValidDate(day.inputData.startDate) &&
-             isSameDayFns(day.inputData.startDate, dateToCheck) // Use aliased import
+             isSameDayFns(day.inputData.startDate, dateToCheck) 
         );
     }, [calculatedDays]);
 
 
-    // --- Import Schedule Handler ---
+    
     const handleImportSchedule = useCallback(async () => {
         if (!employeeId || !payPeriodStart || !payPeriodEnd) {
             toast({ title: 'Información Incompleta', description: 'Selecciona colaborador y período antes de importar.', variant: 'destructive' });
@@ -430,7 +426,7 @@ export default function Home() {
                                 errorCount++;
                                 toast({
                                     title: `Error Importando Turno (${format(currentDate, 'dd/MM')})`,
-                                    description: result.error.includes(":") ? result.error.split(':').slice(1).join(':').trim() : result.error, // Show error message after ID
+                                    description: result.error.includes(":") ? result.error.split(':').slice(1).join(':').trim() : result.error, 
                                     variant: 'destructive',
                                     duration: 5000
                                 });
@@ -471,11 +467,11 @@ export default function Home() {
          setOtrosIngresos([]);
          setOtrasDeducciones([]);
          setIncluyeAuxTransporte(false);
-         setIncluyeDeduccionesLegales(true); // Reset to default
+         setIncluyeDeduccionesLegales(true); 
          setEditingDayId(null);
          setEditingResultsId(null);
          setEditedHours(null);
-         const loadedEmployees = loadEmployeesFromLocalStorage([]); // Need employees for name mapping
+         const loadedEmployees = loadEmployeesFromLocalStorage([]); 
          setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
          toast({
             title: 'Datos del Período Eliminados',
@@ -489,14 +485,14 @@ export default function Home() {
         if (isCalculationError(data)) {
             const errorMessage = data.error || 'Error desconocido en el cálculo.';
             const displayMessage = errorMessage.includes(":")
-                ? errorMessage.split(':').slice(1).join(':').trim() // Show message after ID prefix
+                ? errorMessage.split(':').slice(1).join(':').trim() 
                 : errorMessage;
-            setErrorDay(displayMessage); // Store just the message for display
+            setErrorDay(displayMessage); 
              toast({
                  title: 'Error en el Cálculo',
-                 description: displayMessage, // Show user-friendly message
+                 description: displayMessage, 
                  variant: 'destructive',
-                 duration: 7000 // Longer duration for errors
+                 duration: 7000 
              });
         } else {
              if (!payPeriodStart || !payPeriodEnd || !isValidDate(data.inputData.startDate) || data.inputData.startDate < payPeriodStart || data.inputData.startDate > payPeriodEnd) {
@@ -523,10 +519,10 @@ export default function Home() {
                 }
                 return updatedDays.sort((a, b) => a.inputData.startDate.getTime() - b.inputData.startDate.getTime());
             });
-            const isEditing = !!editingDayId; // Check if we were editing
+            const isEditing = !!editingDayId; 
             setEditingDayId(null);
 
-             // Handle toast and date advance based on add/edit
+             
              if (!isEditing) {
                 const nextDay = addDays(data.inputData.startDate, 1);
                 setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
@@ -536,7 +532,7 @@ export default function Home() {
                      variant: 'default'
                  });
              } else {
-                 // Show a different toast for successful EDIT
+                 
                  toast({
                      title: 'Turno Actualizado',
                      description: `Turno para ${format(data.inputData.startDate, 'PPP', { locale: es })} actualizado.`,
@@ -689,7 +685,7 @@ export default function Home() {
        };
        if (baseSummary) { finalSummary.pagoTotalConSalarioQuincena = baseSummary.pagoTotalConSalarioQuincena; }
        return finalSummary;
-  }, [calculatedDays, incluyeAuxTransporte, otrosIngresos, otrasDeducciones, incluyeDeduccionesLegales]); // Added incluyeDeduccionesLegales, otrasDeducciones
+  }, [calculatedDays, incluyeAuxTransporte, otrosIngresos, otrasDeducciones, incluyeDeduccionesLegales]); 
 
   const editingDayData = useMemo(() => {
     if (!editingDayId) return undefined;
@@ -712,7 +708,7 @@ export default function Home() {
      if (isDateCalculated(nextDayDate)) {
         setIsLoadingDay(false);
         toast({ title: 'Fecha Ya Calculada', description: `Ya existe un cálculo para el ${format(nextDayDate, 'PPP', { locale: es })}. No se puede duplicar.`, variant: 'destructive', duration: 5000 });
-        // Automatically advance the date in the form even if duplication fails due to existing date
+        
         setValue('startDate', addDays(nextDayDate, 1), { shouldValidate: true, shouldDirty: true });
         return;
      }
@@ -797,7 +793,7 @@ export default function Home() {
       }
     };
 
-     // --- Handlers for Export/Import JSON ---
+     
      const handleExportSavedPayrolls = () => {
         try {
             const allPayrolls = loadAllSavedPayrolls(employees);
@@ -817,7 +813,7 @@ export default function Home() {
                         startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
                     }
                 })),
-                 summary: { // El summary ya está calculado y no necesita serialización especial de fechas aquí
+                 summary: { 
                      ...payroll.summary,
                  }
             }));
@@ -841,26 +837,48 @@ export default function Home() {
 
     const handleImportSavedPayrolls = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
+        if (!file) {
+            if (importJsonInputRef.current) importJsonInputRef.current.value = ''; // Clear if no file selected
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const jsonString = e.target?.result as string;
-                const importedDataRaw = JSON.parse(jsonString);
-
-                if (!Array.isArray(importedDataRaw)) {
-                    throw new Error("El archivo JSON no contiene un array de nóminas válido.");
+                if (!jsonString) {
+                    toast({ title: "Error de Archivo", description: "No se pudo leer el contenido del archivo.", variant: "destructive" });
+                    return;
                 }
 
-                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw); // Revive dates, including nested in calculatedDays
+                let importedDataRaw;
+                try {
+                    importedDataRaw = JSON.parse(jsonString);
+                } catch (parseError) {
+                    console.error("Error parseando JSON:", parseError);
+                    toast({ title: "Error de Formato JSON", description: "El archivo no es un JSON válido. Por favor, verifica la estructura.", variant: "destructive" });
+                    return;
+                }
+
+                if (!Array.isArray(importedDataRaw)) {
+                    toast({ title: "Error de Formato", description: "El archivo JSON debe contener un array (lista) de nóminas en su raíz.", variant: "destructive" });
+                    return;
+                }
+
+                const importedPayrolls = reviveSavedPayrollDates(importedDataRaw);
 
                 if (importedPayrolls.length === 0 && importedDataRaw.length > 0) {
-                     throw new Error("No se pudieron parsear nóminas válidas del archivo.");
+                    toast({ title: "Error de Contenido", description: "El archivo JSON es un array, pero no se pudieron procesar nóminas válidas a partir de su contenido. Verifica la estructura de cada objeto de nómina.", variant: "destructive" });
+                    return;
+                }
+                
+                if (importedPayrolls.length === 0 && importedDataRaw.length === 0) {
+                    toast({ title: "Archivo Vacío", description: "El archivo JSON está vacío o no contiene nóminas para importar.", variant: "default" });
+                    return;
                 }
 
                 let addedCount = 0;
-                let updatedCount = 0; // Changed from skippedCount to updatedCount
+                let updatedCount = 0;
 
                 const currentPayrollKeysInStorage = new Set<string>();
                 for (let i = 0; i < localStorage.length; i++) {
@@ -874,11 +892,10 @@ export default function Home() {
                     const storageKey = getStorageKey(payroll.employeeId, payroll.periodStart, payroll.periodEnd);
                     if (!storageKey) {
                         console.warn("Omitiendo nómina importada con datos inválidos para generar clave:", payroll);
-                        return; // Skip if key cannot be generated
+                        return; 
                     }
-                    payroll.key = storageKey; // Assign the generated key to the payroll object
+                    payroll.key = storageKey; 
 
-                    // Prepare data for localStorage (dates should be ISO strings)
                     const dataToSaveInLocalStorage = {
                         employeeId: payroll.employeeId,
                         employeeName: payroll.employeeName,
@@ -896,7 +913,6 @@ export default function Home() {
                                 startDate: day.inputData.startDate instanceof Date ? day.inputData.startDate.toISOString() : day.inputData.startDate,
                             }
                         })),
-                        // Summary is not stored in the individual localStorage item; it's calculated on load
                     };
 
                     try {
@@ -908,12 +924,11 @@ export default function Home() {
                         }
                     } catch (storageError) {
                          console.error(`Error guardando nómina importada ${storageKey} en localStorage:`, storageError);
-                         // Consider how to count this: as an error or skipped? Let's assume skipped for now if not critical.
                     }
                 });
 
                  const loadedEmployees = loadEmployeesFromLocalStorage([]);
-                 setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); // Refresh the UI list
+                 setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees)); 
 
                 toast({
                      title: "Importación Completada",
@@ -921,10 +936,10 @@ export default function Home() {
                      variant: "default"
                  });
 
-            } catch (error) {
-                console.error("Error importando nóminas:", error);
-                const message = error instanceof Error ? error.message : "No se pudo importar el archivo JSON.";
-                toast({ title: "Error al Importar", description: message, variant: "destructive" });
+            } catch (error) { 
+                console.error("Error inesperado durante la importación de nóminas:", error);
+                const message = error instanceof Error ? error.message : "Ocurrió un error inesperado al importar el archivo.";
+                toast({ title: "Error Crítico de Importación", description: message, variant: "destructive" });
             } finally {
                 if (importJsonInputRef.current) {
                     importJsonInputRef.current.value = '';
@@ -937,28 +952,28 @@ export default function Home() {
 
   return (
     <main
-        className="container mx-auto p-4 md:p-8 max-w-7xl relative" // Added relative for overlay positioning
+        className="container mx-auto p-4 md:p-8 max-w-7xl relative" 
     >
 
-        {/* Decorative Images */}
-        <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Adjusted opacity for small screens */}
+        
+        <div className="absolute top-[-30px] left-8 -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> 
            <Image
-               src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" // Updated image source
+               src="https://i.postimg.cc/NFs0pvpq/Recurso-4.png" 
                alt="Ilustración de taza de café"
-               width={120} // Adjust size as needed
-               height={120} // Adjust size as needed
-               className="object-contain transform -rotate-12" // Adjusted vertical position slightly
+               width={120} 
+               height={120} 
+               className="object-contain transform -rotate-12" 
                data-ai-hint="coffee cup illustration"
            />
         </div>
-        <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> {/* Updated opacity for small screens */}
+        <div className="absolute top-[-90px] right-[-20px] -z-10 opacity-70 dark:opacity-30 pointer-events-none sm:opacity-70 md:opacity-70 lg:opacity-70 xl:opacity-70 2xl:opacity-70" aria-hidden="true"> 
             <Image
-               src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" // Replaced image URL
-               alt="Ilustración de elementos de oficina" // Updated alt text
-               width={150} // Adjust size as needed
-               height={150} // Adjust size as needed
-               className="object-contain transform rotate-12" // Removed relative positioning
-               data-ai-hint="office elements illustration" // Updated hint
+               src="https://i.postimg.cc/J0xsLzGz/Recurso-3.png" 
+               alt="Ilustración de elementos de oficina" 
+               width={150} 
+               height={150} 
+               className="object-contain transform rotate-12" 
+               data-ai-hint="office elements illustration" 
             />
         </div>
 
@@ -1004,13 +1019,13 @@ export default function Home() {
                   </Popover>
               </div>
 
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> {/* Increased to 4 columns */}
-                   {/* Import Schedule Button */}
+                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4"> 
+                   
                    <Button onClick={handleImportSchedule} variant="outline" className="w-full hover:bg-primary hover:text-primary-foreground" disabled={isFormDisabled || isImporting}>
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FolderSync className="mr-2 h-4 w-4" />}
                         Importar Horario Planificado
                    </Button>
-                   {/* Clear Period Button */}
+                   
                    <AlertDialog>
                         <AlertDialogTrigger asChild>
                              <Button variant="outline" className="w-full hover:bg-destructive hover:text-destructive-foreground" disabled={isFormDisabled || (calculatedDays.length === 0 && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && !incluyeAuxTransporte && incluyeDeduccionesLegales) }>
@@ -1022,17 +1037,17 @@ export default function Home() {
                          <AlertDialogFooter> <AlertDialogCancel>Cancelar</AlertDialogCancel> <AlertDialogAction onClick={handleClearPeriodData} className="bg-destructive hover:bg-destructive/90"> Limpiar Datos </AlertDialogAction> </AlertDialogFooter>
                        </AlertDialogContent>
                    </AlertDialog>
-                    {/* Export Saved Payrolls Button */}
+                    
                     <Button
                          onClick={handleExportSavedPayrolls}
                          variant="outline"
-                         className="w-full hover:bg-green-600 hover:text-white" // Green hover
+                         className="w-full hover:bg-green-600 hover:text-white" 
                          disabled={savedPayrolls.length === 0}
                          title="Exportar todas las nóminas guardadas (JSON)"
                     >
                          <Download className="mr-2 h-4 w-4" /> Exportar Nóminas
                     </Button>
-                    {/* Import Saved Payrolls Button */}
+                    
                      <input
                        type="file"
                        accept=".json"
@@ -1043,7 +1058,7 @@ export default function Home() {
                     />
                     <Button
                         variant="outline"
-                        className="w-full hover:bg-blue-600 hover:text-white" // Blue hover
+                        className="w-full hover:bg-blue-600 hover:text-white" 
                         onClick={() => importJsonInputRef.current?.click()}
                         title="Importar nóminas guardadas desde archivo JSON"
                     >
@@ -1053,10 +1068,10 @@ export default function Home() {
           </CardContent>
       </Card>
 
-      {/* Main Content Grid */}
+      
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8">
 
-         {/* Left Column: Add/Edit Turno */}
+         
          <div className="lg:col-span-2">
             <Card className={`shadow-lg bg-card ${isFormDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                <CardHeader>
@@ -1079,7 +1094,7 @@ export default function Home() {
             </Card>
          </div>
 
-         {/* Center Column: Calculated Days List */}
+         
          <div className="lg:col-span-3 space-y-8">
             {calculatedDays.length > 0 && (
                <Card className="shadow-lg bg-card">
@@ -1098,7 +1113,7 @@ export default function Home() {
                               <div className="flex items-center text-sm text-muted-foreground gap-2"> <Clock className="h-4 w-4" /> {formatTo12Hour(day.inputData.startTime)} - {formatTo12Hour(day.inputData.endTime)} {day.inputData.endsNextDay ? ' (+1d)' : ''} </div>
                                {day.inputData.includeBreak && day.inputData.breakStartTime && day.inputData.breakEndTime && (
                                    <div className="flex items-center text-sm text-muted-foreground/80 gap-2 mt-1">
-                                       <Coffee className="h-4 w-4 text-blue-500" /> {/* Break icon */}
+                                       <Coffee className="h-4 w-4 text-blue-500" /> 
                                        Descanso: {formatTo12Hour(day.inputData.breakStartTime)} - {formatTo12Hour(day.inputData.breakEndTime)}
                                    </div>
                                )}
@@ -1162,7 +1177,7 @@ export default function Home() {
              )}
          </div>
 
-         {/* Right Column: Saved Payroll List */}
+         
          <div className="lg:col-span-2">
               <SavedPayrollList
                   payrolls={savedPayrolls}
@@ -1179,9 +1194,9 @@ export default function Home() {
 
      </div>
 
-      {/* Summary Section */}
+      
       {showSummary && (
-         <Card className="shadow-lg mt-8 bg-card lg:col-span-7"> {/* Span full width on large screens */}
+         <Card className="shadow-lg mt-8 bg-card lg:col-span-7"> 
             <CardHeader className="flex flex-row items-center justify-between">
                <div>
                  <CardTitle className="flex items-center gap-2 text-lg text-foreground"><Calculator className="h-4 w-4" /> Resumen Quincenal</CardTitle>
@@ -1227,7 +1242,7 @@ export default function Home() {
          </Card>
        )}
 
-      {/* Adjustment Modals */}
+      
       <AdjustmentModal type="ingreso" isOpen={isIncomeModalOpen} onClose={() => setIsIncomeModalOpen(false)} onSave={handleAddIngreso} />
        <AdjustmentModal type="deduccion" isOpen={isDeductionModalOpen} onClose={() => setIsDeductionModalOpen(false)} onSave={handleAddDeduccion} />
 
