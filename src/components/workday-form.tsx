@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -131,47 +132,41 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const { toast } = useToast();
   const form = useForm<WorkdayFormValues>({
     resolver: zodResolver(formSchema),
-    // Use initialData if provided (editing), otherwise use defaults (adding)
     defaultValues: initialData ? {
       ...initialData,
       startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate), // Ensure Date object
-      // Ensure optional break times are empty strings if null/undefined in initial data
       breakStartTime: initialData.breakStartTime ?? '',
       breakEndTime: initialData.breakEndTime ?? '',
     } : {
       startDate: new Date(),
-      startTime: '12:00', // Default start time 12:00 PM
-      endTime: '22:00',   // Default end time 10:00 PM
-      endsNextDay: false, // Recalculated based on default times if needed
+      startTime: '12:00', 
+      endTime: '22:00',  
+      endsNextDay: false, 
       includeBreak: false,
-      breakStartTime: '15:00', // Default break start if enabled
-      breakEndTime: '18:00',   // Default break end if enabled
+      breakStartTime: '15:00', 
+      breakEndTime: '18:00',   
     },
   });
 
-   // --- State for Holiday Check ---
    const [isHoliday, setIsHoliday] = useState<boolean>(false);
    const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
 
-  // Reset form when initialData changes (i.e., when switching between add/edit or editing different days)
    useEffect(() => {
        const resetValues = initialData ? {
            ...initialData,
            startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate),
-           // Ensure optional break times are handled correctly on reset
            breakStartTime: initialData.breakStartTime ?? '',
            breakEndTime: initialData.breakEndTime ?? '',
        } : {
            startDate: new Date(),
-           startTime: '12:00', // Reset to default start time
-           endTime: '22:00',   // Reset to default end time
-           endsNextDay: false, // Calculate based on defaults
+           startTime: '12:00', 
+           endTime: '22:00',   
+           endsNextDay: false, 
            includeBreak: false,
-           breakStartTime: '15:00', // Default break start if enabled
-           breakEndTime: '18:00',   // Default break end if enabled
+           breakStartTime: '15:00', 
+           breakEndTime: '18:00',   
        };
 
-       // Calculate endsNextDay based on reset values
        if (timeRegex.test(resetValues.startTime) && timeRegex.test(resetValues.endTime)) {
            const [startH] = resetValues.startTime.split(':').map(Number);
            const [endH] = resetValues.endTime.split(':').map(Number);
@@ -180,21 +175,18 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
 
        form.reset(resetValues);
 
-   }, [initialData, form]); // form is stable, but reset is from it
+   }, [initialData, form]);
 
 
   const { control, setValue, trigger, watch, getValues } = form;
-  // Watch fields using the hook for effects
   const startDate = watch('startDate');
-  const startTime = watch('startTime');
   const includeBreak = watch('includeBreak');
 
-   // --- Effect to check if startDate is a holiday ---
    useEffect(() => {
        if (startDate && isValid(startDate)) {
            const year = getYear(startDate);
            const dateStr = format(startDate, 'yyyy-MM-dd');
-           setIsCheckingHoliday(true); // Indicate loading
+           setIsCheckingHoliday(true); 
 
            fetchAndCacheHolidays(year)
                .then(holidaySet => {
@@ -202,50 +194,32 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                })
                .catch(error => {
                    console.error("Error checking holiday status:", error);
-                   setIsHoliday(false); // Assume not holiday on error
+                   setIsHoliday(false); 
                })
                .finally(() => {
-                   setIsCheckingHoliday(false); // Finish loading
+                   setIsCheckingHoliday(false); 
                });
        } else {
-           setIsHoliday(false); // Not a holiday if date is invalid
+           setIsHoliday(false); 
        }
    }, [startDate]);
 
-
-  // Effect to update endsNextDay when times change
-  useEffect(() => {
-      const currentEndTime = getValues('endTime');
-      if (startTime && timeRegex.test(startTime) && currentEndTime && timeRegex.test(currentEndTime)) {
-          const [startH] = startTime.split(':').map(Number);
-          const [endH] = currentEndTime.split(':').map(Number);
-          setValue('endsNextDay', endH < startH);
-      }
-  }, [startTime, watch('endTime'), setValue, getValues]); // Rerun when startTime or endTime changes
-
-
-   // Ref to track the previous state of includeBreak
    const prevIncludeBreak = useRef(includeBreak);
 
-   // Effect to trigger validation and set defaults for break times
    useEffect(() => {
        if (includeBreak) {
-           // If the switch was just turned ON, set defaults
            if (!prevIncludeBreak.current) {
                setValue('breakStartTime', '15:00', { shouldValidate: true });
                setValue('breakEndTime', '18:00', { shouldValidate: true });
            } else {
-               // If the switch was already on, just trigger validation when times change
                trigger(["breakStartTime", "breakEndTime"]);
            }
        }
-       // Update the previous state ref *after* the logic runs
        prevIncludeBreak.current = includeBreak;
-   }, [includeBreak, trigger, setValue, watch('breakStartTime'), watch('breakEndTime')]); // Trigger also when break times change
+   }, [includeBreak, trigger, setValue, watch('breakStartTime'), watch('breakEndTime')]);
 
 
   async function onSubmit(values: WorkdayFormValues) {
-     // Check if the date is already calculated, only if NOT editing
      if (!existingId && isDateCalculated && isDateCalculated(values.startDate)) {
          toast({
              title: 'Fecha Ya Calculada',
@@ -253,31 +227,20 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
              variant: 'destructive',
              duration: 7000,
          });
-         // Automatically advance to the next day in the form
          const nextDay = addDays(values.startDate, 1);
          setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
-         return; // Stop the submission process
+         return; 
      }
 
     onCalculationStart();
-    // Generate a new ID if adding, use existing ID if editing
     const calculationId = existingId || `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        // Use the modified action that accepts values and ID
         const result = await calculateSingleWorkday(values, calculationId);
-        onCalculationComplete(result); // Pass the full result back to the page
+        onCalculationComplete(result); 
 
-        // If adding was successful (no error), automatically set date to the next day
         if (!existingId && !('error' in result)) {
              const nextDay = addDays(values.startDate, 1);
              setValue('startDate', nextDay, { shouldValidate: true, shouldDirty: true });
-             // Optionally reset times or keep them? Resetting might be safer.
-             // setValue('startTime', '12:00');
-             // setValue('endTime', '22:00');
-             // setValue('endsNextDay', false);
-             // setValue('includeBreak', false);
-             // setValue('breakStartTime', '15:00');
-             // setValue('breakEndTime', '18:00');
              toast({
                  title: 'Día Agregado, Fecha Avanzada',
                  description: `Se agregó el turno y la fecha se movió al ${format(nextDay, 'PPP', { locale: es })}.`,
@@ -310,16 +273,15 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                           className={cn(
                             'w-full pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
-                             // Conditional border for holiday and Sunday
-                             isHoliday && 'border-primary border-2', // Use primary border for holiday
-                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border-2' // Keep primary border for Sunday
+                             isHoliday && 'border-primary border-2', 
+                             !isHoliday && startDate && isSunday(startDate) && 'border-primary border-2' 
                           )}
-                          disabled={isCheckingHoliday} // Disable while checking
+                          disabled={isCheckingHoliday} 
                         >
                           {isCheckingHoliday ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : field.value ? (
-                            format(field.value instanceof Date ? field.value : new Date(field.value), 'PPP', { locale: es }) // Ensure it's a Date object
+                            format(field.value instanceof Date ? field.value : new Date(field.value), 'PPP', { locale: es }) 
                           ) : (
                             <span>Selecciona una fecha</span>
                           )}
@@ -330,12 +292,12 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value instanceof Date ? field.value : new Date(field.value)} // Ensure Date object
+                        selected={field.value instanceof Date ? field.value : new Date(field.value)} 
                         onSelect={(date) => {
                            if (date) {
                               field.onChange(date)
                            }
-                        }} // Handle null case
+                        }} 
                         disabled={(date) =>
                           date < new Date('1900-01-01')
                         }
@@ -343,18 +305,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         locale={es}
                          modifiers={{ holiday: (date) => holidaysCache[getYear(date)]?.has(format(date, 'yyyy-MM-dd')) ?? false, sunday: isSunday }}
                          modifiersClassNames={{
-                             holiday: 'text-primary font-semibold border border-primary', // Style holiday with primary color
+                             holiday: 'text-primary font-semibold border border-primary', 
                              sunday: 'text-primary'
                          }}
                       />
                     </PopoverContent>
                   </Popover>
-                  {/* Display holiday/Sunday indicator */}
                   {isHoliday && !isCheckingHoliday && (
-                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Día festivo</p> // Use primary color text
+                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Día festivo</p> 
                   )}
                    {!isHoliday && startDate && isSunday(startDate) && !isCheckingHoliday && (
-                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Domingo</p> // Use primary text color
+                      <p className="text-xs text-primary font-semibold mt-1 pl-1"> • Domingo</p> 
                   )}
                   <FormMessage />
                 </FormItem>
@@ -369,28 +330,18 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   <FormItem>
                     <FormLabel>Hora de Inicio</FormLabel>
                     <FormControl>
-                       {/* Use a text input to display 12-hour format, but store 24-hour */}
                         <Input
-                            type="text"
-                            value={formatTo12Hour(field.value)}
-                            onFocus={(e) => { e.target.type = 'time' }}
-                            onBlur={(e) => {
-                                if (timeRegex.test(e.target.value)) {
-                                    field.onChange(e.target.value);
-                                }
-                                e.target.type = 'text'; // Revert back to text to show 12-hour format
-                            }}
-                            onChange={(e) => {
-                                // Allow direct changes if type is time
-                                if (e.target.type === 'time') {
-                                     field.onChange(e.target.value);
-                                }
-                                // Basic parsing attempt if user types in text field (less robust)
-                                // Might need a dedicated time picker component for better UX
-                            }}
+                            type="time"
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
                             className="text-base"
                         />
                     </FormControl>
+                    {field.value && timeRegex.test(field.value) && (
+                        <FormDescription>
+                            Equivale a: {formatTo12Hour(field.value)}
+                        </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -402,25 +353,18 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                   <FormItem>
                     <FormLabel>Hora de Fin</FormLabel>
                     <FormControl>
-                       {/* Use a text input to display 12-hour format, but store 24-hour */}
                         <Input
-                            type="text"
-                            value={formatTo12Hour(field.value)}
-                             onFocus={(e) => { e.target.type = 'time' }}
-                             onBlur={(e) => {
-                                if (timeRegex.test(e.target.value)) {
-                                    field.onChange(e.target.value);
-                                }
-                                e.target.type = 'text';
-                            }}
-                            onChange={(e) => {
-                                if (e.target.type === 'time') {
-                                    field.onChange(e.target.value);
-                                }
-                            }}
+                            type="time"
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
                             className="text-base"
                         />
                     </FormControl>
+                     {field.value && timeRegex.test(field.value) && (
+                        <FormDescription>
+                            Equivale a: {formatTo12Hour(field.value)}
+                        </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -439,7 +383,6 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      aria-readonly // Although interactive, indicates calculated nature
                     />
                   </FormControl>
                 </FormItem>
@@ -464,7 +407,6 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               )}
             />
 
-           {/* Conditional rendering based on the watched value */}
            {includeBreak && (
              <Card className="bg-muted/30 border-dashed">
                 <CardHeader className="pb-2 pt-4">
@@ -480,25 +422,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                          <FormLabel>Inicio Descanso</FormLabel>
                          <FormControl>
                             <Input
-                                type="text"
-                                value={field.value ? formatTo12Hour(field.value) : ''}
-                                onFocus={(e) => { e.target.type = 'time' }}
-                                onBlur={(e) => {
-                                    if (timeRegex.test(e.target.value)) {
-                                        field.onChange(e.target.value);
-                                    } else if (e.target.value === '') {
-                                        field.onChange(undefined); // Clear if empty
-                                    }
-                                    e.target.type = 'text';
-                                }}
-                                onChange={(e) => {
-                                    if (e.target.type === 'time') {
-                                         field.onChange(e.target.value);
-                                    }
-                                }}
+                                type="time"
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value === '' ? undefined : e.target.value)}
                                 className="text-base"
                             />
                          </FormControl>
+                         {field.value && timeRegex.test(field.value) && (
+                            <FormDescription>
+                                Equivale a: {formatTo12Hour(field.value)}
+                            </FormDescription>
+                         )}
                          <FormMessage />
                        </FormItem>
                      )}
@@ -511,25 +445,17 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                          <FormLabel>Fin Descanso</FormLabel>
                          <FormControl>
                              <Input
-                                type="text"
-                                value={field.value ? formatTo12Hour(field.value) : ''}
-                                onFocus={(e) => { e.target.type = 'time' }}
-                                onBlur={(e) => {
-                                    if (timeRegex.test(e.target.value)) {
-                                        field.onChange(e.target.value);
-                                    } else if (e.target.value === '') {
-                                        field.onChange(undefined);
-                                    }
-                                    e.target.type = 'text';
-                                }}
-                                onChange={(e) => {
-                                     if (e.target.type === 'time') {
-                                        field.onChange(e.target.value);
-                                     }
-                                }}
+                                type="time"
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value === '' ? undefined : e.target.value)}
                                 className="text-base"
                             />
                          </FormControl>
+                          {field.value && timeRegex.test(field.value) && (
+                            <FormDescription>
+                                Equivale a: {formatTo12Hour(field.value)}
+                            </FormDescription>
+                         )}
                          <FormMessage />
                        </FormItem>
                      )}
@@ -540,7 +466,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            )}
 
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isCheckingHoliday}> {/* Use theme color & Disable submit while checking holiday */}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isCheckingHoliday}> 
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -559,3 +485,4 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
         </Form>
   );
 };
+
