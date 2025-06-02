@@ -83,6 +83,7 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
     const rightMargin = 40;
 
     currentY = addScheduleHeaderAndWatermark(doc, 10);
+    currentY += 7; // Add space for title if needed in single PDF too
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -196,10 +197,12 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
 
     currentY = addScheduleHeaderAndWatermark(doc, 10);
 
+    currentY += 7; // Add extra space below watermark, before main title
+
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Horario Semanal Consolidado', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 20;
+    currentY += 13; // Adjusted space after main title (was 20, now 20-7 = 13)
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
@@ -263,21 +266,21 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
 
                         cellContentArray.push({
                             content: `${formatTo12Hour(assignment.startTime)} - ${formatTo12Hour(assignment.endTime)}`,
-                            styles: { fontSize: 9 } // Hora aumentada
+                            styles: { fontSize: 9 }
                         });
                         cellContentArray.push({
                             content: assignedLocationName,
-                            styles: { fontSize: 9 } // Sede aumentada
+                            styles: { fontSize: 9 }
                         });
                         cellContentArray.push({
                             content: assignedDepartmentName,
-                            styles: { fontSize: 8 } // Departamento mantiene tamaño base
+                            styles: { fontSize: 8 }
                         });
 
                         if (assignment.includeBreak && assignment.breakStartTime && assignment.breakEndTime) {
                             cellContentArray.push({
                                 content: `D:${formatTo12Hour(assignment.breakStartTime)}-${formatTo12Hour(assignment.breakEndTime)}`,
-                                styles: { fontSize: 8 } // Descanso mantiene tamaño base
+                                styles: { fontSize: 8 }
                             });
                         }
                         break;
@@ -295,7 +298,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
                     styles: {
                         halign: 'center',
                         valign: 'middle',
-                        fontSize: 8,
+                        fontSize: 8, // Consistent base size for "DESCANSO"
                         fontStyle: (dayOfWeek === 6 || dayOfWeek === 0) ? 'italic' : 'normal',
                         textColor: (dayOfWeek === 6 || dayOfWeek === 0) ? [220, 53, 69] : [108, 117, 125]
                     }
@@ -335,7 +338,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
             0: { cellWidth: 90, fontStyle: 'bold', fontSize: 9 },
             ...Array.from({ length: allLocationData[0].weekDates.length + 1 }).reduce((styles, _, index) => {
                 if (index < allLocationData[0].weekDates.length) {
-                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 }; // Default font for cell content if not overridden by cell's own style object
+                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 };
                 } else {
                     styles[index + 1] = { cellWidth: 35, halign: 'right', fontStyle: 'bold', fontSize: 9 };
                 }
@@ -344,7 +347,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         },
         styles: {
             cellPadding: 2.5,
-            // fontSize: 8, // Base font for body cells, will be overridden by content array styles
+            fontSize: 8,
             overflow: 'linebreak',
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
@@ -364,5 +367,3 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
     const filename = `Horario_Consolidado_${timestamp}.pdf`;
     doc.save(filename);
 }
-
-    
