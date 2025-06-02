@@ -1,8 +1,10 @@
+
 // src/services/payroll-settings-service.ts
 'use client'; // Ensure this runs on the client-side for localStorage access
 
 // Assuming defaultPayrollSettings is also defined and exported from '@/types/payroll-settings'
-import { defaultPayrollSettings } from '@/types/payroll-settings';
+import { defaultPayrollSettings, type PayrollSettings } from '@/types/payroll-settings';
+
 
 const SETTINGS_LOCAL_STORAGE_KEY = 'payrollSettingsGlobal';
 
@@ -33,7 +35,10 @@ export async function getPayrollSettings(): Promise<PayrollSettings> {
                 console.warn(`[getPayrollSettings] Invalid numeric value for ${K}: '${storedValue}'. Falling back to default.`);
                 (processedSettings[K] as any) = defaultPayrollSettings[K];
               }
-            } else {
+            } else if (typeof defaultPayrollSettings[K] === 'boolean') {
+              (processedSettings[K] as any) = typeof storedValue === 'boolean' ? storedValue : defaultPayrollSettings[K];
+            }
+             else {
               (processedSettings[K] as any) = storedValue;
             }
           } else {
@@ -63,7 +68,7 @@ export async function getPayrollSettings(): Promise<PayrollSettings> {
   }
 }
 
-export async function savePayrollSettings(settings: Omit<PayrollSettings, 'id' | 'lastUpdated'>): Promise<void> {
+export async function savePayrollSettings(settings: Omit<PayrollSettings, 'id' | 'lastUpdated' | 'summary'>): Promise<void> {
   console.log('[savePayrollSettings] Received settings to save to localStorage:', settings);
   if (typeof window === 'undefined') {
     console.error("[savePayrollSettings] Not on client-side. Cannot save payroll settings to localStorage.");
@@ -76,20 +81,33 @@ export async function savePayrollSettings(settings: Omit<PayrollSettings, 'id' |
         if (Object.prototype.hasOwnProperty.call(settings, key)) {
             const K = key as keyof typeof settings;
             const value = settings[K];
-            if (typeof value === 'string' && !isNaN(parseFloat(value)) && typeof defaultPayrollSettings[K as keyof PayrollSettings] === 'number') {
+             const defaultType = typeof defaultPayrollSettings[K as keyof PayrollSettings];
+
+            if (defaultType === 'number' && typeof value === 'string' && !isNaN(parseFloat(value))) {
                 sanitizedSettings[K] = parseFloat(value);
-            } else {
+            } else if (defaultType === 'boolean' && typeof value !== 'boolean') {
+                 // Attempt to coerce to boolean if not already, or use default
+                 sanitizedSettings[K] = value === 'true' ? true : (value === 'false' ? false : defaultPayrollSettings[K as keyof PayrollSettings]);
+            }
+            else {
                 sanitizedSettings[K] = value;
             }
         }
     }
 
     const settingsToSave = {
-      ...sanitizedSettings,
+      ...defaultPayrollSettings, // Start with defaults to ensure all fields are present
+      ...sanitizedSettings,    // Override with sanitized input
+      id: undefined, // Remove id and summary before saving global settings
+      summary: undefined,
       lastUpdated: new Date().toISOString(), // Store date as ISO string for localStorage
     };
+    delete settingsToSave.id;
+    delete settingsToSave.summary;
+
+
     localStorage.setItem(SETTINGS_LOCAL_STORAGE_KEY, JSON.stringify(settingsToSave));
-    console.log("[savePayrollSettings] Payroll settings saved successfully to localStorage.");
+    console.log("[savePayrollSettings] Payroll settings saved successfully to localStorage.", settingsToSave);
   } catch (error) {
     console.error("[savePayrollSettings] Error saving payroll settings to localStorage:", error);
     let errorMessage = "No se pudo guardar la configuración localmente.";

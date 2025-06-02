@@ -1,3 +1,4 @@
+
 // src/types/payroll-settings.ts
 
 import type { QuincenalCalculationSummary } from './index'; // Import QuincenalCalculationSummary
@@ -18,6 +19,9 @@ export interface PayrollSettings {
   // Add any other configurable values here
   lastUpdated?: Date;
   summary?: QuincenalCalculationSummary; // Optional: for default summary if needed
+  // Default flags for health and pension - typically true
+  incluyeDeduccionSalud?: boolean;
+  incluyeDeduccionPension?: boolean;
 }
 
 const defaultSummary: QuincenalCalculationSummary = {
@@ -42,6 +46,8 @@ export const defaultPayrollSettings: PayrollSettings = {
   heddF: 12378.26,
   hendF: 15472.83,
   ordinariaDiurnaBase: 0,
+  incluyeDeduccionSalud: true, // Default to true
+  incluyeDeduccionPension: true, // Default to true
   summary: { // Provide a default summary structure
     ...defaultSummary,
     salarioBaseQuincenal: 711750, // ensure this matches

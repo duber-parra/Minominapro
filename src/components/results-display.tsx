@@ -21,7 +21,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus, ShieldCheck, ShieldAlert } from 'lucide-react'; // Added ShieldCheck, ShieldAlert
+import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus, ShieldCheck, ShieldAlert, HeartPulse, Landmark } from 'lucide-react'; // Added HeartPulse, Landmark
 import type { CalculationResults, QuincenalCalculationSummary, AdjustmentItem } from '@/types';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
@@ -41,8 +41,10 @@ interface ResultsDisplayProps {
   incluyeAuxTransporte?: boolean;
   onToggleTransporte?: () => void;
   auxTransporteValor?: number;
-  incluyeDeduccionesLegales?: boolean; // New prop
-  onToggleDeduccionesLegales?: () => void; // New prop
+  incluyeDeduccionSalud?: boolean; // New prop for health deduction
+  onToggleSalud?: () => void; // New prop for health deduction toggle
+  incluyeDeduccionPension?: boolean; // New prop for pension deduction
+  onTogglePension?: () => void; // New prop for pension deduction toggle
 }
 
 export const labelMap: Record<string, string> = {
@@ -116,8 +118,10 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     incluyeAuxTransporte = false,
     onToggleTransporte,
     auxTransporteValor = 0,
-    incluyeDeduccionesLegales = true, // Default to true
-    onToggleDeduccionesLegales,
+    incluyeDeduccionSalud = true,
+    onToggleSalud,
+    incluyeDeduccionPension = true,
+    onTogglePension,
 }) => {
 
   const renderSkeletons = () => (
@@ -140,7 +144,8 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
       </div>
        <Separator />
        {isSummary && <Skeleton className="h-6 w-1/3 mb-2" />} {/* Skeleton for Transport */}
-       {isSummary && <Skeleton className="h-6 w-1/3 mb-2" />} {/* Skeleton for Deductions Toggle */}
+       {isSummary && <Skeleton className="h-6 w-1/3 mb-2" />} {/* Skeleton for Health Deduction Toggle */}
+       {isSummary && <Skeleton className="h-6 w-1/3 mb-2" />} {/* Skeleton for Pension Deduction Toggle */}
        <Skeleton className="h-6 w-1/3 mb-2" /> {/* Skeleton for Base Salary */}
       <div className="flex justify-between font-bold text-lg">
         <Skeleton className="h-7 w-2/5" />
@@ -210,11 +215,11 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     const auxTransporteAplicado = isSummary && incluyeAuxTransporte ? (auxTransporteValor || 0) : 0;
     const totalDevengadoBruto = isSummary ? baseMasExtras + auxTransporteAplicado + totalOtrosIngresos : baseMasExtras;
     const ibcEstimadoQuincenal = isSummary ? baseMasExtras + totalOtrosIngresos : 0; // IBC no incluye aux transporte
-    
-    const deduccionSaludQuincenal = isSummary && incluyeDeduccionesLegales ? ibcEstimadoQuincenal * 0.04 : 0;
-    const deduccionPensionQuincenal = isSummary && incluyeDeduccionesLegales ? ibcEstimadoQuincenal * 0.04 : 0;
+
+    const deduccionSaludQuincenal = isSummary && incluyeDeduccionSalud ? ibcEstimadoQuincenal * 0.04 : 0;
+    const deduccionPensionQuincenal = isSummary && incluyeDeduccionPension ? ibcEstimadoQuincenal * 0.04 : 0;
     const totalDeduccionesLegales = deduccionSaludQuincenal + deduccionPensionQuincenal;
-    
+
     const subtotalNetoParcial = isSummary ? totalDevengadoBruto - totalDeduccionesLegales : 0;
     const netoAPagar = isSummary ? subtotalNetoParcial - totalOtrasDeducciones : 0;
 
@@ -307,34 +312,49 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                    <span className="text-foreground">{formatCurrency(totalDevengadoBruto)}</span>
                  </div>
                  <Separator className="my-2" />
-                 
+
                  <div className="flex justify-between items-center text-muted-foreground">
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="deductions-switch" className="flex items-center gap-1 cursor-pointer">
-                           {incluyeDeduccionesLegales ? <ShieldCheck className="h-4 w-4 text-green-600" /> : <ShieldAlert className="h-4 w-4 text-orange-500" />}
-                            Incluir Deducciones de Ley (Salud/Pensión):
+                        <Label htmlFor="health-deduction-switch" className="flex items-center gap-1 cursor-pointer">
+                           {incluyeDeduccionSalud ? <ShieldCheck className="h-4 w-4 text-green-600" /> : <ShieldAlert className="h-4 w-4 text-orange-500" />}
+                            Incluir Deducción Salud (4%):
                         </Label>
                     </div>
                     <Switch
-                        id="deductions-switch"
-                        checked={incluyeDeduccionesLegales}
-                        onCheckedChange={onToggleDeduccionesLegales}
-                        disabled={!onToggleDeduccionesLegales}
+                        id="health-deduction-switch"
+                        checked={incluyeDeduccionSalud}
+                        onCheckedChange={onToggleSalud}
+                        disabled={!onToggleSalud}
                     />
                  </div>
-
-                 {incluyeDeduccionesLegales && (
-                    <>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>- Deducción Salud (4% s/IBC*):</span>
-                            <span>{formatCurrency(deduccionSaludQuincenal)}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>- Deducción Pensión (4% s/IBC*):</span>
-                            <span>{formatCurrency(deduccionPensionQuincenal)}</span>
-                        </div>
-                    </>
+                 {incluyeDeduccionSalud && (
+                    <div className="flex justify-between text-muted-foreground pl-6">
+                        <span>- Deducción Salud (4% s/IBC*):</span>
+                        <span>{formatCurrency(deduccionSaludQuincenal)}</span>
+                    </div>
                  )}
+
+                 <div className="flex justify-between items-center text-muted-foreground mt-2">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="pension-deduction-switch" className="flex items-center gap-1 cursor-pointer">
+                           {incluyeDeduccionPension ? <ShieldCheck className="h-4 w-4 text-green-600" /> : <ShieldAlert className="h-4 w-4 text-orange-500" />}
+                            Incluir Deducción Pensión (4%):
+                        </Label>
+                    </div>
+                    <Switch
+                        id="pension-deduction-switch"
+                        checked={incluyeDeduccionPension}
+                        onCheckedChange={onTogglePension}
+                        disabled={!onTogglePension}
+                    />
+                 </div>
+                 {incluyeDeduccionPension && (
+                    <div className="flex justify-between text-muted-foreground pl-6">
+                        <span>- Deducción Pensión (4% s/IBC*):</span>
+                        <span>{formatCurrency(deduccionPensionQuincenal)}</span>
+                    </div>
+                 )}
+
                  <Separator className="my-2 border-dashed" />
                   <div className="flex justify-between font-medium text-base">
                     <span className="text-foreground">Subtotal (Dev. Bruto - Ded. Ley):</span>
