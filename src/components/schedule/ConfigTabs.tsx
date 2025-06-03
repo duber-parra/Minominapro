@@ -30,11 +30,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library } from 'lucide-react'; // Added Library icon
+import { PlusCircle, Edit, Trash2, Copy, Upload, Download, UploadCloud, Library, X } from 'lucide-react'; // Added Library icon
 import type { Location, Department, Employee, ScheduleTemplate } from '@/types/schedule';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns'; // Import format and parseISO
 import { es } from 'date-fns/locale'; // Import Spanish locale
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 // Interface for props passed to ConfigTabs
 interface ConfigTabsProps {
@@ -128,6 +129,7 @@ export function ConfigTabs({
     handleImportConfig, // Destructure import handler
     fileInputRef,      // Destructure ref
 }: ConfigTabsProps) {
+    const { toast } = useToast(); // Initialize useToast hook
 
     const renderConfigListContent = (items: any[], type: 'location' | 'department' | 'employee' | 'template') => (
          <ScrollArea className="h-full border rounded-md p-2"> {/* Added scroll for list */}
