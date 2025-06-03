@@ -21,31 +21,12 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus, ShieldCheck, ShieldAlert, HeartPulse, Landmark } from 'lucide-react'; // Added HeartPulse, Landmark
+import { AlertCircle, CheckCircle2, Info, PlusCircle, MinusCircle, Trash2, Bus, ShieldCheck, ShieldAlert, HeartPulse, Landmark, Edit, Save, X } from 'lucide-react'; // Added Edit, Save, X
 import type { CalculationResults, QuincenalCalculationSummary, AdjustmentItem } from '@/types';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-
-interface ResultsDisplayProps {
-  results: CalculationResults | QuincenalCalculationSummary | null;
-  error: string | null;
-  isLoading: boolean;
-  isSummary?: boolean;
-  otrosIngresos?: AdjustmentItem[];
-  otrasDeducciones?: AdjustmentItem[];
-  onAddIngreso?: () => void;
-  onAddDeduccion?: () => void;
-  onDeleteIngreso?: (id: string) => void;
-  onDeleteDeduccion?: (id: string) => void;
-  incluyeAuxTransporte?: boolean;
-  onToggleTransporte?: () => void;
-  auxTransporteValor?: number;
-  incluyeDeduccionSalud?: boolean; // New prop for health deduction
-  onToggleSalud?: () => void; // New prop for health deduction toggle
-  incluyeDeduccionPension?: boolean; // New prop for pension deduction
-  onTogglePension?: () => void; // New prop for pension deduction toggle
-}
+import { Input } from './ui/input'; // Import Input
 
 export const labelMap: Record<string, string> = {
     Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
@@ -122,6 +103,12 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     onToggleSalud,
     incluyeDeduccionPension = true,
     onTogglePension,
+    // New props for summary editing
+    isEditingSummary,
+    onEditSummaryClick,
+    onSummaryHoursChange,
+    onSaveEditedSummary,
+    onCancelEditSummary,
 }) => {
 
   const renderSkeletons = () => (
@@ -248,16 +235,35 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
             {displayOrder.map((key) => {
               const horasCategoria = horas[key];
               const pagoCategoria = pagos[key];
+              const isCurrentlyEditingThisRow = isSummary && isEditingSummary;
 
-              if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) return null;
-              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) return null;
+              if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && !isCurrentlyEditingThisRow) return null;
+              if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0 && !isCurrentlyEditingThisRow) return null;
 
               return (
                 <TableRow key={key}>
                   <TableCell className="font-medium text-muted-foreground">
                     {isSummary ? (labelMap[key] || key) : (abbreviatedLabelMap[key] || key)}
                   </TableCell>
-                  <TableCell className="text-right">{formatHours(horasCategoria)}</TableCell>
+                  <TableCell className="text-right">
+                    {isCurrentlyEditingThisRow ? (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={horasCategoria ?? 0}
+                        onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (onSummaryHoursChange) {
+                                onSummaryHoursChange(key, isNaN(val) ? 0 : val);
+                            }
+                        }}
+                        className="h-8 text-sm text-right w-24 ml-auto" // Alineado a la derecha
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      formatHours(horasCategoria)
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     {key === 'Ordinaria_Diurna_Base' ? '-' : formatCurrency(pagoCategoria)}
                   </TableCell>
@@ -296,7 +302,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                         id="transport-switch"
                         checked={incluyeAuxTransporte}
                         onCheckedChange={onToggleTransporte}
-                        disabled={!onToggleTransporte}
+                        disabled={!onToggleTransporte || isEditingSummary}
                     />
                  </div>
                  {totalOtrosIngresos > 0 && (
@@ -324,7 +330,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                         id="health-deduction-switch"
                         checked={incluyeDeduccionSalud}
                         onCheckedChange={onToggleSalud}
-                        disabled={!onToggleSalud}
+                        disabled={!onToggleSalud || isEditingSummary}
                     />
                  </div>
                  {incluyeDeduccionSalud && (
@@ -345,7 +351,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                         id="pension-deduction-switch"
                         checked={incluyeDeduccionPension}
                         onCheckedChange={onTogglePension}
-                        disabled={!onTogglePension}
+                        disabled={!onTogglePension || isEditingSummary}
                     />
                  </div>
                  {incluyeDeduccionPension && (
@@ -370,7 +376,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 <div className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-semibold text-foreground">Otros Ingresos / Ajustes a Favor</h4>
-                        <Button variant="outline" size="sm" onClick={onAddIngreso} disabled={!onAddIngreso}>
+                        <Button variant="outline" size="sm" onClick={onAddIngreso} disabled={!onAddIngreso || isEditingSummary}>
                            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ingreso
                         </Button>
                     </div>
@@ -381,7 +387,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                                  <span className='truncate pr-2'>{item.descripcion || 'Ingreso sin descripción'}</span>
                                  <div className="flex items-center gap-2 flex-shrink-0">
                                      <span>+ {formatCurrency(item.monto)}</span>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteIngreso && onDeleteIngreso(item.id)} disabled={!onDeleteIngreso}>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteIngreso && onDeleteIngreso(item.id)} disabled={!onDeleteIngreso || isEditingSummary}>
                                         <Trash2 className="h-4 w-4" />
                                      </Button>
                                  </div>
@@ -410,7 +416,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                            variant="outline"
                            size="sm"
                            onClick={onAddDeduccion}
-                           disabled={!onAddDeduccion}
+                           disabled={!onAddDeduccion || isEditingSummary}
                            className="hover:bg-destructive hover:text-destructive-foreground"
                        >
                           <MinusCircle className="mr-2 h-4 w-4" /> Añadir Deducción
@@ -423,7 +429,7 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                                  <span className='truncate pr-2'>{item.descripcion || 'Deducción sin descripción'}</span>
                                  <div className="flex items-center gap-2 flex-shrink-0">
                                     <span>- {formatCurrency(item.monto)}</span>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteDeduccion && onDeleteDeduccion(item.id)} disabled={!onDeleteDeduccion}>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteDeduccion && onDeleteDeduccion(item.id)} disabled={!onDeleteDeduccion || isEditingSummary}>
                                          <Trash2 className="h-4 w-4" />
                                       </Button>
                                  </div>
@@ -463,13 +469,32 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
                 : `Total quincenal incluirá base, otros días, deducciones y ajustes.`
              }
         </CardDescription>
+
+        {isSummary && isEditingSummary && (
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancelEditSummary}>
+              <X className="mr-2 h-4 w-4" /> Cancelar Edición
+            </Button>
+            <Button onClick={onSaveEditedSummary}>
+              <Save className="mr-2 h-4 w-4" /> Guardar Cambios del Resumen
+            </Button>
+          </div>
+        )}
       </>
     );
   };
 
   return (
      <>
+       {isSummary && !isEditingSummary && results && onEditSummaryClick && (
+        <div className="mb-4 text-right">
+          <Button variant="outline" onClick={onEditSummaryClick}>
+            <Edit className="mr-2 h-4 w-4" /> Editar Resumen
+          </Button>
+        </div>
+      )}
       {renderContent()}
      </>
   );
 }
+
