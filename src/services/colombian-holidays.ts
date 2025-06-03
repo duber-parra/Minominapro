@@ -1,3 +1,4 @@
+
 /**
  * Representa una fecha.
  */
@@ -65,6 +66,28 @@ export async function getColombianHolidays(year: number): Promise<Date[]> {
             { year: 2023, month: 12, day: 8 }, { year: 2023, month: 12, day: 25 }
         ];
     }
+   if (year === 2026) { // Festivos añadidos para 2026
+     return [
+       { year: 2026, month: 1, day: 1 },   // Año Nuevo
+       { year: 2026, month: 1, day: 12 },  // Reyes Magos (Lunes siguiente al 6)
+       { year: 2026, month: 3, day: 23 },  // San José (Lunes siguiente al 19)
+       { year: 2026, month: 4, day: 2 },   // Jueves Santo
+       { year: 2026, month: 4, day: 3 },   // Viernes Santo
+       { year: 2026, month: 5, day: 1 },   // Día del Trabajo
+       { year: 2026, month: 5, day: 18 },  // Ascensión del Señor (Lunes siguiente)
+       { year: 2026, month: 6, day: 8 },   // Corpus Christi (Lunes siguiente)
+       { year: 2026, month: 6, day: 15 },  // Sagrado Corazón (Lunes siguiente)
+       { year: 2026, month: 7, day: 1 },   // San Pedro y San Pablo (Lunes siguiente al 29 de junio)
+       { year: 2026, month: 7, day: 20 },  // Día de la Independencia
+       { year: 2026, month: 8, day: 7 },   // Batalla de Boyacá
+       { year: 2026, month: 8, day: 17 },  // Asunción de la Virgen (Lunes siguiente al 15)
+       { year: 2026, month: 10, day: 12 }, // Día de la Raza (Lunes siguiente si no cae lunes)
+       { year: 2026, month: 11, day: 2 },  // Todos los Santos (Lunes siguiente al 1)
+       { year: 2026, month: 11, day: 16 }, // Independencia de Cartagena (Lunes siguiente al 11)
+       { year: 2026, month: 12, day: 8 },  // Inmaculada Concepción
+       { year: 2026, month: 12, day: 25 }  // Navidad
+     ];
+   }
 
 
   // Retorna array vacío si no hay datos de ejemplo o la API falla en el futuro
