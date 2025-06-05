@@ -1373,38 +1373,41 @@ export default function SchedulePage() {
                     message = `Sede "${itemToDelete.name}" y sus datos asociados eliminados.`;
                     setLocationSearch(''); // Clear search
                     break;
-                case 'department':
+                                case 'department':
                     setDepartments(prevDeps => prevDeps.filter(dep => dep.id !== itemToDelete.id));
-                     const updatedScheduleDept = { ...scheduleData };
-                     Object.keys(updatedScheduleDept).forEach(dateKey => {
-                          if (updatedScheduleDept[dateKey]?.assignments?.[itemToDelete.id]) { // Check if day and dept exist
-                              delete updatedScheduleDept[dateKey].assignments[itemToDelete.id];
-                              if (Object.keys(updatedScheduleDept[dateKey].assignments).length === 0) {
-                                   delete updatedScheduleDept[dateKey];
-                              }
-                          }
-                     });
-                     setScheduleData(updatedScheduleDept);
-                      // Also remove department references from templates
-                      setSavedTemplates(prevTpls => prevTpls.map(tpl => {
-                         if (tpl.assignments) {
-                             if (tpl.type === 'day' && (tpl.assignments as DailyAssignments)[itemToDelete.id]) {
-                                 delete (tpl.assignments as DailyAssignments)[itemToDelete.id];
-                             } else if (tpl.type === 'week') {
-                                 Object.keys(tpl.assignments).forEach(dateKey => {
-                                     const weeklyAssignments = tpl.assignments as WeeklyAssignments;
-                                     if (weeklyAssignments[key] && weeklyAssignments[key][itemToDelete.id]) {
-                                         delete weeklyAssignments[key][itemToDelete.id];
-                                     }
-                                 });
-                             }
-                         return tpl;
-                      }));
-                     setEmployees(prevEmps => prevEmps.map(emp => ({
+                    const updatedScheduleDept = { ...scheduleData };
+                    Object.keys(updatedScheduleDept).forEach(dateKey => {
+                        if (updatedScheduleDept[dateKey]?.assignments?.[itemToDelete.id]) { // Check if day and dept exist
+                            delete updatedScheduleDept[dateKey].assignments[itemToDelete.id];
+                            if (Object.keys(updatedScheduleDept[dateKey].assignments).length === 0) {
+                                delete updatedScheduleDept[dateKey];
+                            }
+                        }
+                    });
+                    setScheduleData(updatedScheduleDept);
+                    // Also remove department references from templates
+                    setSavedTemplates(prevTpls =>
+                        prevTpls.map(tpl => {
+                            if (tpl.assignments) {
+                                if (tpl.type === 'day' && (tpl.assignments as DailyAssignments)[itemToDelete.id]) {
+                                    delete (tpl.assignments as DailyAssignments)[itemToDelete.id];
+                                } else if (tpl.type === 'week') {
+                                    Object.keys(tpl.assignments).forEach(dateKey => {
+                                        const weeklyAssignments = tpl.assignments as WeeklyAssignments;
+                                        if (weeklyAssignments[dateKey] && weeklyAssignments[dateKey][itemToDelete.id]) {
+                                            delete weeklyAssignments[dateKey][itemToDelete.id];
+                                        }
+                                    });
+                                }
+                            }
+                            return tpl;
+                        })
+                    );
+                    setEmployees(prevEmps => prevEmps.map(emp => ({
                         ...emp,
                         departmentIds: (emp.departmentIds || []).filter(deptId => deptId !== itemToDelete.id)
-                     })));
-                     message = `Departamento "${itemToDelete.name}" eliminado.`;
+                    })));
+                    message = `Departamento "${itemToDelete.name}" eliminado.`;
                     setDepartmentSearch(''); // Clear search
                     break;
                 case 'employee':
