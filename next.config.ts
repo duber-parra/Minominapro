@@ -1,1 +1,0 @@
-// This file will be deleted. The content is moved to next.config.js
