@@ -503,7 +503,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                         Compensatorio día festivo trabajado
                       </FormLabel>
                       <FormDescription className="text-sm text-muted-foreground">
-                        Se paga si no se da día compensado remunerado (47,425 pesos)
+                        Se paga si no se da día compensado remunerado
                       </FormDescription>
                     </div>
                     <FormControl>

@@ -472,6 +472,39 @@ export const PayrollConfigModal = () => {
               </CardContent>
             </Card>
 
+            {/* Compensatorios */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Compensatorios</CardTitle>
+                <CardDescription>
+                  Valores de compensatorios especiales
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="Compensatorio_dia_festivo_trabajado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{FIELD_LABELS.Compensatorio_dia_festivo_trabajado}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {FIELD_DESCRIPTIONS.Compensatorio_dia_festivo_trabajado}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
             {/* Auxilio de Transporte */}
             <Card>
               <CardHeader>
