@@ -188,6 +188,25 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const { control, setValue, trigger, watch, getValues } = form;
   const startDate = watch('startDate');
   const includeBreak = watch('includeBreak');
+  const startTime = watch('startTime');
+  const endTime = watch('endTime');
+
+  // Efecto para detectar automáticamente si termina al día siguiente
+  useEffect(() => {
+    if (startTime && endTime && timeRegex.test(startTime) && timeRegex.test(endTime)) {
+      const [startH] = startTime.split(':').map(Number);
+      const [endH] = endTime.split(':').map(Number);
+      
+      // Si la hora de fin es menor que la de inicio, automáticamente activa "termina al día siguiente"
+      if (endH < startH) {
+        setValue('endsNextDay', true, { shouldValidate: true });
+      } else if (endH > startH) {
+        // Si la hora de fin es mayor que la de inicio, desactiva "termina al día siguiente"
+        setValue('endsNextDay', false, { shouldValidate: true });
+      }
+      // Si son iguales (endH === startH), no cambia el valor actual del switch
+    }
+  }, [startTime, endTime, setValue]);
 
    useEffect(() => {
        if (startDate && isValid(startDate)) {
