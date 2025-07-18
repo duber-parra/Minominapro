@@ -222,8 +222,8 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                             periodStart: startDate,
                             periodEnd: endDate,
                             summary: summary || {
-                                totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
-                                totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+                                totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
+                                totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
                                 totalPagoRecargosExtrasQuincena: 0,
                                 salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
                                 pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO,
@@ -806,8 +806,8 @@ export default function Home() {
         if (calculatedDays.length === 0 && !incluyeAuxTransporte && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && incluyeDeduccionSalud && incluyeDeduccionPension) return null;
        const baseSummary = calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
        const finalSummary: QuincenalCalculationSummary = baseSummary || {
-           totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
-           totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+           totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
+           totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
            totalPagoRecargosExtrasQuincena: 0,
            salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
            pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO,

@@ -41,8 +41,12 @@ const configSchema = z.object({
   HEN: z.number().min(0, 'Debe ser un valor positivo'),
   Recargo_Dom_Diurno_Base: z.number().min(0, 'Debe ser un valor positivo'),
   Recargo_Dom_Noct_Base: z.number().min(0, 'Debe ser un valor positivo'),
-  HEDD_F: z.number().min(0, 'Debe ser un valor positivo'),
-  HEND_F: z.number().min(0, 'Debe ser un valor positivo'),
+  Recargo_Fest_Diurno_Base: z.number().min(0, 'Debe ser un valor positivo'),
+  Recargo_Fest_Noct_Base: z.number().min(0, 'Debe ser un valor positivo'),
+  HED_Dom: z.number().min(0, 'Debe ser un valor positivo'),
+  HEN_Dom: z.number().min(0, 'Debe ser un valor positivo'),
+  HED_Fest: z.number().min(0, 'Debe ser un valor positivo'),
+  HEN_Fest: z.number().min(0, 'Debe ser un valor positivo'),
   Ordinaria_Diurna_Base: z.number().min(0, 'Debe ser un valor positivo'),
   auxilioTransporte: z.number().min(0, 'Debe ser un valor positivo'),
 });
@@ -56,8 +60,12 @@ const FIELD_LABELS: Record<keyof PayrollValues, string> = {
   HEN: 'Hora Extra Nocturna',
   Recargo_Dom_Diurno_Base: 'Recargo Dominical Diurno Base',
   Recargo_Dom_Noct_Base: 'Recargo Dominical Nocturno Base',
-  HEDD_F: 'Hora Extra Dominical/Festiva Diurna',
-  HEND_F: 'Hora Extra Dominical/Festiva Nocturna',
+  Recargo_Fest_Diurno_Base: 'Recargo Festivo Diurno Base',
+  Recargo_Fest_Noct_Base: 'Recargo Festivo Nocturno Base',
+  HED_Dom: 'Hora Extra Dominical Diurna',
+  HEN_Dom: 'Hora Extra Dominical Nocturna',
+  HED_Fest: 'Hora Extra Festiva Diurna',
+  HEN_Fest: 'Hora Extra Festiva Nocturna',
   Ordinaria_Diurna_Base: 'Ordinaria Diurna Base',
 };
 
@@ -66,10 +74,14 @@ const FIELD_DESCRIPTIONS: Record<keyof PayrollValues, string> = {
   Recargo_Noct_Base: 'Recargo nocturno dentro de las 7.66h base, laboral',
   HED: 'Hora extra diurna después de 7.66h, laboral, hasta las 9 PM',
   HEN: 'Hora extra nocturna después de 7.66h, laboral',
-  Recargo_Dom_Diurno_Base: 'Recargo dominical/festivo diurno dentro de 7.66h',
-  Recargo_Dom_Noct_Base: 'Recargo dominical/festivo nocturno dentro de 7.66h',
-  HEDD_F: 'Hora extra dominical/festiva diurna después de 7.66h',
-  HEND_F: 'Hora extra dominical/festiva nocturna después de 7.66h',
+  Recargo_Dom_Diurno_Base: 'Recargo dominical diurno dentro de 7.66h',
+  Recargo_Dom_Noct_Base: 'Recargo dominical nocturno dentro de 7.66h',
+  Recargo_Fest_Diurno_Base: 'Recargo festivo diurno dentro de 7.66h',
+  Recargo_Fest_Noct_Base: 'Recargo festivo nocturno dentro de 7.66h',
+  HED_Dom: 'Hora extra dominical diurna después de 7.66h',
+  HEN_Dom: 'Hora extra dominical nocturna después de 7.66h',
+  HED_Fest: 'Hora extra festiva diurna después de 7.66h',
+  HEN_Fest: 'Hora extra festiva nocturna después de 7.66h',
   Ordinaria_Diurna_Base: 'Horas base diurnas laborales (sin recargo adicional)',
 };
 
@@ -264,6 +276,48 @@ export const PayrollConfigModal = () => {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="Recargo_Fest_Diurno_Base"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{FIELD_LABELS.Recargo_Fest_Diurno_Base}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {FIELD_DESCRIPTIONS.Recargo_Fest_Diurno_Base}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="Recargo_Fest_Noct_Base"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{FIELD_LABELS.Recargo_Fest_Noct_Base}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {FIELD_DESCRIPTIONS.Recargo_Fest_Noct_Base}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
@@ -320,10 +374,10 @@ export const PayrollConfigModal = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="HEDD_F"
+                  name="HED_Dom"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{FIELD_LABELS.HEDD_F}</FormLabel>
+                      <FormLabel>{FIELD_LABELS.HED_Dom}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -333,7 +387,7 @@ export const PayrollConfigModal = () => {
                         />
                       </FormControl>
                       <FormDescription>
-                        {FIELD_DESCRIPTIONS.HEDD_F}
+                        {FIELD_DESCRIPTIONS.HED_Dom}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -341,10 +395,10 @@ export const PayrollConfigModal = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="HEND_F"
+                  name="HEN_Dom"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{FIELD_LABELS.HEND_F}</FormLabel>
+                      <FormLabel>{FIELD_LABELS.HEN_Dom}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -354,7 +408,49 @@ export const PayrollConfigModal = () => {
                         />
                       </FormControl>
                       <FormDescription>
-                        {FIELD_DESCRIPTIONS.HEND_F}
+                        {FIELD_DESCRIPTIONS.HEN_Dom}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="HED_Fest"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{FIELD_LABELS.HED_Fest}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {FIELD_DESCRIPTIONS.HED_Fest}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="HEN_Fest"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{FIELD_LABELS.HEN_Fest}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {FIELD_DESCRIPTIONS.HEN_Fest}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

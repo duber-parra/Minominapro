@@ -31,12 +31,16 @@ import { Input } from './ui/input'; // Import Input
 export const labelMap: Record<string, string> = {
     Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
-    Recargo_Dom_Diurno_Base: 'Recargo Dominical/Festivo Diurno (Base)',
-    Recargo_Dom_Noct_Base: 'Recargo Dominical/Festivo Nocturno (Base)',
+    Recargo_Dom_Diurno_Base: 'Recargo Dominical Diurno (Base)',
+    Recargo_Dom_Noct_Base: 'Recargo Dominical Nocturno (Base)',
+    Recargo_Fest_Diurno_Base: 'Recargo Festivo Diurno (Base)',
+    Recargo_Fest_Noct_Base: 'Recargo Festivo Nocturno (Base)',
     HED: 'Horas Extras Diurnas (Laboral)',
     HEN: 'Horas Extras Nocturnas (Laboral)',
-    HEDD_F: 'Horas Extras Diurnas (Dominical/Festivo)',
-    HEND_F: 'Horas Extras Nocturnas (Dominical/Festivo)',
+    HED_Dom: 'Horas Extras Diurnas (Dominical)',
+    HEN_Dom: 'Horas Extras Nocturnas (Dominical)',
+    HED_Fest: 'Horas Extras Diurnas (Festivo)',
+    HEN_Fest: 'Horas Extras Nocturnas (Festivo)',
 };
 
 export const abbreviatedLabelMap: Record<string, string> = {
@@ -44,10 +48,14 @@ export const abbreviatedLabelMap: Record<string, string> = {
     Recargo_Noct_Base: 'Rec.Noct.',
     Recargo_Dom_Diurno_Base: 'Rec.Dom.Diu.',
     Recargo_Dom_Noct_Base: 'Rec.Dom.Noct.',
+    Recargo_Fest_Diurno_Base: 'Rec.Fest.Diu.',
+    Recargo_Fest_Noct_Base: 'Rec.Fest.Noct.',
     HED: 'HED',
     HEN: 'HEN',
-    HEDD_F: 'HEDD/F',
-    HEND_F: 'HEND/F',
+    HED_Dom: 'HED_Dom',
+    HEN_Dom: 'HEN_Dom',
+    HED_Fest: 'HED_Fest',
+    HEN_Fest: 'HEN_Fest',
 };
 
 export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
@@ -55,10 +63,14 @@ export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'Recargo_Noct_Base',
     'Recargo_Dom_Diurno_Base',
     'Recargo_Dom_Noct_Base',
+    'Recargo_Fest_Diurno_Base',
+    'Recargo_Fest_Noct_Base',
     'HED',
     'HEN',
-    'HEDD_F',
-    'HEND_F',
+    'HED_Dom',
+    'HEN_Dom',
+    'HED_Fest',
+    'HEN_Fest',
 ];
 
 // Updated formatCurrency to optionally omit symbol

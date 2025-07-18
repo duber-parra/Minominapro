@@ -407,14 +407,22 @@ export function exportAllPayrollsToPDF(
             { content: 'H.HEN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
             { content: 'V.HEN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
             // Extras y Recargos Dom./Fest.
-            { content: 'H.RDDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RDDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.RNDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RNDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HEDDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HEDDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HENDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HENDF', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.RDD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.RDD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.RDN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.RDN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.RFD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.RFD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.RFN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.RFN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.HEDom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.HEDom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.HENom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.HENom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.HEFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.HEFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'H.HENFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            { content: 'V.HENFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
             // Liquidación Final
             { content: 'Ded. Ley', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
             { content: 'Neto Pagar', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
@@ -424,7 +432,9 @@ export function exportAllPayrollsToPDF(
     let totalSalarioBase = 0, totalAuxTransporte = 0, totalHorasGlobal = 0;
     let totalHorasRNO = 0, totalValorRNO = 0, totalHorasHED = 0, totalValorHED = 0, totalHorasHEN = 0, totalValorHEN = 0;
     let totalHorasRDDF = 0, totalValorRDDF = 0, totalHorasRNDF = 0, totalValorRNDF = 0;
-    let totalHorasHEDDF = 0, totalValorHEDDF = 0, totalHorasHENDF = 0, totalValorHENDF = 0;
+    let totalHorasRFDF = 0, totalValorRFDF = 0, totalHorasRNFF = 0, totalValorRNFF = 0;
+    let totalHorasHEDom = 0, totalValorHEDom = 0, totalHorasHENom = 0, totalValorHENom = 0;
+    let totalHorasHEFest = 0, totalValorHEFest = 0, totalHorasHENFest = 0, totalValorHENFest = 0;
     let totalDeduccionesLey = 0, totalNetoPagar = 0;
 
     const employeeMap = new Map(employees.map(emp => [emp.id, emp.name]));
@@ -461,8 +471,12 @@ export function exportAllPayrollsToPDF(
         totalHorasHEN += s.HEN; totalValorHEN += p.HEN;
         totalHorasRDDF += s.Recargo_Dom_Diurno_Base; totalValorRDDF += p.Recargo_Dom_Diurno_Base;
         totalHorasRNDF += s.Recargo_Dom_Noct_Base; totalValorRNDF += p.Recargo_Dom_Noct_Base;
-        totalHorasHEDDF += s.HEDD_F; totalValorHEDDF += p.HEDD_F;
-        totalHorasHENDF += s.HEND_F; totalValorHENDF += p.HEND_F;
+        totalHorasRFDF += s.Recargo_Fest_Diurno_Base; totalValorRFDF += p.Recargo_Fest_Diurno_Base;
+        totalHorasRNFF += s.Recargo_Fest_Noct_Base; totalValorRNFF += p.Recargo_Fest_Noct_Base;
+        totalHorasHEDom += s.HED_Dom; totalValorHEDom += p.HED_Dom;
+        totalHorasHENom += s.HEN_Dom; totalValorHENom += p.HEN_Dom;
+        totalHorasHEFest += s.HED_Fest; totalValorHEFest += p.HED_Fest;
+        totalHorasHENFest += s.HEN_Fest; totalValorHENFest += p.HEN_Fest;
         totalDeduccionesLey += dedLey;
         totalNetoPagar += netoPagar;
 
@@ -474,8 +488,12 @@ export function exportAllPayrollsToPDF(
             formatHours(s.HEN), formatCurrency(p.HEN, false),
             formatHours(s.Recargo_Dom_Diurno_Base), formatCurrency(p.Recargo_Dom_Diurno_Base, false),
             formatHours(s.Recargo_Dom_Noct_Base), formatCurrency(p.Recargo_Dom_Noct_Base, false),
-            formatHours(s.HEDD_F), formatCurrency(p.HEDD_F, false),
-            formatHours(s.HEND_F), formatCurrency(p.HEND_F, false),
+            formatHours(s.Recargo_Fest_Diurno_Base), formatCurrency(p.Recargo_Fest_Diurno_Base, false),
+            formatHours(s.Recargo_Fest_Noct_Base), formatCurrency(p.Recargo_Fest_Noct_Base, false),
+            formatHours(s.HED_Dom), formatCurrency(p.HED_Dom, false),
+            formatHours(s.HEN_Dom), formatCurrency(p.HEN_Dom, false),
+            formatHours(s.HED_Fest), formatCurrency(p.HED_Fest, false),
+            formatHours(s.HEN_Fest), formatCurrency(p.HEN_Fest, false),
             formatCurrency(dedLey, false), formatCurrency(netoPagar, false),
             '' // Signature
         ];
@@ -490,8 +508,12 @@ export function exportAllPayrollsToPDF(
             formatHours(totalHorasHEN), formatCurrency(totalValorHEN, false),
             formatHours(totalHorasRDDF), formatCurrency(totalValorRDDF, false),
             formatHours(totalHorasRNDF), formatCurrency(totalValorRNDF, false),
-            formatHours(totalHorasHEDDF), formatCurrency(totalValorHEDDF, false),
-            formatHours(totalHorasHENDF), formatCurrency(totalValorHENDF, false),
+            formatHours(totalHorasRFDF), formatCurrency(totalValorRFDF, false),
+            formatHours(totalHorasRNFF), formatCurrency(totalValorRNFF, false),
+            formatHours(totalHorasHEDom), formatCurrency(totalValorHEDom, false),
+            formatHours(totalHorasHENom), formatCurrency(totalValorHENom, false),
+            formatHours(totalHorasHEFest), formatCurrency(totalValorHEFest, false),
+            formatHours(totalHorasHENFest), formatCurrency(totalValorHENFest, false),
             formatCurrency(totalDeduccionesLey, false), formatCurrency(totalNetoPagar, false),
             ''
         ]

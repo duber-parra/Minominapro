@@ -159,8 +159,12 @@ export async function calculateSingleWorkday(
 
         // --- Inicializar contadores ---
         let horasClasificadas: CalculationResults['horasDetalladas'] = {
-            "Ordinaria_Diurna_Base": 0.0, "Recargo_Noct_Base": 0.0, "Recargo_Dom_Diurno_Base": 0.0,
-            "Recargo_Dom_Noct_Base": 0.0, "HED": 0.0, "HEN": 0.0, "HEDD_F": 0.0, "HEND_F": 0.0
+            "Ordinaria_Diurna_Base": 0.0, "Recargo_Noct_Base": 0.0, 
+            "Recargo_Dom_Diurno_Base": 0.0, "Recargo_Dom_Noct_Base": 0.0, 
+            "Recargo_Fest_Diurno_Base": 0.0, "Recargo_Fest_Noct_Base": 0.0,
+            "HED": 0.0, "HEN": 0.0, 
+            "HED_Dom": 0.0, "HEN_Dom": 0.0, 
+            "HED_Fest": 0.0, "HEN_Fest": 0.0
         };
         let duracionTotalTrabajadaSegundos = 0;
         let segundosTrabajadosAcumulados = 0;
@@ -187,9 +191,11 @@ export async function calculateSingleWorkday(
                 const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
                 const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
 
-                let esFestivoDominical: boolean;
+                let esFestivo_flag: boolean;
+                let esDominical_flag: boolean;
                 try {
-                    esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
+                    esFestivo_flag = await esFestivo(puntoEvaluacion);
+                    esDominical_flag = esDominical(puntoEvaluacion);
                 } catch (holidayError) {
                      console.error(`ID ${id}: Error verificando festivo/dominical para ${format(puntoEvaluacion, 'yyyy-MM-dd')}:`, holidayError);
                      // Decide how to handle: throw, return error, or default to false? Returning error is safer.
@@ -201,10 +207,12 @@ export async function calculateSingleWorkday(
                 let categoria: keyof typeof horasClasificadas | null = null;
 
                 if (esHoraExtra) {
-                    if (esFestivoDominical) categoria = esNocturna ? "HEND_F" : "HEDD_F";
+                    if (esFestivo_flag) categoria = esNocturna ? "HEN_Fest" : "HED_Fest";
+                    else if (esDominical_flag) categoria = esNocturna ? "HEN_Dom" : "HED_Dom";
                     else categoria = esNocturna ? "HEN" : "HED";
                 } else {
-                    if (esFestivoDominical) categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
+                    if (esFestivo_flag) categoria = esNocturna ? "Recargo_Fest_Noct_Base" : "Recargo_Fest_Diurno_Base";
+                    else if (esDominical_flag) categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
                     else if (esNocturna) categoria = "Recargo_Noct_Base";
                     else horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
                 }
@@ -223,10 +231,14 @@ export async function calculateSingleWorkday(
              "Recargo_Noct_Base": 0,
              "Recargo_Dom_Diurno_Base": 0,
              "Recargo_Dom_Noct_Base": 0,
+             "Recargo_Fest_Diurno_Base": 0,
+             "Recargo_Fest_Noct_Base": 0,
              "HED": 0,
              "HEN": 0,
-             "HEDD_F": 0,
-             "HEND_F": 0
+             "HED_Dom": 0,
+             "HEN_Dom": 0,
+             "HED_Fest": 0,
+             "HEN_Fest": 0
          };
 
          for (const key in horasClasificadas) {
