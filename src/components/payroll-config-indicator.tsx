@@ -32,8 +32,18 @@ export const PayrollConfigIndicator = () => {
       }
     };
 
+    // Listen for custom config change events
+    const handleConfigChange = () => {
+      checkCustomConfig();
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('payroll-config-changed', handleConfigChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('payroll-config-changed', handleConfigChange);
+    };
   }, []);
 
   if (isLoading) {

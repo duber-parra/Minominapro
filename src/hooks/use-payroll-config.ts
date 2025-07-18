@@ -50,6 +50,22 @@ export const usePayrollConfig = () => {
     };
 
     loadConfig();
+
+    // Listen for configuration changes from other components
+    const handleConfigChange = (event: CustomEvent) => {
+      const newConfig = event.detail as PayrollConfig;
+      setConfig(newConfig);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('payroll-config-changed', handleConfigChange as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('payroll-config-changed', handleConfigChange as EventListener);
+      }
+    };
   }, []);
 
   // Save configuration to localStorage
@@ -57,6 +73,13 @@ export const usePayrollConfig = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
       setConfig(newConfig);
+      
+      // Emit custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('payroll-config-changed', { 
+          detail: newConfig 
+        }));
+      }
     } catch (error) {
       console.error('Error saving payroll configuration:', error);
       throw new Error('Error al guardar la configuración');
@@ -86,6 +109,13 @@ export const usePayrollConfig = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
       setConfig(DEFAULT_CONFIG);
+      
+      // Emit custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('payroll-config-changed', { 
+          detail: DEFAULT_CONFIG 
+        }));
+      }
     } catch (error) {
       console.error('Error resetting payroll configuration:', error);
       throw new Error('Error al restablecer la configuración');
@@ -93,10 +123,10 @@ export const usePayrollConfig = () => {
   }, []);
 
   // Get current values for calculations
-  const getCurrentValues = useCallback(() => config.valores, [config.valores]);
+  const getCurrentValues = useCallback(() => config?.valores || DEFAULT_CONFIG.valores, [config?.valores]);
 
   // Get current auxilio transporte value
-  const getCurrentAuxilioTransporte = useCallback(() => config.auxilioTransporte, [config.auxilioTransporte]);
+  const getCurrentAuxilioTransporte = useCallback(() => config?.auxilioTransporte || DEFAULT_CONFIG.auxilioTransporte, [config?.auxilioTransporte]);
 
   return {
     config,

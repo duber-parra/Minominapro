@@ -33,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { usePayrollConfig, PayrollValues } from '@/hooks/use-payroll-config';
 import { PayrollConfigIndicator } from '@/components/payroll-config-indicator';
+import { VALORES as DEFAULT_VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL as DEFAULT_AUXILIO_TRANSPORTE } from '@/config/payroll-values';
 
 // Validation schema
 const configSchema = z.object({
@@ -96,17 +97,17 @@ export const PayrollConfigModal = () => {
   const form = useForm<ConfigFormValues>({
     resolver: zodResolver(configSchema),
     defaultValues: {
-      ...config.valores,
-      auxilioTransporte: config.auxilioTransporte,
+      ...(config?.valores || DEFAULT_VALORES),
+      auxilioTransporte: config?.auxilioTransporte || DEFAULT_AUXILIO_TRANSPORTE,
     },
   });
 
   // Update form when config changes
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && config) {
       form.reset({
-        ...config.valores,
-        auxilioTransporte: config.auxilioTransporte,
+        ...(config.valores || DEFAULT_VALORES),
+        auxilioTransporte: config.auxilioTransporte || DEFAULT_AUXILIO_TRANSPORTE,
       });
     }
   }, [config, isLoading, form]);
@@ -128,6 +129,13 @@ export const PayrollConfigModal = () => {
       });
 
       setIsOpen(false);
+      
+      // Force a small delay to ensure the config has been properly saved and propagated
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('payroll-config-updated'));
+        }
+      }, 100);
     } catch (error) {
       toast({
         title: 'Error al guardar',
@@ -145,6 +153,8 @@ export const PayrollConfigModal = () => {
         description: 'Los valores han sido restablecidos a los valores por defecto.',
         variant: 'default',
       });
+      // Emit event to notify other components of configuration change
+      window.dispatchEvent(new CustomEvent('payroll-config-changed'));
     } catch (error) {
       toast({
         title: 'Error al restablecer',
