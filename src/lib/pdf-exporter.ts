@@ -4,7 +4,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parse, getDay } from 'date-fns'; // Removed unused startOfWeek, endOfWeek
 import { es } from 'date-fns/locale';
-import type { QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee, ScheduleData, Department, ShiftAssignment } from '@/types'; // Combined type imports
+import type { QuincenalCalculationSummary, AdjustmentItem, SavedPayrollData, Employee } from '@/types'; // Combined type imports
+import type { ScheduleData, Department, ShiftAssignment } from '@/types/schedule'; // Schedule types
 import { labelMap, displayOrder, formatCurrency, formatHours } from '@/components/results-display'; // Import helpers
 import { formatTo12Hour, parseTimeToMinutes } from './time-utils'; // Import helpers from time-utils
 import { AUXILIO_TRANSPORTE_VALOR_QUINCENAL } from '@/config/payroll-values'; // Import constant
@@ -121,20 +122,12 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
 
      bodyHours.push(
          ['-', '-', '-'],
-         [
-              { content: 'Total Horas Trabajadas en Quincena:', styles: { fontStyle: 'bold' } },
-              { content: formatHours(data.summary.totalDuracionTrabajadaHorasQuincena), styles: { halign: 'right', fontStyle: 'bold' } },
-              ''
-         ],
-         [
-             { content: 'Total Recargos y Horas Extras Quincenales:', styles: { fontStyle: 'bold' } },
-             '',
-             { content: formatCurrency(data.summary.totalPagoRecargosExtrasQuincena), styles: { halign: 'right', fontStyle: 'bold', textColor: [76, 67, 223] } }
-         ]
+         ['Total Horas Trabajadas en Quincena:', formatHours(data.summary.totalDuracionTrabajadaHorasQuincena), ''],
+         ['Total Recargos y Horas Extras Quincenales:', '', formatCurrency(data.summary.totalPagoRecargosExtrasQuincena)]
     );
 
     autoTable(doc, {
-        head: headHours,
+        head: [['Categoría', 'Horas', 'Pago (Recargo/Extra)']],
         body: bodyHours,
         startY: currentY,
         theme: 'grid',
@@ -144,16 +137,16 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
             1: { halign: 'right' },
             2: { halign: 'right' },
         },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
              if (hookData.pageNumber > 1) addHeaderAndWatermark(doc, 10);
         },
-        didParseCell: (hookData) => {
+        didParseCell: (hookData: any) => {
              if (hookData.cell.raw === '-') {
                  hookData.cell.styles.fillColor = [230, 230, 230];
                  hookData.cell.styles.minCellHeight = 1;
                  hookData.cell.styles.cellPadding = 0;
-                 hookData.cell.text = '';
+                 hookData.cell.text = [];
             }
          }
     });
@@ -183,7 +176,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
     }
     devengadoBody.push(
          ['-', '-'],
-         [{ content: 'Total Devengado Bruto Estimado:', styles: { fontStyle: 'bold' } }, { content: formatCurrency(totalDevengadoBruto), styles: { fontStyle: 'bold' } }]
+         ['Total Devengado Bruto Estimado:', formatCurrency(totalDevengadoBruto)]
     );
 
     autoTable(doc, {
@@ -191,11 +184,11 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
         startY: currentY,
         theme: 'plain',
         columnStyles: { 1: { halign: 'right' } },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
              if (hookData.pageNumber > 1) addHeaderAndWatermark(doc, 10);
          },
-        didParseCell: (hookData) => {
+        didParseCell: (hookData: any) => {
              if (hookData.cell.raw === '-') {
                  hookData.cell.styles.fontStyle = 'normal';
                  hookData.cell.styles.minCellHeight = 1;
@@ -205,7 +198,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
                     doc.setDrawColor(200, 200, 200);
                     doc.line((hookData.cell as any).x, lineY, (hookData.cell as any).x + (hookData.cell as any).width, lineY);
                  }
-                 hookData.cell.text = '';
+                 hookData.cell.text = [];
             }
         }
     });
@@ -235,11 +228,11 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
 
 
     autoTable(doc, {
-        body: deduccionesLegalesBody,
+        body: deduccionesLegalesBody as any,
         startY: currentY,
         theme: 'plain',
         columnStyles: { 1: { halign: 'right' } },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
              if (hookData.pageNumber > 1) addHeaderAndWatermark(doc, 10);
          },
@@ -264,7 +257,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
             startY: currentY,
             theme: 'plain',
             columnStyles: { 1: { halign: 'right', textColor: [200, 0, 0] } },
-            didDrawPage: (hookData) => {
+            didDrawPage: (hookData: any) => {
                 currentY = hookData.cursor?.y ?? currentY;
                  if (hookData.pageNumber > 1) addHeaderAndWatermark(doc, 10);
             },
@@ -280,8 +273,10 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
      const netoAPagar = subtotalNetoParcial - totalOtrasDeduccionesManuales;
      doc.setFontSize(14);
      doc.setFont('helvetica', 'bold');
+     doc.setTextColor(76, 67, 223);
      doc.text('Neto a Pagar Estimado Quincenal:', leftMargin, currentY);
-     doc.text(formatCurrency(netoAPagar), pageWidth - rightMargin, currentY, { align: 'right', textColor: [76, 67, 223] });
+     doc.text(formatCurrency(netoAPagar), pageWidth - rightMargin, currentY, { align: 'right' });
+     doc.setTextColor(0, 0, 0); // Reset color
      currentY += 15;
 
     let signatureY = currentY;
@@ -390,42 +385,22 @@ export function exportAllPayrollsToPDF(
             { content: 'Nómina / Período', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
             { content: 'Sueldos y Tiempo', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
             { content: 'Horas Extras y Recargos Ordinarios', colSpan: 6, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'Horas Extras y Recargos Dom./Fest.', colSpan: 8, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Horas Extras y Recargos Dom./Fest.', colSpan: 16, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Compensatorio', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
             { content: 'Liquidación Final', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
             { content: 'Firma', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
         ],
         [
             // Sueldos y Tiempo
-            { content: 'Sal.Base', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'Aux.Transp.', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'Tot.Hrs.', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            'Sal.Base', 'Aux.Transp.', 'Tot.Hrs.',
             // Extras y Recargos Ordinarios
-            { content: 'H.RNO', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RNO', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HED', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HED', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HEN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HEN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            'H.RNO', 'V.RNO', 'H.HED', 'V.HED', 'H.HEN', 'V.HEN',
             // Extras y Recargos Dom./Fest.
-            { content: 'H.RDD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RDD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.RDN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RDN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.RFD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RFD', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.RFN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.RFN', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HEDom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HEDom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HENom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HENom', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HEFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HEFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'H.HENFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'V.HENFest', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            'H.RDD', 'V.RDD', 'H.RDN', 'V.RDN', 'H.RFD', 'V.RFD', 'H.RFN', 'V.RFN',
+            'H.HEDom', 'V.HEDom', 'H.HENom', 'V.HENom', 'H.HEFest', 'V.HEFest', 'H.HENFest', 'V.HENFest',
+            // Compensatorio (no sub-header needed as it has rowSpan: 2)
             // Liquidación Final
-            { content: 'Ded. Ley', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
-            { content: 'Neto Pagar', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7 } },
+            'Ded. Ley', 'Neto Pagar',
         ]
     ];
 
@@ -435,6 +410,7 @@ export function exportAllPayrollsToPDF(
     let totalHorasRFDF = 0, totalValorRFDF = 0, totalHorasRNFF = 0, totalValorRNFF = 0;
     let totalHorasHEDom = 0, totalValorHEDom = 0, totalHorasHENom = 0, totalValorHENom = 0;
     let totalHorasHEFest = 0, totalValorHEFest = 0, totalHorasHENFest = 0, totalValorHENFest = 0;
+    let totalCompensatorio = 0;
     let totalDeduccionesLey = 0, totalNetoPagar = 0;
 
     const employeeMap = new Map(employees.map(emp => [emp.id, emp.name]));
@@ -477,6 +453,7 @@ export function exportAllPayrollsToPDF(
         totalHorasHENom += s.HEN_Dom; totalValorHENom += p.HEN_Dom;
         totalHorasHEFest += s.HED_Fest; totalValorHEFest += p.HED_Fest;
         totalHorasHENFest += s.HEN_Fest; totalValorHENFest += p.HEN_Fest;
+        totalCompensatorio += p.Compensatorio_dia_festivo_trabajado;
         totalDeduccionesLey += dedLey;
         totalNetoPagar += netoPagar;
 
@@ -494,6 +471,7 @@ export function exportAllPayrollsToPDF(
             formatHours(s.HEN_Dom), formatCurrency(p.HEN_Dom, false),
             formatHours(s.HED_Fest), formatCurrency(p.HED_Fest, false),
             formatHours(s.HEN_Fest), formatCurrency(p.HEN_Fest, false),
+            formatCurrency(p.Compensatorio_dia_festivo_trabajado, false), // Compensatorio column
             formatCurrency(dedLey, false), formatCurrency(netoPagar, false),
             '' // Signature
         ];
@@ -501,7 +479,7 @@ export function exportAllPayrollsToPDF(
 
     const footer = [
         [
-            { content: 'TOTALES:', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold' } },
+            'TOTALES:', '',
             formatCurrency(totalSalarioBase, false), formatCurrency(totalAuxTransporte, false), formatHours(totalHorasGlobal),
             formatHours(totalHorasRNO), formatCurrency(totalValorRNO, false),
             formatHours(totalHorasHED), formatCurrency(totalValorHED, false),
@@ -514,13 +492,14 @@ export function exportAllPayrollsToPDF(
             formatHours(totalHorasHENom), formatCurrency(totalValorHENom, false),
             formatHours(totalHorasHEFest), formatCurrency(totalValorHEFest, false),
             formatHours(totalHorasHENFest), formatCurrency(totalValorHENFest, false),
+            formatCurrency(totalCompensatorio, false), // Compensatorio total
             formatCurrency(totalDeduccionesLey, false), formatCurrency(totalNetoPagar, false),
             ''
         ]
     ];
 
     autoTable(doc, {
-        head: head,
+        head: head as any,
         body: body,
         foot: footer,
         startY: currentY,
@@ -546,31 +525,35 @@ export function exportAllPayrollsToPDF(
         columnStyles: {
             0: { cellWidth: 60, halign: 'left', fontStyle: 'bold', fontSize: 7 }, // Empleado
             1: { cellWidth: 35, halign: 'left', fontSize: 6 }, // Periodo
-            // Sueldos y Tiempo
+            // Sueldos y Tiempo (columns 2-4)
             2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' },
-            // Horas Extras y Recargos Ordinarios (H, V, H, V, H, V)
+            // Horas Extras y Recargos Ordinarios (columns 5-10)
             5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' },
             8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' },
-            // Horas Extras y Recargos Dom./Fest. (H, V, H, V, H, V, H, V)
+            // Horas Extras y Recargos Dom./Fest. (columns 11-26)
             11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
             14: { halign: 'right' }, 15: { halign: 'right' }, 16: { halign: 'right' },
-            17: { halign: 'right' }, 18: { halign: 'right' },
-            // Liquidación Final
-            19: { halign: 'right' },
-            20: { halign: 'right', fontStyle: 'bold', textColor: [76, 67, 223] }, // Neto Pagar
-            21: { cellWidth: 35, minCellHeight: firmaHeight }, // Firma
+            17: { halign: 'right' }, 18: { halign: 'right' }, 19: { halign: 'right' },
+            20: { halign: 'right' }, 21: { halign: 'right' }, 22: { halign: 'right' },
+            23: { halign: 'right' }, 24: { halign: 'right' }, 25: { halign: 'right' },
+            26: { halign: 'right' },
+            // Liquidación Final (columns 27-29)
+            27: { halign: 'right' },
+            28: { halign: 'right' }, // Compensatorio
+            29: { halign: 'right', fontStyle: 'bold', textColor: [76, 67, 223] }, // Neto Pagar
+            30: { cellWidth: 35, minCellHeight: firmaHeight }, // Firma
         },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
-            const pageNum = doc.internal.getNumberOfPages();
+            const pageNum = (doc as any).internal.getCurrentPageInfo().pageNumber;
             addHeaderAndWatermark(doc, 10, true);
             doc.setFontSize(8);
             doc.setTextColor(150);
             doc.text(`Página ${pageNum}`, pageWidth - rightMargin, pageHeight - 10, { align: 'right' });
             doc.setTextColor(0);
         },
-         didDrawCell: (data) => {
-            if (data.column.index === 21 && data.cell.section === 'body') { // Signature column
+         didDrawCell: (data: any) => {
+            if (data.column.index === 29 && data.cell.section === 'body') { // Signature column (index 29 = 30th column)
                 const cell = data.cell;
                 if (cell.raw === '') { // Ensure it's an empty cell for signature
                     const signatureLineY = cell.y + cell.height - 5; // Adjust line position
@@ -728,10 +711,13 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
         },
         columnStyles: {
             0: { cellWidth: 100, fontStyle: 'bold' },
-            ...Array.from({ length: data.weekDates.length }).reduce((styles, _, index) => {
-                styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 };
-                return styles;
-            }, {} as any)
+            1: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            2: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            3: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            4: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            5: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            6: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            7: { cellWidth: 'auto', halign: 'center', fontSize: 8 }
         },
         styles: {
             cellPadding: 4,
@@ -740,9 +726,9 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
-            const pageNum = doc.internal.getNumberOfPages();
+            const pageNum = (doc as any).internal.getCurrentPageInfo().pageNumber;
             addScheduleHeaderAndWatermark(doc, 10);
             doc.setFontSize(8);
             doc.setTextColor(150);
@@ -889,14 +875,14 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         },
         columnStyles: {
             0: { cellWidth: 100, fontStyle: 'bold' },
-            ...Array.from({ length: allLocationData[0].weekDates.length + 1 }).reduce((styles, _, index) => {
-                if (index < allLocationData[0].weekDates.length) {
-                    styles[index + 1] = { cellWidth: 'auto', halign: 'center', fontSize: 8 };
-                } else {
-                    styles[index + 1] = { cellWidth: 40, halign: 'right', fontStyle: 'bold', fontSize: 8 };
-                }
-                return styles;
-            }, {} as any)
+            1: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            2: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            3: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            4: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            5: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            6: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            7: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
+            8: { cellWidth: 40, halign: 'right', fontStyle: 'bold', fontSize: 8 }
         },
         styles: {
             cellPadding: 3,
@@ -905,9 +891,9 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },
-        didDrawPage: (hookData) => {
+        didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
-            const pageNum = doc.internal.getNumberOfPages();
+            const pageNum = (doc as any).internal.getCurrentPageInfo().pageNumber;
             addScheduleHeaderAndWatermark(doc, 10);
             doc.setFontSize(8);
             doc.setTextColor(150);
