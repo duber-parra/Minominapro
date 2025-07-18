@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
 import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate, isSunday, getYear } from 'date-fns'; // Added isSunday, getYear
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL } from '@/config/payroll-values'; // Import VALORES and AUXILIO_TRANSPORTE_VALOR_QUINCENAL from new location
 import { usePayrollConfig } from '@/hooks/use-payroll-config';
 import { getAuxilioTransporteValue } from '@/lib/payroll-config-utils';
+import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
@@ -292,12 +293,68 @@ export default function Home() {
     const { toast } = useToast();
     const { setValue } = useForm<WorkdayFormValues>();
 
+    // State for holidays cache
+    const [holidaysCache, setHolidaysCache] = useState<{ [year: number]: Set<string> }>({});
+
+    // Functions to detect holidays and Sundays
+    const fetchAndCacheHolidays = useCallback(async (year: number): Promise<Set<string>> => {
+        if (holidaysCache[year]) {
+            return holidaysCache[year];
+        }
+        try {
+            const holidays = await getColombianHolidays(year);
+            if (!Array.isArray(holidays)) {
+                console.error(`Error: getColombianHolidays(${year}) did not return an array.`);
+                throw new Error(`Formato de respuesta inválido para festivos de ${year}.`);
+            }
+            const holidaySet = new Set(holidays.map(h => format(new Date(h.year, h.month - 1, h.day), 'yyyy-MM-dd')));
+            setHolidaysCache(prev => ({ ...prev, [year]: holidaySet }));
+            return holidaySet;
+        } catch (error) {
+            console.error(`Error fetching or caching holidays for ${year}:`, error);
+            return new Set(); // Return empty set on error
+        }
+    }, [holidaysCache]);
+
+    const isHoliday = useCallback(async (date: Date): Promise<boolean> => {
+        const year = getYear(date);
+        try {
+            const holidays = await fetchAndCacheHolidays(year);
+            const dateStr = format(date, 'yyyy-MM-dd');
+            return holidays.has(dateStr);
+        } catch (error) {
+            console.error(`Error checking if ${format(date, 'yyyy-MM-dd')} is a holiday:`, error);
+            return false;
+        }
+    }, [fetchAndCacheHolidays]);
+
+    const isDominical = useCallback((date: Date): boolean => {
+        return isSunday(date);
+    }, []);
+
+    // Function to get border class based on day type
+    const getDayBorderClass = useCallback((date: Date): string => {
+        const year = getYear(date);
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const isHolidayDate = holidaysCache[year]?.has(dateStr) || false;
+        const isSundayDate = isSunday(date);
+        
+        if (isHolidayDate || isSundayDate) {
+            return 'border-purple-500';
+        }
+        return '';
+    }, [holidaysCache]);
+
 
     useEffect(() => {
         const loadedEmployees = loadEmployeesFromLocalStorage([]);
         setEmployees(loadedEmployees);
         setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
-    }, []);
+        
+        // Pre-load holidays for current year
+        const currentYear = new Date().getFullYear();
+        fetchAndCacheHolidays(currentYear);
+    }, [fetchAndCacheHolidays]);
 
 
     useEffect(() => {
@@ -1203,7 +1260,7 @@ export default function Home() {
                  <CardContent>
                    <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                      {calculatedDays.map((day, index) => (
-                       <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : 'bg-card'}`}>
+                       <li key={day.id} className={`p-4 border-2 rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : `bg-card ${getDayBorderClass(day.inputData.startDate)}`}`}>
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
