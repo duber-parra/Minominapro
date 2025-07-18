@@ -8,18 +8,18 @@ import type { Employee } from './schedule'; // Import Employee type
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
    inputData: Omit<WorkdayFormValues, 'startDate'> & { startDate: Date }; // Use Date object consistently
    horasDetalladas: {
-     Ordinaria_Diurna_Base: number;      // Horas dentro de jornada (7.66h), diurnas, sin recargo base adicional
-     Recargo_Noct_Base: number;            // Horas dentro de jornada (7.66h), nocturnas (solo valor del recargo)
-     Recargo_Dom_Diurno_Base: number;      // Horas dentro de jornada (7.66h), dominical diurno (solo valor del recargo)
-     Recargo_Dom_Noct_Base: number;      // Horas dentro de jornada (7.66h), dominical nocturno (solo valor del recargo)
-     Recargo_Fest_Diurno_Base: number;    // Horas dentro de jornada (7.66h), festivo diurno (solo valor del recargo)
-     Recargo_Fest_Noct_Base: number;      // Horas dentro de jornada (7.66h), festivo nocturno (solo valor del recargo)
-     HED: number;                          // Horas extras (después de 7.66h), diurnas, laborales
-     HEN: number;                          // Horas extras (después de 7.66h), nocturnas, laborales
-     HED_Dom: number;                      // Horas extras (después de 7.66h), diurnas, dominicales
-     HEN_Dom: number;                      // Horas extras (después de 7.66h), nocturnas, dominicales
-     HED_Fest: number;                     // Horas extras (después de 7.66h), diurnas, festivas
-     HEN_Fest: number;                     // Horas extras (después de 7.66h), nocturnas, festivas
+     Ordinaria_Diurna_Base: number;      // Horas dentro de jornada (7.33h), diurnas, sin recargo base adicional
+     Recargo_Noct_Base: number;            // Horas dentro de jornada (7.33h), nocturnas (solo valor del recargo)
+     Recargo_Dom_Diurno_Base: number;      // Horas dentro de jornada (7.33h), dominical diurno (solo valor del recargo)
+     Recargo_Dom_Noct_Base: number;      // Horas dentro de jornada (7.33h), dominical nocturno (solo valor del recargo)
+     Recargo_Fest_Diurno_Base: number;    // Horas dentro de jornada (7.33h), festivo diurno (solo valor del recargo)
+     Recargo_Fest_Noct_Base: number;      // Horas dentro de jornada (7.33h), festivo nocturno (solo valor del recargo)
+     HED: number;                          // Horas extras (después de 7.33h), diurnas, laborales
+     HEN: number;                          // Horas extras (después de 7.33h), nocturnas, laborales
+     HED_Dom: number;                      // Horas extras (después de 7.33h), diurnas, dominicales
+     HEN_Dom: number;                      // Horas extras (después de 7.33h), nocturnas, dominicales
+     HED_Fest: number;                     // Horas extras (después de 7.33h), diurnas, festivas
+     HEN_Fest: number;                     // Horas extras (después de 7.33h), nocturnas, festivas
      Compensatorio_dia_festivo_trabajado: number; // Compensatorio por día festivo trabajado (valor fijo)
    };
    pagoDetallado: {

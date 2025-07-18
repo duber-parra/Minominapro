@@ -74,17 +74,17 @@ const FIELD_LABELS: Record<keyof PayrollValues, string> = {
 
 // Descriptions for each field
 const FIELD_DESCRIPTIONS: Record<keyof PayrollValues, string> = {
-  Recargo_Noct_Base: 'Recargo nocturno dentro de las 7.66h base, laboral',
-  HED: 'Hora extra diurna después de 7.66h, laboral, hasta las 9 PM',
-  HEN: 'Hora extra nocturna después de 7.66h, laboral',
-  Recargo_Dom_Diurno_Base: 'Recargo dominical diurno dentro de 7.66h',
-  Recargo_Dom_Noct_Base: 'Recargo dominical nocturno dentro de 7.66h',
-  Recargo_Fest_Diurno_Base: 'Recargo festivo diurno dentro de 7.66h',
-  Recargo_Fest_Noct_Base: 'Recargo festivo nocturno dentro de 7.66h',
-  HED_Dom: 'Hora extra dominical diurna después de 7.66h',
-  HEN_Dom: 'Hora extra dominical nocturna después de 7.66h',
-  HED_Fest: 'Hora extra festiva diurna después de 7.66h',
-  HEN_Fest: 'Hora extra festiva nocturna después de 7.66h',
+  Recargo_Noct_Base: 'Recargo nocturno dentro de las 7.33h base, laboral',
+  HED: 'Hora extra diurna después de 7.33h, laboral',
+  HEN: 'Hora extra nocturna después de 7.33h, laboral',
+  Recargo_Dom_Diurno_Base: 'Recargo dominical diurno dentro de 7.33h',
+  Recargo_Dom_Noct_Base: 'Recargo dominical nocturno dentro de 7.33h',
+  Recargo_Fest_Diurno_Base: 'Recargo festivo diurno dentro de 7.33h',
+  Recargo_Fest_Noct_Base: 'Recargo festivo nocturno dentro de 7.33h',
+  HED_Dom: 'Hora extra dominical diurna después de 7.33h',
+  HEN_Dom: 'Hora extra dominical nocturna después de 7.33h',
+  HED_Fest: 'Hora extra festiva diurna después de 7.33h',
+  HEN_Fest: 'Hora extra festiva nocturna después de 7.33h',
   Compensatorio_dia_festivo_trabajado: 'Compensatorio por día festivo trabajado (se paga si no se da día compensado remunerado)',
   Ordinaria_Diurna_Base: 'Horas base diurnas laborales (sin recargo adicional)',
 };

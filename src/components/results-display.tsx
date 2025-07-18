@@ -29,7 +29,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input'; // Import Input
 
 export const labelMap: Record<string, string> = {
-    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,66h)',
+    Ordinaria_Diurna_Base: 'Horas Base Diurnas (Umbral 7,33h)',
     Recargo_Noct_Base: 'Recargo Nocturno (Base)',
     Recargo_Dom_Diurno_Base: 'Recargo Dominical Diurno (Base)',
     Recargo_Dom_Noct_Base: 'Recargo Dominical Nocturno (Base)',

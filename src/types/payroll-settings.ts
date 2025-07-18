@@ -36,15 +36,15 @@ const defaultSummary: QuincenalCalculationSummary = {
 
 export const defaultPayrollSettings: PayrollSettings = {
   salarioBaseQuincenal: 711750,
-  umbralHorasDiarias: 7.66,
+  umbralHorasDiarias: 7.33,
   auxilioTransporte: 100000, // Consistent with previous usage in page.tsx
-  recargoNoctBase: 2166,
-  hed: 7736.41,
-  hen: 10830.98,
-  recargoDomDiurnoBase: 4642,
-  recargoDomNoctBase: 6808,
-  heddF: 12378.26,
-  hendF: 15472.83,
+  recargoNoctBase: 2265,
+  hed: 8087.5,
+  hen: 11323,
+  recargoDomDiurnoBase: 5176,
+  recargoDomNoctBase: 7440.5,
+  heddF: 13264,
+  hendF: 16498.5,
   ordinariaDiurnaBase: 0,
   incluyeDeduccionSalud: true, // Default to true
   incluyeDeduccionPension: true, // Default to true

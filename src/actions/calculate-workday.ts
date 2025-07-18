@@ -17,7 +17,7 @@ import type { PayrollValues } from '@/hooks/use-payroll-config';
 
 
 // --- Constantes y Parámetros ---
-const HORAS_JORNADA_BASE = 7.66; // Horas base antes de considerar extras
+const HORAS_JORNADA_BASE = 7.33; // Horas base antes de considerar extras
 const HORA_NOCTURNA_INICIO = 21; // 9 PM (inclusive)
 const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
 

@@ -66,17 +66,19 @@ Función de cálculo actualizada para:
 
 ## Valores Configurables
 
-### Horas Base (Dentro de 7.66h)
+### Horas Base (Dentro de 7.33h)
 - `Ordinaria_Diurna_Base`: Horas base diurnas laborales
 - `Recargo_Noct_Base`: Recargo nocturno base
 - `Recargo_Dom_Diurno_Base`: Recargo dominical diurno base
 - `Recargo_Dom_Noct_Base`: Recargo dominical nocturno base
 
-### Horas Extras (Después de 7.66h)
+### Horas Extras (Después de 7.33h)
 - `HED`: Hora Extra Diurna
 - `HEN`: Hora Extra Nocturna  
-- `HEDD_F`: Hora Extra Dominical/Festiva Diurna
-- `HEND_F`: Hora Extra Dominical/Festiva Nocturna
+- `HED_Dom`: Hora Extra Dominical Diurna
+- `HEN_Dom`: Hora Extra Dominical Nocturna
+- `HED_Fest`: Hora Extra Festiva Diurna
+- `HEN_Fest`: Hora Extra Festiva Nocturna
 
 ### Auxilio de Transporte
 - Valor quincenal configurable independientemente
