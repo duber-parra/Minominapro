@@ -12,7 +12,8 @@ import type { z } from 'zod';
 import type { WorkdayFormValues } from '@/components/workday-form'; // Adjust path if needed
 import type { CalculationResults, CalculationError } from '@/types';
 import { getColombianHolidays } from '@/services/colombian-holidays';
-import { VALORES } from '@/config/payroll-values'; // Import from new location
+import { getPayrollValores } from '@/lib/payroll-config-utils';
+import type { PayrollValues } from '@/hooks/use-payroll-config';
 
 
 // --- Constantes y Parámetros ---
@@ -91,11 +92,15 @@ function parseTimeString(timeStr: string | undefined): { hours: number; minutes:
 // --- Lógica Principal de Cálculo ---
 export async function calculateSingleWorkday(
     values: WorkdayFormValues,
-    id: string
+    id: string,
+    customValues?: PayrollValues
 ): Promise<CalculationResults | CalculationError> {
 
     try {
         const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
+
+        // --- Obtener valores de configuración ---
+        const VALORES = customValues || getPayrollValores();
 
         // --- Parseo y Validación Inicial ---
         if (!startDate || !isValid(startDate)) {
@@ -204,7 +209,7 @@ export async function calculateSingleWorkday(
                     else horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
                 }
 
-                if (categoria && categoria !== "Ordinaria_Diurna_Base") {
+                if (categoria) {
                     horasClasificadas[categoria] += 1 / 60;
                 }
             }
@@ -213,7 +218,16 @@ export async function calculateSingleWorkday(
 
          // --- Calcular Pagos ---
          let pagoTotalRecargosExtras = 0;
-         const pagoDetallado: { [key: string]: number } = {};
+         const pagoDetallado: CalculationResults['pagoDetallado'] = {
+             "Ordinaria_Diurna_Base": 0,
+             "Recargo_Noct_Base": 0,
+             "Recargo_Dom_Diurno_Base": 0,
+             "Recargo_Dom_Noct_Base": 0,
+             "HED": 0,
+             "HEN": 0,
+             "HEDD_F": 0,
+             "HEND_F": 0
+         };
 
          for (const key in horasClasificadas) {
              const horas = horasClasificadas[key as keyof typeof horasClasificadas];
@@ -228,9 +242,9 @@ export async function calculateSingleWorkday(
              if (horas > 0 && key !== "Ordinaria_Diurna_Base") {
                  const pagoCategoria = horas * (valorHora ?? 0);
                  pagoTotalRecargosExtras += pagoCategoria;
-                 pagoDetallado[key] = pagoCategoria;
+                 pagoDetallado[key as keyof typeof pagoDetallado] = pagoCategoria;
              } else {
-                 pagoDetallado[key] = 0; // Ensure all keys exist, base diurnal has 0 extra payment
+                 pagoDetallado[key as keyof typeof pagoDetallado] = 0; // Ensure all keys exist, base diurnal has 0 extra payment
              }
          }
 

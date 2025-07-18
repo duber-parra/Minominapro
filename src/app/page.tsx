@@ -35,6 +35,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL } from '@/config/payroll-values'; // Import VALORES and AUXILIO_TRANSPORTE_VALOR_QUINCENAL from new location
+import { usePayrollConfig } from '@/hooks/use-payroll-config';
+import { getAuxilioTransporteValue } from '@/lib/payroll-config-utils';
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
@@ -251,6 +253,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
 };
 
 export default function Home() {
+    const { getCurrentAuxilioTransporte, getCurrentValues } = usePayrollConfig();
     const [employeeId, setEmployeeId] = useState<string>('');
     const [payrollTitle, setPayrollTitle] = useState<string>(''); // New state for payroll title
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -475,7 +478,7 @@ export default function Home() {
                                 breakEndTime: employeeShift.breakEndTime,
                             };
                             const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-                            const result = await calculateSingleWorkday(shiftValues, calculationId);
+                            const result = await calculateSingleWorkday(shiftValues, calculationId, getCurrentValues());
 
                             if (isCalculationError(result)) {
                                 console.error(`Error calculando turno importado para ${dateKey}:`, result.error);
@@ -633,6 +636,7 @@ export default function Home() {
 
     const handleSaveResults = () => {
         if (!editingResultsId || !editedHours) return;
+        const currentValues = getCurrentValues(); // Get current configuration values
         setCalculatedDays(prevDays => {
             const index = prevDays.findIndex(day => day.id === editingResultsId);
             if (index === -1) return prevDays;
@@ -646,7 +650,7 @@ export default function Home() {
                 const hours = editedHours[category];
                 newTotalHorasTrabajadas += hours;
                 if (category !== "Ordinaria_Diurna_Base") {
-                    const valorHora = VALORES[category] ?? 0;
+                    const valorHora = currentValues[category] ?? 0;
                     const pagoCategoria = hours * valorHora;
                     newPagoDetallado[category] = pagoCategoria;
                     newPagoTotalRecargosExtras += pagoCategoria;
@@ -711,10 +715,11 @@ export default function Home() {
 
     const handleToggleTransporte = () => {
         setIncluyeAuxTransporte(prev => !prev);
+        const auxilioTransporteValue = getCurrentAuxilioTransporte();
         toast({
             title: `Auxilio de Transporte ${!incluyeAuxTransporte ? 'Activado' : 'Desactivado'}`,
             description: !incluyeAuxTransporte
-                         ? `Se sumará ${formatCurrency(AUXILIO_TRANSPORTE_VALOR_QUINCENAL)} al total devengado.`
+                         ? `Se sumará ${formatCurrency(auxilioTransporteValue)} al total devengado.`
                          : 'El auxilio de transporte no se incluirá en el cálculo.',
         });
     };
@@ -785,7 +790,7 @@ export default function Home() {
     const nextDayValues: WorkdayFormValues = { ...lastDay.inputData, startDate: nextDayDate };
     const newDayId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(nextDayValues, newDayId);
+        const result = await calculateSingleWorkday(nextDayValues, newDayId, getCurrentValues());
         handleDayCalculationComplete(result);
     } catch (error) {
         console.error("Error duplicando el turno:", error);
@@ -809,7 +814,7 @@ export default function Home() {
          return;
      }
      try {
-          const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR_QUINCENAL : 0;
+          const auxTransporteAplicado = incluyeAuxTransporte ? getCurrentAuxilioTransporte() : 0;
           const currentEmployee = employees.find(emp => emp.id === employeeId);
         exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, payrollTitle, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionSalud, incluyeDeduccionPension);
         toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });

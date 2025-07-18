@@ -32,6 +32,7 @@ import { CalendarIcon, Loader2, Save, Plus } from 'lucide-react';
 import { calculateSingleWorkday } from '@/actions/calculate-workday'; // Updated action name
 import type { CalculationResults, CalculationError } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { usePayrollConfig } from '@/hooks/use-payroll-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from '@/components/ui/switch';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
@@ -130,6 +131,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   isDateCalculated, // Receive the check function
 }) => {
   const { toast } = useToast();
+  const { getCurrentValues } = usePayrollConfig();
   const form = useForm<WorkdayFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData ? {
@@ -235,7 +237,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     onCalculationStart();
     const calculationId = existingId || `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(values, calculationId);
+        const result = await calculateSingleWorkday(values, calculationId, getCurrentValues());
         onCalculationComplete(result); 
 
         if (!existingId && !('error' in result)) {
