@@ -1309,7 +1309,16 @@ export default function Home() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                                   {displayOrder.map(key => {
                                       const hours = day.horasDetalladas[key];
-                                      if (hours > 0) { return ( <div key={key} className="flex justify-between items-center space-x-1"> <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span> </div> ); }
+                                      if (hours > 0) { 
+                                        return ( 
+                                          <div key={key} className="flex justify-between items-center space-x-1"> 
+                                            <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> 
+                                            <span className="font-medium text-right text-foreground flex-shrink-0">
+                                              {key === 'Compensatorio_dia_festivo_trabajado' ? 'Sí' : `${formatHours(hours)}h`}
+                                            </span> 
+                                          </div> 
+                                        ); 
+                                      }
                                       return null;
                                   })}
                                   <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed"> <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span> <span className="font-semibold text-right text-foreground">{formatHours(day.duracionTotalTrabajadaHoras)}h</span> </div>
