@@ -41,6 +41,7 @@ export const labelMap: Record<string, string> = {
     HEN_Dom: 'Horas Extras Nocturnas (Dominical)',
     HED_Fest: 'Horas Extras Diurnas (Festivo)',
     HEN_Fest: 'Horas Extras Nocturnas (Festivo)',
+    Compensatorio_dia_festivo_trabajado: 'Compensatorio Día Festivo Trabajado',
 };
 
 export const abbreviatedLabelMap: Record<string, string> = {
@@ -56,6 +57,7 @@ export const abbreviatedLabelMap: Record<string, string> = {
     HEN_Dom: 'HEN_Dom',
     HED_Fest: 'HED_Fest',
     HEN_Fest: 'HEN_Fest',
+    Compensatorio_dia_festivo_trabajado: 'Comp.Fest.',
 };
 
 export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
@@ -71,6 +73,7 @@ export const displayOrder: (keyof CalculationResults['horasDetalladas'])[] = [
     'HEN_Dom',
     'HED_Fest',
     'HEN_Fest',
+    'Compensatorio_dia_festivo_trabajado',
 ];
 
 // Updated formatCurrency to optionally omit symbol

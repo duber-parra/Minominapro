@@ -23,6 +23,7 @@ export const VALORES = {
     "Recargo_Fest_Noct_Base": 6808,     // Recargo Festivo Nocturno (dentro de 7.66h)
     "HED_Fest": 12378.26,                // Hora Extra Festiva Diurna (después de 7.66h)
     "HEN_Fest": 15472.83,                // Hora Extra Festiva Nocturna (después de 7.66h)
+    "Compensatorio_dia_festivo_trabajado": 47425, // Día festivo trabajado (se paga si no se da un día compensado remunerado)
     "Ordinaria_Diurna_Base": 0          // Horas base diurnas laborales (sin recargo adicional sobre el salario)
 };
 

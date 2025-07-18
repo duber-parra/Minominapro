@@ -97,7 +97,7 @@ export async function calculateSingleWorkday(
 ): Promise<CalculationResults | CalculationError> {
 
     try {
-        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
+        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime, compensatorioDiaFestivo } = values;
 
         // --- Obtener valores de configuración ---
         const VALORES = customValues || getPayrollValores();
@@ -127,6 +127,21 @@ export async function calculateSingleWorkday(
 
         if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
             return { error: `ID ${id}: La hora de fin debe ser posterior a la hora de inicio.` };
+        }
+
+        // --- Detectar si es día festivo ---
+        let isFestivo = false;
+        try {
+            const year = getYear(startDate);
+            const holidays = await getColombianHolidays(year);
+            const dateStr = format(startDate, 'yyyy-MM-dd');
+            isFestivo = holidays.some(holiday => {
+                const holidayDate = format(new Date(holiday.year, holiday.month - 1, holiday.day), 'yyyy-MM-dd');
+                return holidayDate === dateStr;
+            });
+        } catch (error) {
+            console.warn(`[calculateSingleWorkday: ID ${id}] Error checking holidays, assuming not festive:`, error);
+            isFestivo = false;
         }
 
         let parsedBreakStart: { hours: number; minutes: number } | null = null;
@@ -164,7 +179,7 @@ export async function calculateSingleWorkday(
             "Recargo_Fest_Diurno_Base": 0.0, "Recargo_Fest_Noct_Base": 0.0,
             "HED": 0.0, "HEN": 0.0, 
             "HED_Dom": 0.0, "HEN_Dom": 0.0, 
-            "HED_Fest": 0.0, "HEN_Fest": 0.0
+            "HED_Fest": 0.0, "HEN_Fest": 0.0, "Compensatorio_dia_festivo_trabajado": 0.0
         };
         let duracionTotalTrabajadaSegundos = 0;
         let segundosTrabajadosAcumulados = 0;
@@ -238,7 +253,8 @@ export async function calculateSingleWorkday(
              "HED_Dom": 0,
              "HEN_Dom": 0,
              "HED_Fest": 0,
-             "HEN_Fest": 0
+             "HEN_Fest": 0,
+             "Compensatorio_dia_festivo_trabajado": 0
          };
 
          for (const key in horasClasificadas) {
@@ -259,6 +275,14 @@ export async function calculateSingleWorkday(
                  pagoDetallado[key as keyof typeof pagoDetallado] = 0; // Ensure all keys exist, base diurnal has 0 extra payment
              }
          }
+
+        // --- Manejo de Compensatorio Día Festivo ---
+        if (compensatorioDiaFestivo && isFestivo) {
+            const compensatorioValue = VALORES.Compensatorio_dia_festivo_trabajado || 0;
+            horasClasificadas.Compensatorio_dia_festivo_trabajado = 1; // Mark as 1 unit
+            pagoDetallado.Compensatorio_dia_festivo_trabajado = compensatorioValue;
+            pagoTotalRecargosExtras += compensatorioValue;
+        }
 
         return {
             id: id,

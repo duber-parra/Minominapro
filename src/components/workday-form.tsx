@@ -52,6 +52,7 @@ export const formSchema = z.object({
   includeBreak: z.boolean().default(false),
   breakStartTime: z.string().optional(),
   breakEndTime: z.string().optional(),
+  compensatorioDiaFestivo: z.boolean().default(false),
 })
 .refine(
   (data) => {
@@ -139,6 +140,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate), // Ensure Date object
       breakStartTime: initialData.breakStartTime ?? '',
       breakEndTime: initialData.breakEndTime ?? '',
+      compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
     } : {
       startDate: new Date(),
       startTime: '12:00', 
@@ -147,6 +149,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       includeBreak: false,
       breakStartTime: '15:00', 
       breakEndTime: '18:00',   
+      compensatorioDiaFestivo: false,
     },
   });
 
@@ -159,6 +162,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate),
            breakStartTime: initialData.breakStartTime ?? '',
            breakEndTime: initialData.breakEndTime ?? '',
+           compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
        } : {
            startDate: new Date(),
            startTime: '12:00', 
@@ -167,6 +171,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            includeBreak: false,
            breakStartTime: '15:00', 
            breakEndTime: '18:00',   
+           compensatorioDiaFestivo: false,
        };
 
        if (timeRegex.test(resetValues.startTime) && timeRegex.test(resetValues.endTime)) {
@@ -466,6 +471,32 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                </CardContent>
              </Card>
            )}
+
+            {/* Compensatorio switch - only show on festive days */}
+            {isHoliday && !isCheckingHoliday && (
+              <FormField
+                control={control}
+                name="compensatorioDiaFestivo"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-primary/5 border-primary/20">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-primary font-medium">
+                        Compensatorio día festivo trabajado
+                      </FormLabel>
+                      <FormDescription className="text-sm text-muted-foreground">
+                        Se paga si no se da día compensado remunerado (47,425 pesos)
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
 
 
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isCheckingHoliday}> 

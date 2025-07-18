@@ -47,6 +47,7 @@ const configSchema = z.object({
   HEN_Dom: z.number().min(0, 'Debe ser un valor positivo'),
   HED_Fest: z.number().min(0, 'Debe ser un valor positivo'),
   HEN_Fest: z.number().min(0, 'Debe ser un valor positivo'),
+  Compensatorio_dia_festivo_trabajado: z.number().min(0, 'Debe ser un valor positivo'),
   Ordinaria_Diurna_Base: z.number().min(0, 'Debe ser un valor positivo'),
   auxilioTransporte: z.number().min(0, 'Debe ser un valor positivo'),
 });
@@ -66,6 +67,7 @@ const FIELD_LABELS: Record<keyof PayrollValues, string> = {
   HEN_Dom: 'Hora Extra Dominical Nocturna',
   HED_Fest: 'Hora Extra Festiva Diurna',
   HEN_Fest: 'Hora Extra Festiva Nocturna',
+  Compensatorio_dia_festivo_trabajado: 'Compensatorio Día Festivo Trabajado',
   Ordinaria_Diurna_Base: 'Ordinaria Diurna Base',
 };
 
@@ -82,6 +84,7 @@ const FIELD_DESCRIPTIONS: Record<keyof PayrollValues, string> = {
   HEN_Dom: 'Hora extra dominical nocturna después de 7.66h',
   HED_Fest: 'Hora extra festiva diurna después de 7.66h',
   HEN_Fest: 'Hora extra festiva nocturna después de 7.66h',
+  Compensatorio_dia_festivo_trabajado: 'Compensatorio por día festivo trabajado (se paga si no se da día compensado remunerado)',
   Ordinaria_Diurna_Base: 'Horas base diurnas laborales (sin recargo adicional)',
 };
 

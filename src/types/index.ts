@@ -20,6 +20,7 @@ import type { Employee } from './schedule'; // Import Employee type
      HEN_Dom: number;                      // Horas extras (después de 7.66h), nocturnas, dominicales
      HED_Fest: number;                     // Horas extras (después de 7.66h), diurnas, festivas
      HEN_Fest: number;                     // Horas extras (después de 7.66h), nocturnas, festivas
+     Compensatorio_dia_festivo_trabajado: number; // Compensatorio por día festivo trabajado (valor fijo)
    };
    pagoDetallado: {
      [key in keyof CalculationResults['horasDetalladas']]: number; // Pago por cada categoría de hora
