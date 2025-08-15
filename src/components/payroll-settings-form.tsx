@@ -129,7 +129,7 @@ export function PayrollSettingsForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Umbral Horas Diarias (Base)</FormLabel>
-                    <FormControl><Input type="number" step="0.01" placeholder="Ej: 7.66" {...field} /></FormControl>
+                    <FormControl><Input type="number" step="0.01" placeholder="Ej: 7.33" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

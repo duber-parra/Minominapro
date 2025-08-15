@@ -32,6 +32,7 @@ import { CalendarIcon, Loader2, Save, Plus } from 'lucide-react';
 import { calculateSingleWorkday } from '@/actions/calculate-workday'; // Updated action name
 import type { CalculationResults, CalculationError } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { usePayrollConfig } from '@/hooks/use-payroll-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from '@/components/ui/switch';
 import { getColombianHolidays } from '@/services/colombian-holidays'; // Import holiday service
@@ -51,6 +52,7 @@ export const formSchema = z.object({
   includeBreak: z.boolean().default(false),
   breakStartTime: z.string().optional(),
   breakEndTime: z.string().optional(),
+  compensatorioDiaFestivo: z.boolean().default(false),
 })
 .refine(
   (data) => {
@@ -130,6 +132,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   isDateCalculated, // Receive the check function
 }) => {
   const { toast } = useToast();
+  const { getCurrentValues } = usePayrollConfig();
   const form = useForm<WorkdayFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData ? {
@@ -137,6 +140,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate), // Ensure Date object
       breakStartTime: initialData.breakStartTime ?? '',
       breakEndTime: initialData.breakEndTime ?? '',
+      compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
     } : {
       startDate: new Date(),
       startTime: '12:00', 
@@ -145,6 +149,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       includeBreak: false,
       breakStartTime: '15:00', 
       breakEndTime: '18:00',   
+      compensatorioDiaFestivo: false,
     },
   });
 
@@ -157,6 +162,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            startDate: initialData.startDate instanceof Date ? initialData.startDate : new Date(initialData.startDate),
            breakStartTime: initialData.breakStartTime ?? '',
            breakEndTime: initialData.breakEndTime ?? '',
+           compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
        } : {
            startDate: new Date(),
            startTime: '12:00', 
@@ -165,6 +171,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            includeBreak: false,
            breakStartTime: '15:00', 
            breakEndTime: '18:00',   
+           compensatorioDiaFestivo: false,
        };
 
        if (timeRegex.test(resetValues.startTime) && timeRegex.test(resetValues.endTime)) {
@@ -181,6 +188,25 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const { control, setValue, trigger, watch, getValues } = form;
   const startDate = watch('startDate');
   const includeBreak = watch('includeBreak');
+  const startTime = watch('startTime');
+  const endTime = watch('endTime');
+
+  // Efecto para detectar automáticamente si termina al día siguiente
+  useEffect(() => {
+    if (startTime && endTime && timeRegex.test(startTime) && timeRegex.test(endTime)) {
+      const [startH] = startTime.split(':').map(Number);
+      const [endH] = endTime.split(':').map(Number);
+      
+      // Si la hora de fin es menor que la de inicio, automáticamente activa "termina al día siguiente"
+      if (endH < startH) {
+        setValue('endsNextDay', true, { shouldValidate: true });
+      } else if (endH > startH) {
+        // Si la hora de fin es mayor que la de inicio, desactiva "termina al día siguiente"
+        setValue('endsNextDay', false, { shouldValidate: true });
+      }
+      // Si son iguales (endH === startH), no cambia el valor actual del switch
+    }
+  }, [startTime, endTime, setValue]);
 
    useEffect(() => {
        if (startDate && isValid(startDate)) {
@@ -235,7 +261,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     onCalculationStart();
     const calculationId = existingId || `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(values, calculationId);
+        const result = await calculateSingleWorkday(values, calculationId, getCurrentValues());
         onCalculationComplete(result); 
 
         if (!existingId && !('error' in result)) {
@@ -464,6 +490,32 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                </CardContent>
              </Card>
            )}
+
+            {/* Compensatorio switch - only show on festive days */}
+            {isHoliday && !isCheckingHoliday && (
+              <FormField
+                control={control}
+                name="compensatorioDiaFestivo"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-primary/5 border-primary/20">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-primary font-medium">
+                        Compensatorio día festivo trabajado
+                      </FormLabel>
+                      <FormDescription className="text-sm text-muted-foreground">
+                        Se paga si no se da día compensado remunerado
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
 
 
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isCheckingHoliday}> 

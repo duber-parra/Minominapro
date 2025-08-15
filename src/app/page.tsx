@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input'; // Import Input for editing hours and employee ID
 import { Label } from '@/components/ui/label'; // Import Label for editing hours and employee ID
 import { Trash2, Edit, PlusCircle, Calculator, DollarSign, Clock, Calendar as CalendarIcon, Save, X, PencilLine, User, FolderSync, Eraser, FileDown, Library, FileSearch, MinusCircle, CopyPlus, Loader2, Copy, Upload, Coffee, FileUp, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText } from 'lucide-react'; // Added Library, FileSearch, Upload, Coffee, Download, FolderUp, FileJson, ShieldAlert, ShieldCheck, FileText
-import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate } from 'date-fns'; // Renamed isValid to avoid conflict, added isValidDate alias and isSameDayFns
+import { format, parseISO, startOfMonth, endOfMonth, setDate, parse as parseDateFns, addDays, isSameDay as isSameDayFns, isWithinInterval, isValid as isValidDate, isSunday, getYear } from 'date-fns'; // Added isSunday, getYear
 import { es } from 'date-fns/locale';
 import { calculateSingleWorkday } from '@/actions/calculate-workday';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +35,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL } from '@/config/payroll-values'; // Import VALORES and AUXILIO_TRANSPORTE_VALOR_QUINCENAL from new location
+import { usePayrollConfig } from '@/hooks/use-payroll-config';
+import { getAuxilioTransporteValue } from '@/lib/payroll-config-utils';
+import { getColombianHolidays } from '@/services/colombian-holidays';
 import { exportPayrollToPDF, exportAllPayrollsToPDF } from '@/lib/pdf-exporter'; // Import PDF export functions
 import { calculateQuincenalSummary } from '@/lib/payroll-utils'; // Import the summary calculation utility
 import { SavedPayrollList } from '@/components/saved-payroll-list'; // Import the new component
@@ -219,8 +222,8 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
                             periodStart: startDate,
                             periodEnd: endDate,
                             summary: summary || {
-                                totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
-                                totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+                                totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
+                                totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
                                 totalPagoRecargosExtrasQuincena: 0,
                                 salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
                                 pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO,
@@ -251,6 +254,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
 };
 
 export default function Home() {
+    const { getCurrentAuxilioTransporte, getCurrentValues } = usePayrollConfig();
     const [employeeId, setEmployeeId] = useState<string>('');
     const [payrollTitle, setPayrollTitle] = useState<string>(''); // New state for payroll title
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -289,12 +293,68 @@ export default function Home() {
     const { toast } = useToast();
     const { setValue } = useForm<WorkdayFormValues>();
 
+    // State for holidays cache
+    const [holidaysCache, setHolidaysCache] = useState<{ [year: number]: Set<string> }>({});
+
+    // Functions to detect holidays and Sundays
+    const fetchAndCacheHolidays = useCallback(async (year: number): Promise<Set<string>> => {
+        if (holidaysCache[year]) {
+            return holidaysCache[year];
+        }
+        try {
+            const holidays = await getColombianHolidays(year);
+            if (!Array.isArray(holidays)) {
+                console.error(`Error: getColombianHolidays(${year}) did not return an array.`);
+                throw new Error(`Formato de respuesta inválido para festivos de ${year}.`);
+            }
+            const holidaySet = new Set(holidays.map(h => format(new Date(h.year, h.month - 1, h.day), 'yyyy-MM-dd')));
+            setHolidaysCache(prev => ({ ...prev, [year]: holidaySet }));
+            return holidaySet;
+        } catch (error) {
+            console.error(`Error fetching or caching holidays for ${year}:`, error);
+            return new Set(); // Return empty set on error
+        }
+    }, [holidaysCache]);
+
+    const isHoliday = useCallback(async (date: Date): Promise<boolean> => {
+        const year = getYear(date);
+        try {
+            const holidays = await fetchAndCacheHolidays(year);
+            const dateStr = format(date, 'yyyy-MM-dd');
+            return holidays.has(dateStr);
+        } catch (error) {
+            console.error(`Error checking if ${format(date, 'yyyy-MM-dd')} is a holiday:`, error);
+            return false;
+        }
+    }, [fetchAndCacheHolidays]);
+
+    const isDominical = useCallback((date: Date): boolean => {
+        return isSunday(date);
+    }, []);
+
+    // Function to get border class based on day type
+    const getDayBorderClass = useCallback((date: Date): string => {
+        const year = getYear(date);
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const isHolidayDate = holidaysCache[year]?.has(dateStr) || false;
+        const isSundayDate = isSunday(date);
+        
+        if (isHolidayDate || isSundayDate) {
+            return 'border-purple-500';
+        }
+        return '';
+    }, [holidaysCache]);
+
 
     useEffect(() => {
         const loadedEmployees = loadEmployeesFromLocalStorage([]);
         setEmployees(loadedEmployees);
         setSavedPayrolls(loadAllSavedPayrolls(loadedEmployees));
-    }, []);
+        
+        // Pre-load holidays for current year
+        const currentYear = new Date().getFullYear();
+        fetchAndCacheHolidays(currentYear);
+    }, [fetchAndCacheHolidays]);
 
 
     useEffect(() => {
@@ -475,7 +535,7 @@ export default function Home() {
                                 breakEndTime: employeeShift.breakEndTime,
                             };
                             const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-                            const result = await calculateSingleWorkday(shiftValues, calculationId);
+                            const result = await calculateSingleWorkday(shiftValues, calculationId, getCurrentValues());
 
                             if (isCalculationError(result)) {
                                 console.error(`Error calculando turno importado para ${dateKey}:`, result.error);
@@ -633,6 +693,7 @@ export default function Home() {
 
     const handleSaveResults = () => {
         if (!editingResultsId || !editedHours) return;
+        const currentValues = getCurrentValues(); // Get current configuration values
         setCalculatedDays(prevDays => {
             const index = prevDays.findIndex(day => day.id === editingResultsId);
             if (index === -1) return prevDays;
@@ -646,7 +707,7 @@ export default function Home() {
                 const hours = editedHours[category];
                 newTotalHorasTrabajadas += hours;
                 if (category !== "Ordinaria_Diurna_Base") {
-                    const valorHora = VALORES[category] ?? 0;
+                    const valorHora = currentValues[category] ?? 0;
                     const pagoCategoria = hours * valorHora;
                     newPagoDetallado[category] = pagoCategoria;
                     newPagoTotalRecargosExtras += pagoCategoria;
@@ -711,10 +772,11 @@ export default function Home() {
 
     const handleToggleTransporte = () => {
         setIncluyeAuxTransporte(prev => !prev);
+        const auxilioTransporteValue = getCurrentAuxilioTransporte();
         toast({
             title: `Auxilio de Transporte ${!incluyeAuxTransporte ? 'Activado' : 'Desactivado'}`,
             description: !incluyeAuxTransporte
-                         ? `Se sumará ${formatCurrency(AUXILIO_TRANSPORTE_VALOR_QUINCENAL)} al total devengado.`
+                         ? `Se sumará ${formatCurrency(auxilioTransporteValue)} al total devengado.`
                          : 'El auxilio de transporte no se incluirá en el cálculo.',
         });
     };
@@ -744,8 +806,8 @@ export default function Home() {
         if (calculatedDays.length === 0 && !incluyeAuxTransporte && otrosIngresos.length === 0 && otrasDeducciones.length === 0 && incluyeDeduccionSalud && incluyeDeduccionPension) return null;
        const baseSummary = calculateQuincenalSummary(calculatedDays, SALARIO_BASE_QUINCENAL_FIJO);
        const finalSummary: QuincenalCalculationSummary = baseSummary || {
-           totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
-           totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+           totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
+           totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
            totalPagoRecargosExtrasQuincena: 0,
            salarioBaseQuincenal: SALARIO_BASE_QUINCENAL_FIJO,
            pagoTotalConSalarioQuincena: SALARIO_BASE_QUINCENAL_FIJO,
@@ -785,7 +847,7 @@ export default function Home() {
     const nextDayValues: WorkdayFormValues = { ...lastDay.inputData, startDate: nextDayDate };
     const newDayId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(nextDayValues, newDayId);
+        const result = await calculateSingleWorkday(nextDayValues, newDayId, getCurrentValues());
         handleDayCalculationComplete(result);
     } catch (error) {
         console.error("Error duplicando el turno:", error);
@@ -809,7 +871,7 @@ export default function Home() {
          return;
      }
      try {
-          const auxTransporteAplicado = incluyeAuxTransporte ? AUXILIO_TRANSPORTE_VALOR_QUINCENAL : 0;
+          const auxTransporteAplicado = incluyeAuxTransporte ? getCurrentAuxilioTransporte() : 0;
           const currentEmployee = employees.find(emp => emp.id === employeeId);
         exportPayrollToPDF(currentSummary, employeeId, currentEmployee?.name, payPeriodStart, payPeriodEnd, payrollTitle, otrosIngresos, otrasDeducciones, auxTransporteAplicado, incluyeDeduccionSalud, incluyeDeduccionPension);
         toast({ title: 'PDF Exportado', description: `Comprobante de nómina para ${currentEmployee?.name || employeeId} generado.` });
@@ -1198,7 +1260,7 @@ export default function Home() {
                  <CardContent>
                    <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                      {calculatedDays.map((day, index) => (
-                       <li key={day.id} className={`p-4 border rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : 'bg-card'}`}>
+                       <li key={day.id} className={`p-4 border-2 rounded-lg shadow-sm transition-colors ${editingResultsId === day.id ? 'bg-primary/10 border-primary' : `bg-card ${getDayBorderClass(day.inputData.startDate)}`}`}>
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="font-semibold text-lg mb-1 text-foreground">Turno {index + 1}</p>
@@ -1247,7 +1309,16 @@ export default function Home() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                                   {displayOrder.map(key => {
                                       const hours = day.horasDetalladas[key];
-                                      if (hours > 0) { return ( <div key={key} className="flex justify-between items-center space-x-1"> <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> <span className="font-medium text-right text-foreground flex-shrink-0">{formatHours(hours)}h</span> </div> ); }
+                                      if (hours > 0) { 
+                                        return ( 
+                                          <div key={key} className="flex justify-between items-center space-x-1"> 
+                                            <span className="text-muted-foreground truncate mr-1">{abbreviatedLabelMap[key] || key}:</span> 
+                                            <span className="font-medium text-right text-foreground flex-shrink-0">
+                                              {key === 'Compensatorio_dia_festivo_trabajado' ? 'Sí' : `${formatHours(hours)}h`}
+                                            </span> 
+                                          </div> 
+                                        ); 
+                                      }
                                       return null;
                                   })}
                                   <div className="flex justify-between items-center col-span-full mt-1 pt-1 border-t border-dashed"> <span className="text-muted-foreground font-medium">Total Horas Trabajadas:</span> <span className="font-semibold text-right text-foreground">{formatHours(day.duracionTotalTrabajadaHoras)}h</span> </div>

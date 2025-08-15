@@ -12,11 +12,12 @@ import type { z } from 'zod';
 import type { WorkdayFormValues } from '@/components/workday-form'; // Adjust path if needed
 import type { CalculationResults, CalculationError } from '@/types';
 import { getColombianHolidays } from '@/services/colombian-holidays';
-import { VALORES } from '@/config/payroll-values'; // Import from new location
+import { getPayrollValores } from '@/lib/payroll-config-utils';
+import type { PayrollValues } from '@/hooks/use-payroll-config';
 
 
 // --- Constantes y Parámetros ---
-const HORAS_JORNADA_BASE = 7.66; // Horas base antes de considerar extras
+const HORAS_JORNADA_BASE = 7.33; // Horas base antes de considerar extras
 const HORA_NOCTURNA_INICIO = 21; // 9 PM (inclusive)
 const HORA_NOCTURNA_FIN = 6;   // 6 AM (exclusive)
 
@@ -91,11 +92,15 @@ function parseTimeString(timeStr: string | undefined): { hours: number; minutes:
 // --- Lógica Principal de Cálculo ---
 export async function calculateSingleWorkday(
     values: WorkdayFormValues,
-    id: string
+    id: string,
+    customValues?: PayrollValues
 ): Promise<CalculationResults | CalculationError> {
 
     try {
-        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime } = values;
+        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime, compensatorioDiaFestivo } = values;
+
+        // --- Obtener valores de configuración ---
+        const VALORES = customValues || getPayrollValores();
 
         // --- Parseo y Validación Inicial ---
         if (!startDate || !isValid(startDate)) {
@@ -122,6 +127,21 @@ export async function calculateSingleWorkday(
 
         if (isBefore(finDt, inicioDt) || isEqual(finDt, inicioDt)) {
             return { error: `ID ${id}: La hora de fin debe ser posterior a la hora de inicio.` };
+        }
+
+        // --- Detectar si es día festivo ---
+        let isFestivo = false;
+        try {
+            const year = getYear(startDate);
+            const holidays = await getColombianHolidays(year);
+            const dateStr = format(startDate, 'yyyy-MM-dd');
+            isFestivo = holidays.some(holiday => {
+                const holidayDate = format(new Date(holiday.year, holiday.month - 1, holiday.day), 'yyyy-MM-dd');
+                return holidayDate === dateStr;
+            });
+        } catch (error) {
+            console.warn(`[calculateSingleWorkday: ID ${id}] Error checking holidays, assuming not festive:`, error);
+            isFestivo = false;
         }
 
         let parsedBreakStart: { hours: number; minutes: number } | null = null;
@@ -154,8 +174,12 @@ export async function calculateSingleWorkday(
 
         // --- Inicializar contadores ---
         let horasClasificadas: CalculationResults['horasDetalladas'] = {
-            "Ordinaria_Diurna_Base": 0.0, "Recargo_Noct_Base": 0.0, "Recargo_Dom_Diurno_Base": 0.0,
-            "Recargo_Dom_Noct_Base": 0.0, "HED": 0.0, "HEN": 0.0, "HEDD_F": 0.0, "HEND_F": 0.0
+            "Ordinaria_Diurna_Base": 0.0, "Recargo_Noct_Base": 0.0, 
+            "Recargo_Dom_Diurno_Base": 0.0, "Recargo_Dom_Noct_Base": 0.0, 
+            "Recargo_Fest_Diurno_Base": 0.0, "Recargo_Fest_Noct_Base": 0.0,
+            "HED": 0.0, "HEN": 0.0, 
+            "HED_Dom": 0.0, "HEN_Dom": 0.0, 
+            "HED_Fest": 0.0, "HEN_Fest": 0.0, "Compensatorio_dia_festivo_trabajado": 0.0
         };
         let duracionTotalTrabajadaSegundos = 0;
         let segundosTrabajadosAcumulados = 0;
@@ -182,9 +206,11 @@ export async function calculateSingleWorkday(
                 const horasTrabajadasAcumuladas = segundosTrabajadosAcumulados / 3600.0;
                 const esHoraExtra = horasTrabajadasAcumuladas > HORAS_JORNADA_BASE;
 
-                let esFestivoDominical: boolean;
+                let esFestivo_flag: boolean;
+                let esDominical_flag: boolean;
                 try {
-                    esFestivoDominical = await esFestivo(puntoEvaluacion) || esDominical(puntoEvaluacion);
+                    esFestivo_flag = await esFestivo(puntoEvaluacion);
+                    esDominical_flag = esDominical(puntoEvaluacion);
                 } catch (holidayError) {
                      console.error(`ID ${id}: Error verificando festivo/dominical para ${format(puntoEvaluacion, 'yyyy-MM-dd')}:`, holidayError);
                      // Decide how to handle: throw, return error, or default to false? Returning error is safer.
@@ -196,15 +222,17 @@ export async function calculateSingleWorkday(
                 let categoria: keyof typeof horasClasificadas | null = null;
 
                 if (esHoraExtra) {
-                    if (esFestivoDominical) categoria = esNocturna ? "HEND_F" : "HEDD_F";
+                    if (esFestivo_flag) categoria = esNocturna ? "HEN_Fest" : "HED_Fest";
+                    else if (esDominical_flag) categoria = esNocturna ? "HEN_Dom" : "HED_Dom";
                     else categoria = esNocturna ? "HEN" : "HED";
                 } else {
-                    if (esFestivoDominical) categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
+                    if (esFestivo_flag) categoria = esNocturna ? "Recargo_Fest_Noct_Base" : "Recargo_Fest_Diurno_Base";
+                    else if (esDominical_flag) categoria = esNocturna ? "Recargo_Dom_Noct_Base" : "Recargo_Dom_Diurno_Base";
                     else if (esNocturna) categoria = "Recargo_Noct_Base";
                     else horasClasificadas["Ordinaria_Diurna_Base"] += 1 / 60;
                 }
 
-                if (categoria && categoria !== "Ordinaria_Diurna_Base") {
+                if (categoria) {
                     horasClasificadas[categoria] += 1 / 60;
                 }
             }
@@ -213,7 +241,21 @@ export async function calculateSingleWorkday(
 
          // --- Calcular Pagos ---
          let pagoTotalRecargosExtras = 0;
-         const pagoDetallado: { [key: string]: number } = {};
+         const pagoDetallado: CalculationResults['pagoDetallado'] = {
+             "Ordinaria_Diurna_Base": 0,
+             "Recargo_Noct_Base": 0,
+             "Recargo_Dom_Diurno_Base": 0,
+             "Recargo_Dom_Noct_Base": 0,
+             "Recargo_Fest_Diurno_Base": 0,
+             "Recargo_Fest_Noct_Base": 0,
+             "HED": 0,
+             "HEN": 0,
+             "HED_Dom": 0,
+             "HEN_Dom": 0,
+             "HED_Fest": 0,
+             "HEN_Fest": 0,
+             "Compensatorio_dia_festivo_trabajado": 0
+         };
 
          for (const key in horasClasificadas) {
              const horas = horasClasificadas[key as keyof typeof horasClasificadas];
@@ -228,11 +270,19 @@ export async function calculateSingleWorkday(
              if (horas > 0 && key !== "Ordinaria_Diurna_Base") {
                  const pagoCategoria = horas * (valorHora ?? 0);
                  pagoTotalRecargosExtras += pagoCategoria;
-                 pagoDetallado[key] = pagoCategoria;
+                 pagoDetallado[key as keyof typeof pagoDetallado] = pagoCategoria;
              } else {
-                 pagoDetallado[key] = 0; // Ensure all keys exist, base diurnal has 0 extra payment
+                 pagoDetallado[key as keyof typeof pagoDetallado] = 0; // Ensure all keys exist, base diurnal has 0 extra payment
              }
          }
+
+        // --- Manejo de Compensatorio Día Festivo ---
+        if (compensatorioDiaFestivo && isFestivo) {
+            const compensatorioValue = VALORES.Compensatorio_dia_festivo_trabajado || 0;
+            horasClasificadas.Compensatorio_dia_festivo_trabajado = 1; // Mark as 1 unit
+            pagoDetallado.Compensatorio_dia_festivo_trabajado = compensatorioValue;
+            pagoTotalRecargosExtras += compensatorioValue;
+        }
 
         return {
             id: id,

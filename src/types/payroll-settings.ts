@@ -25,8 +25,8 @@ export interface PayrollSettings {
 }
 
 const defaultSummary: QuincenalCalculationSummary = {
-    totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
-    totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, HED: 0, HEN: 0, HEDD_F: 0, HEND_F: 0 },
+    totalHorasDetalladas: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
+    totalPagoDetallado: { Ordinaria_Diurna_Base: 0, Recargo_Noct_Base: 0, Recargo_Dom_Diurno_Base: 0, Recargo_Dom_Noct_Base: 0, Recargo_Fest_Diurno_Base: 0, Recargo_Fest_Noct_Base: 0, HED: 0, HEN: 0, HED_Dom: 0, HEN_Dom: 0, HED_Fest: 0, HEN_Fest: 0 },
     totalPagoRecargosExtrasQuincena: 0,
     salarioBaseQuincenal: 0, // Will be overridden by the main salarioBaseQuincenal
     pagoTotalConSalarioQuincena: 0, // Will be overridden
@@ -36,15 +36,15 @@ const defaultSummary: QuincenalCalculationSummary = {
 
 export const defaultPayrollSettings: PayrollSettings = {
   salarioBaseQuincenal: 711750,
-  umbralHorasDiarias: 7.66,
+  umbralHorasDiarias: 7.33,
   auxilioTransporte: 100000, // Consistent with previous usage in page.tsx
-  recargoNoctBase: 2166,
-  hed: 7736.41,
-  hen: 10830.98,
-  recargoDomDiurnoBase: 4642,
-  recargoDomNoctBase: 6808,
-  heddF: 12378.26,
-  hendF: 15472.83,
+  recargoNoctBase: 2265,
+  hed: 8087.5,
+  hen: 11323,
+  recargoDomDiurnoBase: 5176,
+  recargoDomNoctBase: 7440.5,
+  heddF: 13264,
+  hendF: 16498.5,
   ordinariaDiurnaBase: 0,
   incluyeDeduccionSalud: true, // Default to true
   incluyeDeduccionPension: true, // Default to true

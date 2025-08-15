@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { PayrollConfigModal } from "@/components/payroll-config-modal";
 import { useState, useEffect, ReactNode } from 'react'; // Import hooks
 import { usePathname, useRouter } from 'next/navigation'; // Import usePathname and useRouter
 import { Loader2, LogIn, User as UserIcon, LogOut } from 'lucide-react'; // Import Loader icon, LogIn icon, UserIcon, LogOut
@@ -154,8 +155,10 @@ export default function RootLayout({
                              <span className="text-sm font-medium text-foreground hidden sm:inline">
                                 {currentUser.displayName || currentUser.email}
                              </span>
+                             {/* Payroll Configuration Button */}
+                             <PayrollConfigModal />
                             <Link href="/profile-setup" passHref>
-                                <Button variant="ghost" size="sm" onClick={(e) => handleNavClick(e, '/profile-setup')} title="Configurar Perfil">
+                                <Button variant="ghost" size="sm" title="Configurar Perfil">
                                     <UserIcon className="mr-0 sm:mr-2 h-4 w-4" />
                                     <span className="hidden sm:inline">Perfil</span>
                                 </Button>
@@ -165,11 +168,15 @@ export default function RootLayout({
                             </Button>
                         </div>
                     ) : (
-                        <Link href="/login" passHref>
-                            <Button variant="outline" size="sm" onClick={(e) => handleNavClick(e, '/login')}>
-                                <LogIn className="mr-2 h-4 w-4" /> Ingresar
-                            </Button>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {/* Payroll Configuration Button for non-authenticated users */}
+                            <PayrollConfigModal />
+                            <Link href="/login" passHref>
+                                <Button variant="outline" size="sm">
+                                    <LogIn className="mr-2 h-4 w-4" /> Ingresar
+                                </Button>
+                            </Link>
+                        </div>
                     )}
                 </div>
              </nav>
