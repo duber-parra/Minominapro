@@ -1,8 +1,8 @@
 {
   "node": {
-    "c0658d46d359d16721640d7474cbe6d500766b0e": {
+    "0dee1e1839fc18763dd74511e5d006586495464c": {
       "workers": {
-        "app/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cjuand%5C%5COneDrive%5C%5CDesktop%5C%5Caj%5C%5CMinominapro%5C%5Csrc%5C%5Cactions%5C%5Ccalculate-workday.ts%22%2C%5B%22calculateSingleWorkday%22%5D%5D%5D&__client_imported__=true!"
+        "app/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cjuand%5C%5COneDrive%5C%5CDocumentos%5C%5CProjects%5C%5CMinorapo%5C%5CMinominapro%5C%5Csrc%5C%5Cactions%5C%5Ccalculate-workday.ts%22%2C%5B%22calculateSingleWorkday%22%5D%5D%5D&__client_imported__=true!"
       },
       "layer": {
         "app/page": "action-browser"
@@ -10,5 +10,5 @@
     }
   },
   "edge": {},
-  "encryptionKey": "hfm0cGgyfOxuCBzPPgtj2lSQv1IY3EDQMqzmkk3hwSQ="
+  "encryptionKey": "3w2ZLmPvS/3MN4sJ02RqPLKI6U0N1bhgJ+z68Kg1B1g="
 }

@@ -32,6 +32,23 @@ interface PayrollPageData {
     incluyeDeduccionPension: boolean;
 }
 
+// Abbreviated labels to prevent line breaks in PDF tables
+const exportLabelMap: Partial<Record<keyof QuincenalCalculationSummary['totalHorasDetalladas'], string>> = {
+    Ordinaria_Diurna_Base: 'Ord. Diurna (Base)',
+    Recargo_Noct_Base: 'Rec. Noct. (Base)',
+    Recargo_Dom_Diurno_Base: 'Rec. Dom. Diur. (Base)',
+    Recargo_Dom_Noct_Base: 'Rec. Dom. Noct. (Base)',
+    Recargo_Fest_Diurno_Base: 'Rec. Fest. Diur. (Base)',
+    Recargo_Fest_Noct_Base: 'Rec. Fest. Noct. (Base)',
+    HED: 'HED (Extra Diurna)',
+    HEN: 'HEN (Extra Noct.)',
+    HED_Dom: 'HED Dom.',
+    HEN_Dom: 'HEN Dom.',
+    HED_Fest: 'HED Fest.',
+    HEN_Fest: 'HEN Fest.',
+    Compensatorio_dia_festivo_trabajado: 'Comp. Día Festivo',
+};
+
 // Helper to add the watermark header and company logo/name
 function addHeaderAndWatermark(doc: jsPDF, initialY: number = 10, isLandscape: boolean = false): number {
     const pageHeight = doc.internal.pageSize.height;
@@ -113,7 +130,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
             const pagoCategoria = data.summary.totalPagoDetallado[key];
             if (key === 'Ordinaria_Diurna_Base' && horasCategoria <= 0) return null;
             if (key !== 'Ordinaria_Diurna_Base' && horasCategoria <= 0 && pagoCategoria <= 0) return null;
-            const label = labelMap[key] || key;
+            const label = exportLabelMap[key] || labelMap[key] || key;
             const formattedHours = formatHours(horasCategoria);
             const formattedPayment = key === 'Ordinaria_Diurna_Base' ? '-' : formatCurrency(pagoCategoria);
             return [label, formattedHours, formattedPayment];
@@ -131,9 +148,10 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
         body: bodyHours,
         startY: currentY,
         theme: 'grid',
-        headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59] },
+        styles: { overflow: 'ellipsize' },
+        headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], overflow: 'ellipsize' },
         columnStyles: {
-            0: { cellWidth: 'auto' },
+            0: { cellWidth: 170 },
             1: { halign: 'right' },
             2: { halign: 'right' },
         },
@@ -183,6 +201,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
         body: devengadoBody,
         startY: currentY,
         theme: 'plain',
+        styles: { overflow: 'ellipsize' },
         columnStyles: { 1: { halign: 'right' } },
         didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
@@ -231,6 +250,7 @@ function drawPayrollPage(doc: jsPDF, data: PayrollPageData): number {
         body: deduccionesLegalesBody as any,
         startY: currentY,
         theme: 'plain',
+        styles: { overflow: 'ellipsize' },
         columnStyles: { 1: { halign: 'right' } },
         didDrawPage: (hookData: any) => {
             currentY = hookData.cursor?.y ?? currentY;
@@ -382,12 +402,12 @@ export function exportAllPayrollsToPDF(
     const head = [
         [
             { content: 'Empleado', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
-            { content: 'Nómina / Período', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
-            { content: 'Sueldos y Tiempo', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'Horas Extras y Recargos Ordinarios', colSpan: 6, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'Horas Extras y Recargos Dom./Fest.', colSpan: 16, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'Compensatorio', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
-            { content: 'Liquidación Final', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Nómina/Per.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
+            { content: 'Sueldos/Tiempo', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Extras/Rec. Ord.', colSpan: 6, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Extras/Rec. Dom/Fes', colSpan: 16, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'Compen', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
+            { content: 'Liq. Final', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
             { content: 'Firma', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold' } },
         ],
         [
@@ -504,13 +524,13 @@ export function exportAllPayrollsToPDF(
         foot: footer,
         startY: currentY,
         theme: 'grid', // Use 'grid' for visible lines
-        styles: { fontSize: 6, cellPadding: 1.5, lineColor: [200,200,200], lineWidth: 0.25 }, // Smaller font, tighter padding
+        styles: { fontSize: 6, cellPadding: 1.5, lineColor: [200,200,200], lineWidth: 0.25, overflow: 'ellipsize' }, // Prevent line breaks
         headStyles: {
             fillColor: [226, 232, 240], // Light gray header
             textColor: [30, 41, 59],    // Dark text
             fontStyle: 'bold',
             fontSize: 6, // Smallest font for sub-headers
-            halign: 'center',
+            halign: 'center', overflow: 'ellipsize',
             valign: 'middle',
             cellPadding: 1,
         },
