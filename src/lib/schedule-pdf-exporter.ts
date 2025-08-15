@@ -174,7 +174,7 @@ export function exportScheduleToPDF(data: ScheduleExportData): void {
         styles: {
             cellPadding: 4,
             fontSize: 9,
-            overflow: 'ellipsize',
+            overflow: 'ellipsize', // prevent multi-line cells
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },
@@ -351,7 +351,7 @@ export function exportConsolidatedScheduleToPDF(allLocationData: ScheduleExportD
         styles: {
             cellPadding: 2.5, // Global cell padding
             fontSize: 8, // Default font size for cell text if not overridden
-            overflow: 'ellipsize',
+            overflow: 'ellipsize', // prevent multi-line cells
             lineWidth: 0.5,
             lineColor: [200, 200, 200]
         },

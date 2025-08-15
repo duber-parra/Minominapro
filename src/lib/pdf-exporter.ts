@@ -11,7 +11,7 @@
             cellPadding: 1,
             lineColor: [200,200,200],
             lineWidth: 0.25,
-            overflow: 'ellipsize',
+            overflow: 'ellipsize', // prevent multi-line cells
             tableWidth: 'wrap'
         },
         headStyles: {
