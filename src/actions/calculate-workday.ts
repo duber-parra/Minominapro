@@ -12,7 +12,7 @@ import type { z } from 'zod';
 import type { WorkdayFormValues } from '@/components/workday-form'; // Adjust path if needed
 import type { CalculationResults, CalculationError } from '@/types';
 import { getColombianHolidays } from '@/services/colombian-holidays';
-import { getPayrollValores } from '@/lib/payroll-config-utils';
+import { getPayrollValores, esDiaDominical } from '@/lib/payroll-config-utils';
 import type { PayrollValues } from '@/hooks/use-payroll-config';
 
 
@@ -78,8 +78,25 @@ async function esFestivo(fecha: Date): Promise<boolean> {
     }
 }
 
-function esDominical(fecha: Date): boolean {
-    return getDay(fecha) === 0; // 0 = Domingo
+function esDomincalLocal(fecha: Date, diasConfig?: { domingo: boolean; lunes: boolean; martes: boolean; miercoles: boolean; jueves: boolean; viernes: boolean; sabado: boolean; }): boolean {
+    // Si no se pasa configuración, usar comportamiento por defecto (solo domingos)
+    if (!diasConfig) {
+        return getDay(fecha) === 0; // 0 = Domingo
+    }
+    
+    // Usar la configuración personalizada de días dominicales
+    const dayOfWeek = getDay(fecha); // 0 = Sunday, 1 = Monday, etc.
+    
+    switch (dayOfWeek) {
+        case 0: return diasConfig.domingo;
+        case 1: return diasConfig.lunes;
+        case 2: return diasConfig.martes;
+        case 3: return diasConfig.miercoles;
+        case 4: return diasConfig.jueves;
+        case 5: return diasConfig.viernes;
+        case 6: return diasConfig.sabado;
+        default: return false;
+    }
 }
 
 function parseTimeString(timeStr: string | undefined): { hours: number; minutes: number } | null {
@@ -93,7 +110,8 @@ function parseTimeString(timeStr: string | undefined): { hours: number; minutes:
 export async function calculateSingleWorkday(
     values: WorkdayFormValues,
     id: string,
-    customValues?: PayrollValues
+    customValues?: PayrollValues,
+    diasDominicalesConfig?: { domingo: boolean; lunes: boolean; martes: boolean; miercoles: boolean; jueves: boolean; viernes: boolean; sabado: boolean; }
 ): Promise<CalculationResults | CalculationError> {
 
     try {
@@ -256,7 +274,7 @@ export async function calculateSingleWorkday(
                 let esDominical_flag: boolean;
                 try {
                     esFestivo_flag = await esFestivo(puntoEvaluacion);
-                    esDominical_flag = esDominical(puntoEvaluacion);
+                    esDominical_flag = esDomincalLocal(puntoEvaluacion, diasDominicalesConfig);
                 } catch (holidayError) {
                      console.error(`ID ${id}: Error verificando festivo/dominical para ${format(puntoEvaluacion, 'yyyy-MM-dd')}:`, holidayError);
                      // Decide how to handle: throw, return error, or default to false? Returning error is safer.

@@ -254,7 +254,7 @@ const loadAllSavedPayrolls = (employees: Employee[]): SavedPayrollData[] => {
 };
 
 export default function Home() {
-    const { getCurrentAuxilioTransporte, getCurrentValues } = usePayrollConfig();
+    const { getCurrentAuxilioTransporte, getCurrentValues, getCurrentDiasDominicales } = usePayrollConfig();
     const [employeeId, setEmployeeId] = useState<string>('');
     const [payrollTitle, setPayrollTitle] = useState<string>(''); // New state for payroll title
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -537,7 +537,7 @@ export default function Home() {
                                 diaDescanso: false, // Default for imported shifts
                             };
                             const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-                            const result = await calculateSingleWorkday(shiftValues, calculationId, getCurrentValues());
+                            const result = await calculateSingleWorkday(shiftValues, calculationId, getCurrentValues(), getCurrentDiasDominicales());
 
                             if (isCalculationError(result)) {
                                 console.error(`Error calculando turno importado para ${dateKey}:`, result.error);
@@ -849,7 +849,7 @@ export default function Home() {
     const nextDayValues: WorkdayFormValues = { ...lastDay.inputData, startDate: nextDayDate };
     const newDayId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(nextDayValues, newDayId, getCurrentValues());
+        const result = await calculateSingleWorkday(nextDayValues, newDayId, getCurrentValues(), getCurrentDiasDominicales());
         handleDayCalculationComplete(result);
     } catch (error) {
         console.error("Error duplicando el turno:", error);

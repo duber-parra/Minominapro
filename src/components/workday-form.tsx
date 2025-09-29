@@ -147,7 +147,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   isDateCalculated, // Receive the check function
 }) => {
   const { toast } = useToast();
-  const { getCurrentValues } = usePayrollConfig();
+  const { getCurrentValues, getCurrentDiasDominicales } = usePayrollConfig();
   const form = useForm<WorkdayFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData ? {
@@ -281,7 +281,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
     onCalculationStart();
     const calculationId = existingId || `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     try {
-        const result = await calculateSingleWorkday(values, calculationId, getCurrentValues());
+        const result = await calculateSingleWorkday(values, calculationId, getCurrentValues(), getCurrentDiasDominicales());
         onCalculationComplete(result); 
 
         if (!existingId && !('error' in result)) {

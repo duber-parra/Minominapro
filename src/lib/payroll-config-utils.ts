@@ -1,11 +1,23 @@
 // src/lib/payroll-config-utils.ts
 
 import { VALORES as DEFAULT_VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL as DEFAULT_AUXILIO_TRANSPORTE } from '@/config/payroll-values';
-import type { PayrollValues } from '@/hooks/use-payroll-config';
+import type { PayrollValues, DominicalDaysConfig } from '@/hooks/use-payroll-config';
+
+// Configuración por defecto: solo domingos tienen recargo dominical
+const DEFAULT_DOMINICAL_DAYS: DominicalDaysConfig = {
+  domingo: true,
+  lunes: false,
+  martes: false,
+  miercoles: false,
+  jueves: false,
+  viernes: false,
+  sabado: false,
+};
 
 interface PayrollConfig {
   valores: PayrollValues;
   auxilioTransporte: number;
+  diasDominicales: DominicalDaysConfig;
 }
 
 const STORAGE_KEY = 'payroll_configuration';
@@ -20,6 +32,7 @@ export const getPayrollConfig = (): PayrollConfig => {
     return {
       valores: DEFAULT_VALORES,
       auxilioTransporte: DEFAULT_AUXILIO_TRANSPORTE,
+      diasDominicales: DEFAULT_DOMINICAL_DAYS,
     };
   }
 
@@ -29,6 +42,7 @@ export const getPayrollConfig = (): PayrollConfig => {
       return {
         valores: DEFAULT_VALORES,
         auxilioTransporte: DEFAULT_AUXILIO_TRANSPORTE,
+        diasDominicales: DEFAULT_DOMINICAL_DAYS,
       };
     }
 
@@ -39,8 +53,14 @@ export const getPayrollConfig = (): PayrollConfig => {
       key in parsedConfig.valores
     );
     
+    // Validate diasDominicales or set default if missing
+    const diasDominicales = parsedConfig.diasDominicales || DEFAULT_DOMINICAL_DAYS;
+    
     if (hasAllKeys && typeof parsedConfig.auxilioTransporte === 'number') {
-      return parsedConfig;
+      return {
+        ...parsedConfig,
+        diasDominicales
+      };
     }
     
     // Invalid configuration found, return defaults
@@ -48,12 +68,14 @@ export const getPayrollConfig = (): PayrollConfig => {
     return {
       valores: DEFAULT_VALORES,
       auxilioTransporte: DEFAULT_AUXILIO_TRANSPORTE,
+      diasDominicales: DEFAULT_DOMINICAL_DAYS,
     };
   } catch (error) {
     console.error('Error reading payroll configuration from localStorage:', error);
     return {
       valores: DEFAULT_VALORES,
       auxilioTransporte: DEFAULT_AUXILIO_TRANSPORTE,
+      diasDominicales: DEFAULT_DOMINICAL_DAYS,
     };
   }
 };
@@ -70,6 +92,34 @@ export const getPayrollValores = (): PayrollValues => {
  */
 export const getAuxilioTransporteValue = (): number => {
   return getPayrollConfig().auxilioTransporte;
+};
+
+/**
+ * Get the dominical days configuration
+ */
+export const getDiasDominicales = (): DominicalDaysConfig => {
+  return getPayrollConfig().diasDominicales;
+};
+
+/**
+ * Check if a specific date should have dominical surcharge based on configuration
+ * @param fecha - The date to check
+ * @returns boolean - true if the day should have dominical surcharge
+ */
+export const esDiaDominical = (fecha: Date): boolean => {
+  const diasConfig = getDiasDominicales();
+  const dayOfWeek = fecha.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  switch (dayOfWeek) {
+    case 0: return diasConfig.domingo;
+    case 1: return diasConfig.lunes;
+    case 2: return diasConfig.martes;
+    case 3: return diasConfig.miercoles;
+    case 4: return diasConfig.jueves;
+    case 5: return diasConfig.viernes;
+    case 6: return diasConfig.sabado;
+    default: return false;
+  }
 };
 
 /**

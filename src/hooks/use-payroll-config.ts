@@ -5,14 +5,39 @@ import { VALORES as DEFAULT_VALORES, AUXILIO_TRANSPORTE_VALOR_QUINCENAL as DEFAU
 
 export type PayrollValues = typeof DEFAULT_VALORES;
 
+// Configuración para días dominicales personalizados
+// getDay() de date-fns: 0 = Domingo, 1 = Lunes, 2 = Martes, 3 = Miércoles, 4 = Jueves, 5 = Viernes, 6 = Sábado
+export interface DominicalDaysConfig {
+  domingo: boolean;     // 0
+  lunes: boolean;       // 1
+  martes: boolean;      // 2
+  miercoles: boolean;   // 3
+  jueves: boolean;      // 4
+  viernes: boolean;     // 5
+  sabado: boolean;      // 6
+}
+
+// Configuración por defecto: solo domingos tienen recargo dominical
+const DEFAULT_DOMINICAL_DAYS: DominicalDaysConfig = {
+  domingo: true,
+  lunes: false,
+  martes: false,
+  miercoles: false,
+  jueves: false,
+  viernes: false,
+  sabado: false,
+};
+
 interface PayrollConfig {
   valores: PayrollValues;
   auxilioTransporte: number;
+  diasDominicales: DominicalDaysConfig;
 }
 
 const DEFAULT_CONFIG: PayrollConfig = {
   valores: DEFAULT_VALORES,
   auxilioTransporte: DEFAULT_AUXILIO_TRANSPORTE,
+  diasDominicales: DEFAULT_DOMINICAL_DAYS,
 };
 
 const STORAGE_KEY = 'payroll_configuration';
@@ -34,8 +59,14 @@ export const usePayrollConfig = () => {
             key in parsedConfig.valores
           );
           
+          // Validate diasDominicales or set default if missing
+          const diasDominicales = parsedConfig.diasDominicales || DEFAULT_DOMINICAL_DAYS;
+          
           if (hasAllKeys && typeof parsedConfig.auxilioTransporte === 'number') {
-            setConfig(parsedConfig);
+            setConfig({
+              ...parsedConfig,
+              diasDominicales
+            });
           } else {
             console.warn('Invalid payroll configuration found, using defaults');
             setConfig(DEFAULT_CONFIG);
@@ -104,6 +135,15 @@ export const usePayrollConfig = () => {
     saveConfig(updatedConfig);
   }, [config, saveConfig]);
 
+  // Update dominical days configuration
+  const updateDiasDominicales = useCallback((newDias: Partial<DominicalDaysConfig>) => {
+    const updatedConfig = {
+      ...config,
+      diasDominicales: { ...config.diasDominicales, ...newDias }
+    };
+    saveConfig(updatedConfig);
+  }, [config, saveConfig]);
+
   // Reset to default values
   const resetToDefaults = useCallback(() => {
     try {
@@ -128,14 +168,19 @@ export const usePayrollConfig = () => {
   // Get current auxilio transporte value
   const getCurrentAuxilioTransporte = useCallback(() => config?.auxilioTransporte || DEFAULT_CONFIG.auxilioTransporte, [config?.auxilioTransporte]);
 
+  // Get current dominical days configuration
+  const getCurrentDiasDominicales = useCallback(() => config?.diasDominicales || DEFAULT_CONFIG.diasDominicales, [config?.diasDominicales]);
+
   return {
     config,
     isLoading,
     updateValores,
     updateAuxilioTransporte,
+    updateDiasDominicales,
     resetToDefaults,
     getCurrentValues,
     getCurrentAuxilioTransporte,
+    getCurrentDiasDominicales,
     saveConfig,
   };
 };

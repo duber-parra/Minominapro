@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Settings, RotateCcw, Save, X } from 'lucide-react';
+import { Settings, RotateCcw, Save, X, Calendar } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { usePayrollConfig, PayrollValues } from '@/hooks/use-payroll-config';
 import { PayrollConfigIndicator } from '@/components/payroll-config-indicator';
@@ -51,6 +52,16 @@ const configSchema = z.object({
   Compensatorio_dia_festivo_trabajado: z.number().min(0, 'Debe ser un valor positivo'),
   Ordinaria_Diurna_Base: z.number().min(0, 'Debe ser un valor positivo'),
   auxilioTransporte: z.number().min(0, 'Debe ser un valor positivo'),
+  // Días dominicales
+  diasDominicales: z.object({
+    domingo: z.boolean(),
+    lunes: z.boolean(),
+    martes: z.boolean(),
+    miercoles: z.boolean(),
+    jueves: z.boolean(),
+    viernes: z.boolean(),
+    sabado: z.boolean(),
+  }),
 });
 
 type ConfigFormValues = z.infer<typeof configSchema>;
@@ -91,7 +102,7 @@ const FIELD_DESCRIPTIONS: Record<keyof PayrollValues, string> = {
 
 export const PayrollConfigModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { config, isLoading, updateValores, updateAuxilioTransporte, resetToDefaults, saveConfig } = usePayrollConfig();
+  const { config, isLoading, updateValores, updateAuxilioTransporte, updateDiasDominicales, resetToDefaults, saveConfig } = usePayrollConfig();
   const { toast } = useToast();
 
   const form = useForm<ConfigFormValues>({
@@ -99,6 +110,15 @@ export const PayrollConfigModal = () => {
     defaultValues: {
       ...(config?.valores || DEFAULT_VALORES),
       auxilioTransporte: config?.auxilioTransporte || DEFAULT_AUXILIO_TRANSPORTE,
+      diasDominicales: config?.diasDominicales || {
+        domingo: true,
+        lunes: false,
+        martes: false,
+        miercoles: false,
+        jueves: false,
+        viernes: false,
+        sabado: false,
+      },
     },
   });
 
@@ -108,18 +128,28 @@ export const PayrollConfigModal = () => {
       form.reset({
         ...(config.valores || DEFAULT_VALORES),
         auxilioTransporte: config.auxilioTransporte || DEFAULT_AUXILIO_TRANSPORTE,
+        diasDominicales: config.diasDominicales || {
+          domingo: true,
+          lunes: false,
+          martes: false,
+          miercoles: false,
+          jueves: false,
+          viernes: false,
+          sabado: false,
+        },
       });
     }
   }, [config, isLoading, form]);
 
   const onSubmit = async (values: ConfigFormValues) => {
     try {
-      const { auxilioTransporte, ...valores } = values;
+      const { auxilioTransporte, diasDominicales, ...valores } = values;
       
       // Save the complete configuration
       await saveConfig({
         valores: valores as PayrollValues,
         auxilioTransporte,
+        diasDominicales,
       });
 
       toast({
@@ -535,6 +565,179 @@ export const PayrollConfigModal = () => {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Configuración de Días Dominicales */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Días con Recargo Dominical</CardTitle>
+                <CardDescription>
+                  Selecciona qué días de la semana deben tener recargo dominical. Por defecto solo los domingos tienen este recargo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.domingo"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Domingo
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo tradicional
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.lunes"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Lunes
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.martes"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Martes
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.miercoles"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Miércoles
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.jueves"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Jueves
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.viernes"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Viernes
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="diasDominicales.sabado"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base font-medium">
+                            Sábado
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            Recargo dominical personalizado
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="rounded-md bg-blue-50 p-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Nota:</strong> Los días seleccionados aplicarán los recargos dominicales configurados (Recargo_Dom_Diurno_Base, Recargo_Dom_Noct_Base, HED_Dom, HEN_Dom).
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
