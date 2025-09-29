@@ -35,6 +35,10 @@ export function calculateQuincenalSummary(
         diasCalculados: calculatedDays.length,
     };
 
+    // Calcular días laborales y de descanso
+    const diasLaborales = calculatedDays.filter(day => day.tipoTurno !== 'Día de Descanso').length;
+    const diasDescanso = calculatedDays.filter(day => day.tipoTurno === 'Día de Descanso').length;
+    
     return calculatedDays.reduce((summary, currentDay) => {
         // Use Object.keys on the summary's structure to ensure all categories are processed
         Object.keys(summary.totalHorasDetalladas).forEach(key => {
@@ -47,5 +51,10 @@ export function calculateQuincenalSummary(
         summary.totalDuracionTrabajadaHorasQuincena += currentDay.duracionTotalTrabajadaHoras;
         summary.pagoTotalConSalarioQuincena += currentDay.pagoTotalRecargosExtras; // Add only the extras/surcharges
         return summary;
-    }, initialSummary);
+    }, { 
+        ...initialSummary, 
+        diasCalculados: calculatedDays.length, // Total de días registrados (incluyendo descansos)
+        diasLaborales: diasLaborales, // Solo días laborales
+        diasDescanso: diasDescanso // Solo días de descanso
+    });
 }

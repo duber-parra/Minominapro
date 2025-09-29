@@ -7,6 +7,8 @@ import type { Employee } from './schedule'; // Import Employee type
  export interface CalculationResults {
    id: string; // Unique identifier for this specific calculation (e.g., timestamp or UUID)
    inputData: Omit<WorkdayFormValues, 'startDate'> & { startDate: Date }; // Use Date object consistently
+   tipoTurno?: string; // Optional: Type of shift (e.g., "Día de Descanso", "Turno Normal", etc.)
+   observaciones?: string; // Optional: Additional observations about the calculation
    horasDetalladas: {
      Ordinaria_Diurna_Base: number;      // Horas dentro de jornada (7.33h), diurnas, sin recargo base adicional
      Recargo_Noct_Base: number;            // Horas dentro de jornada (7.33h), nocturnas (solo valor del recargo)
@@ -43,6 +45,8 @@ import type { Employee } from './schedule'; // Import Employee type
     pagoTotalConSalarioQuincena: number; // Represents Base + Extras/Recargos only. Transport, other income/deductions are handled separately.
     totalDuracionTrabajadaHorasQuincena: number;
     diasCalculados: number; // Number of days included in this summary
+    diasLaborales?: number; // Number of work days (excluding rest days)
+    diasDescanso?: number; // Number of rest days
  }
 
  // Type guard to check if an object is a CalculationError

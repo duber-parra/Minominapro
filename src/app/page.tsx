@@ -533,6 +533,8 @@ export default function Home() {
                                 includeBreak: employeeShift.includeBreak,
                                 breakStartTime: employeeShift.breakStartTime,
                                 breakEndTime: employeeShift.breakEndTime,
+                                compensatorioDiaFestivo: false, // Default for imported shifts
+                                diaDescanso: false, // Default for imported shifts
                             };
                             const calculationId = `day_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
                             const result = await calculateSingleWorkday(shiftValues, calculationId, getCurrentValues());

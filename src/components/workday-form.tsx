@@ -53,16 +53,31 @@ export const formSchema = z.object({
   breakStartTime: z.string().optional(),
   breakEndTime: z.string().optional(),
   compensatorioDiaFestivo: z.boolean().default(false),
+  diaDescanso: z.boolean().default(false),
 })
 .refine(
   (data) => {
-    if (data.includeBreak) {
+    // Si es día de descanso, no validar horarios
+    if (data.diaDescanso) {
+      return true;
+    }
+    // Si no es día de descanso, validar horarios normalmente
+    return timeRegex.test(data.startTime) && timeRegex.test(data.endTime);
+  },
+  {
+    message: "Los horarios son requeridos para días laborales (formato HH:mm).",
+    path: ["startTime"],
+  }
+)
+.refine(
+  (data) => {
+    if (data.includeBreak && !data.diaDescanso) {
       // Check if both times are provided and match the regex format
       const isBreakStartTimeValid = data.breakStartTime ? timeRegex.test(data.breakStartTime) : false;
       const isBreakEndTimeValid = data.breakEndTime ? timeRegex.test(data.breakEndTime) : false;
       return isBreakStartTimeValid && isBreakEndTimeValid;
     }
-    return true; // No validation needed if break is not included
+    return true; // No validation needed if break is not included or is rest day
   },
   {
     // This message appears if either time is missing or format is wrong when includeBreak is true
@@ -141,6 +156,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       breakStartTime: initialData.breakStartTime ?? '',
       breakEndTime: initialData.breakEndTime ?? '',
       compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
+      diaDescanso: initialData.diaDescanso ?? false,
     } : {
       startDate: new Date(),
       startTime: '12:00', 
@@ -150,6 +166,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
       breakStartTime: '15:00', 
       breakEndTime: '18:00',   
       compensatorioDiaFestivo: false,
+      diaDescanso: false,
     },
   });
 
@@ -163,6 +180,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            breakStartTime: initialData.breakStartTime ?? '',
            breakEndTime: initialData.breakEndTime ?? '',
            compensatorioDiaFestivo: initialData.compensatorioDiaFestivo ?? false,
+           diaDescanso: initialData.diaDescanso ?? false,
        } : {
            startDate: new Date(),
            startTime: '12:00', 
@@ -172,6 +190,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
            breakStartTime: '15:00', 
            breakEndTime: '18:00',   
            compensatorioDiaFestivo: false,
+           diaDescanso: false,
        };
 
        if (timeRegex.test(resetValues.startTime) && timeRegex.test(resetValues.endTime)) {
@@ -190,6 +209,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
   const includeBreak = watch('includeBreak');
   const startTime = watch('startTime');
   const endTime = watch('endTime');
+  const diaDescanso = watch('diaDescanso');
 
   // Efecto para detectar automáticamente si termina al día siguiente
   useEffect(() => {
@@ -361,6 +381,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
                             className="text-base"
+                            disabled={diaDescanso}
                         />
                     </FormControl>
                     {field.value && timeRegex.test(field.value) && (
@@ -384,6 +405,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
                             className="text-base"
+                            disabled={diaDescanso}
                         />
                     </FormControl>
                      {field.value && timeRegex.test(field.value) && (
@@ -409,6 +431,34 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      disabled={diaDescanso}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="diaDescanso"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-amber-50 border-amber-200">
+                   <div className="space-y-0.5">
+                    <FormLabel className="text-base font-semibold text-amber-800">Día de Descanso</FormLabel>
+                    <p className="text-sm text-amber-600">Registra el día sin contar horas trabajadas</p>
+                   </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (checked) {
+                          // Al activar día de descanso, limpiar otros campos
+                          setValue('includeBreak', false);
+                          setValue('endsNextDay', false);
+                          setValue('compensatorioDiaFestivo', false);
+                        }
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -427,6 +477,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                        <Switch
                            checked={field.value}
                            onCheckedChange={field.onChange}
+                           disabled={diaDescanso}
                        />
                    </FormControl>
                  </FormItem>
@@ -491,8 +542,8 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
              </Card>
            )}
 
-            {/* Compensatorio switch - only show on festive days */}
-            {isHoliday && !isCheckingHoliday && (
+            {/* Compensatorio switch - only show on festive days and not rest days */}
+            {isHoliday && !isCheckingHoliday && !diaDescanso && (
               <FormField
                 control={control}
                 name="compensatorioDiaFestivo"
@@ -522,7 +573,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {existingId ? 'Guardando Cambios...' : 'Agregando Día...'}
+                  {existingId ? 'Guardando Cambios...' : (diaDescanso ? 'Registrando Descanso...' : 'Agregando Día...')}
                 </>
               ) : isCheckingHoliday ? (
                   <>
@@ -530,7 +581,7 @@ export const WorkdayForm: FC<WorkdayFormProps> = ({
                     Verificando Festivo...
                   </>
               ) : (
-                 existingId ? <><Save className="mr-2 h-4 w-4" /> Guardar Cambios</> : <><Plus className="mr-2 h-4 w-4" /> Agregar Día a la Quincena</>
+                 existingId ? <><Save className="mr-2 h-4 w-4" /> Guardar Cambios</> : (diaDescanso ? <><Plus className="mr-2 h-4 w-4" /> Registrar Día de Descanso</> : <><Plus className="mr-2 h-4 w-4" /> Agregar Día a la Quincena</>)
               )}
             </Button>
           </form>

@@ -229,11 +229,18 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
     return (
       <>
         {!isSummary && (
-          <Alert variant="default" className="mb-6 border-green-500 bg-green-50 dark:bg-green-900/20">
-               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-               <AlertTitle className="text-green-700 dark:text-green-300">Cálculo de Día Exitoso</AlertTitle>
-               <AlertDescription className="text-green-600 dark:text-green-400">
-                  Total horas trabajadas este día: {formatHours(totalHorasTrabajadas)}.
+          <Alert variant="default" className={`mb-6 ${(data as CalculationResults)?.tipoTurno === 'Día de Descanso' ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'border-green-500 bg-green-50 dark:bg-green-900/20'}`}>
+               <CheckCircle2 className={`h-4 w-4 ${(data as CalculationResults)?.tipoTurno === 'Día de Descanso' ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`} />
+               <AlertTitle className={`${(data as CalculationResults)?.tipoTurno === 'Día de Descanso' ? 'text-amber-700 dark:text-amber-300' : 'text-green-700 dark:text-green-300'}`}>
+                 {(data as CalculationResults)?.tipoTurno === 'Día de Descanso' ? 'Día de Descanso Registrado' : 'Cálculo de Día Exitoso'}
+               </AlertTitle>
+               <AlertDescription className={`${(data as CalculationResults)?.tipoTurno === 'Día de Descanso' ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {(data as CalculationResults)?.tipoTurno === 'Día de Descanso' 
+                    ? 'Este día fue registrado como descanso - No se cuentan horas trabajadas.'
+                    : `Total horas trabajadas este día: ${formatHours(totalHorasTrabajadas)}.`}
+                  {(data as CalculationResults)?.observaciones && (
+                    <div className="mt-1 text-xs italic">{(data as CalculationResults).observaciones}</div>
+                  )}
                </AlertDescription>
            </Alert>
         )}
@@ -241,7 +248,18 @@ export const ResultsDisplay: FC<ResultsDisplayProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%] text-foreground">{isSummary ? `Categoría (Total ${diasCalculados} días)` : 'Categoría (Día Actual)'}</TableHead>
+              <TableHead className="w-[50%] text-foreground">
+                {isSummary ? (
+                  <div>
+                    <div>{`Categoría (${diasCalculados} días registrados)`}</div>
+                    {(data as QuincenalCalculationSummary).diasLaborales !== undefined && (data as QuincenalCalculationSummary).diasDescanso !== undefined && (
+                      <div className="text-xs text-muted-foreground font-normal">
+                        {(data as QuincenalCalculationSummary).diasLaborales} laborales • {(data as QuincenalCalculationSummary).diasDescanso} descanso
+                      </div>
+                    )}
+                  </div>
+                ) : 'Categoría (Día Actual)'}
+              </TableHead>
               <TableHead className="text-right text-foreground">Horas</TableHead>
               <TableHead className="text-right text-foreground">Pago (Recargo/Extra)</TableHead>
             </TableRow>

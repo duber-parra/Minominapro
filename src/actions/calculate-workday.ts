@@ -97,10 +97,56 @@ export async function calculateSingleWorkday(
 ): Promise<CalculationResults | CalculationError> {
 
     try {
-        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime, compensatorioDiaFestivo } = values;
+        const { startDate, startTime, endTime, endsNextDay, includeBreak, breakStartTime, breakEndTime, compensatorioDiaFestivo, diaDescanso } = values;
 
         // --- Obtener valores de configuración ---
         const VALORES = customValues || getPayrollValores();
+
+        // --- Manejo especial para días de descanso ---
+        if (diaDescanso) {
+            return {
+                id,
+                inputData: {
+                    ...values,
+                    startDate: startDate instanceof Date ? startDate : new Date(startDate)
+                },
+                duracionTotalTrabajadaHoras: 0,
+                horasDetalladas: {
+                    Ordinaria_Diurna_Base: 0,
+                    Recargo_Noct_Base: 0,
+                    Recargo_Dom_Diurno_Base: 0,
+                    Recargo_Dom_Noct_Base: 0,
+                    Recargo_Fest_Diurno_Base: 0,
+                    Recargo_Fest_Noct_Base: 0,
+                    HED: 0,
+                    HEN: 0,
+                    HED_Dom: 0,
+                    HEN_Dom: 0,
+                    HED_Fest: 0,
+                    HEN_Fest: 0,
+                    Compensatorio_dia_festivo_trabajado: 0,
+                },
+                pagoDetallado: {
+                    Ordinaria_Diurna_Base: 0,
+                    Recargo_Noct_Base: 0,
+                    Recargo_Dom_Diurno_Base: 0,
+                    Recargo_Dom_Noct_Base: 0,
+                    Recargo_Fest_Diurno_Base: 0,
+                    Recargo_Fest_Noct_Base: 0,
+                    HED: 0,
+                    HEN: 0,
+                    HED_Dom: 0,
+                    HEN_Dom: 0,
+                    HED_Fest: 0,
+                    HEN_Fest: 0,
+                    Compensatorio_dia_festivo_trabajado: 0,
+                },
+                pagoTotalRecargosExtras: 0,
+                pagoTotalConSalario: 0,
+                tipoTurno: 'Día de Descanso',
+                observaciones: 'Día registrado como descanso - 0 horas trabajadas'
+            };
+        }
 
         // --- Parseo y Validación Inicial ---
         if (!startDate || !isValid(startDate)) {
